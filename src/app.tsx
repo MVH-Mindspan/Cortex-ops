@@ -4,28 +4,32 @@ import { useAgentChat } from "@cloudflare/ai-chat/react";
 import { Streamdown } from "streamdown";
 import { checkPHI } from "@/lib/phi";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  ArrowUpIcon,
+  ClockIcon,
+  LibraryIcon,
+  PanelIcon,
+  PinIcon,
+  PlusIcon,
+  SearchIcon,
+  ShieldIcon,
+  SparkleIcon,
+  StopIcon
+} from "@/components/icons";
 import type { ChatAgent, CortexMessage, SOPRef } from "./server";
 
-// Quick starts mirror the ops team's highest-volume task types (operator's
-// Month-2 mix). Every template is an invented, identifier-free scenario —
-// they teach the input shape as much as they accelerate it.
+const PHI_WARNING =
+  "Prototype. Do not paste patient names, dates of birth, MRNs, contact details, or anything identifying. Use invented scenarios.";
+const MODEL_LABEL = "llama-3.3-70b";
+
+// Scenario templates mirror the ops team's highest-volume task types
+// (operator's Month-2 mix). Every template is an invented, identifier-free
+// scenario — they teach the input shape as much as they accelerate it.
 const QUICK_STARTS: { label: string; template: string }[] = [
   {
     label: "Follow-up scheduling",
@@ -99,14 +103,19 @@ function textOf(message: CortexMessage): string {
     .join("");
 }
 
+function isRenderable(message: CortexMessage): boolean {
+  if (message.role === "user") return textOf(message).trim().length > 0;
+  return sopsOf(message) !== null || textOf(message).trim().length > 0;
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // Turn SOP title mentions in the streamed answer into Notion links, using the
 // retrieved list as the source of truth. Leading emoji in titles are ignored
-// for matching (the model cites the plain title); longer titles are replaced
-// first so a title that contains another doesn't produce nested links.
+// for matching; longer titles are replaced first so a title that contains
+// another doesn't produce nested links.
 function linkifySOPs(text: string, sops: SOPRef[] | null): string {
   if (!sops || sops.length === 0) return text;
   let out = text;
@@ -117,9 +126,6 @@ function linkifySOPs(text: string, sops: SOPRef[] | null): string {
       const title = sop.title.replace(/^[^\p{L}\p{N}]+/u, "").trim();
       const candidates: { url: string; clean: string; label?: string }[] = [];
       if (title.length >= 4) candidates.push({ url, clean: title });
-      // The model sometimes cites the underlying filename instead of the
-      // title (that's how retrieval context names files) — link those too,
-      // and swap in the proper title as the visible text.
       if (sop.file && sop.file.length >= 4) {
         candidates.push({ url, clean: sop.file, label: title || sop.file });
       }
@@ -141,32 +147,30 @@ function linkifySOPs(text: string, sops: SOPRef[] | null): string {
   return out;
 }
 
-function isRenderable(message: CortexMessage): boolean {
-  if (message.role === "user") return textOf(message).trim().length > 0;
-  return sopsOf(message) !== null || textOf(message).trim().length > 0;
+// Strip a leading emoji from Notion titles for display (no emojis in the UI).
+function displayTitle(title: string): string {
+  return title.replace(/^[^\p{L}\p{N}]+/u, "").trim() || title;
 }
 
 function SOPCards({ sops }: { sops: SOPRef[] }) {
   if (sops.length === 0) return null;
   return (
     <div>
-      <p className="mb-2 text-xs font-medium text-muted-foreground">
+      <p className="mb-2 text-[13px] font-medium text-muted-foreground">
         Relevant SOPs
       </p>
       <div className="flex flex-col gap-2">
         {sops.map((sop) => (
           <Card
             key={sop.title + String(sop.score)}
-            className="flex-row items-center justify-between gap-3 px-4 py-3"
+            className="flex-row items-center justify-between gap-3 rounded-[12px] px-4 py-3"
           >
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="truncate text-sm font-medium">
-                  {sop.title}
+                  {displayTitle(sop.title)}
                 </span>
-                {/* Orange appears only on white/cream surfaces — this badge
-                    sits on a white card. */}
-                <Badge className="border-brand-orange/30 bg-brand-orange/10 text-brand-orange">
+                <Badge className="border-brand-orange/40 bg-brand-orange/15 text-brand-orange">
                   {sop.category}
                 </Badge>
               </div>
@@ -181,7 +185,7 @@ function SOPCards({ sops }: { sops: SOPRef[] }) {
                 href={sop.source_url}
                 target="_blank"
                 rel="noreferrer"
-                className="shrink-0 text-sm font-medium text-brand-teal underline-offset-4 hover:underline"
+                className="shrink-0 text-sm font-medium text-brand-blue underline-offset-4 hover:underline"
               >
                 Open in Notion
               </a>
@@ -195,15 +199,30 @@ function SOPCards({ sops }: { sops: SOPRef[] }) {
 
 function PendingSOPs() {
   return (
-    <div>
-      <p className="mb-2 text-xs font-medium text-muted-foreground">
-        Relevant SOPs
-      </p>
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-14 w-full rounded-xl" />
-        <Skeleton className="h-14 w-full rounded-xl" />
-      </div>
+    <div className="flex items-center gap-3 text-muted-foreground">
+      <SparkleIcon className="h-5 w-5 animate-pulse text-brand-orange" />
+      <span className="text-sm">Finding SOPs</span>
+      <Skeleton className="h-4 w-24" />
     </div>
+  );
+}
+
+function SidebarRow({
+  label,
+  onSelect
+}: {
+  label: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2.5 text-left text-[15px] text-foreground/85 hover:bg-accent"
+    >
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full border border-muted-foreground" />
+      <span className="truncate">{label}</span>
+    </button>
   );
 }
 
@@ -271,21 +290,19 @@ export default function App() {
     [resizeComposer]
   );
 
-  // One composer, two homes: centered on the empty screen (Claude-style),
-  // docked at the bottom once the conversation starts. The PHI notice stays
-  // directly above it in both, per spec — never dismissible.
+  const newSituation = useCallback(() => {
+    void agent.stub.clearConversation();
+    setInput("");
+    setBlockedReason(null);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [agent]);
+
   const composer = (
     <div>
-      <Alert className="mb-3 border-brand-teal/25 bg-brand-cream">
-        <AlertDescription className="text-foreground/80">
-          Prototype. Do not paste patient names, dates of birth, MRNs, contact
-          details, or anything identifying. Use invented scenarios.
-        </AlertDescription>
-      </Alert>
-      <div className="rounded-2xl border bg-white shadow-sm transition-colors focus-within:border-brand-teal/40 focus-within:ring-2 focus-within:ring-brand-teal/10">
+      <div className="rounded-[12px] border bg-surface transition-colors focus-within:border-muted-foreground/50">
         <Textarea
           ref={textareaRef}
-          rows={1}
+          rows={2}
           value={input}
           onChange={(e) => {
             setInput(e.target.value);
@@ -298,27 +315,50 @@ export default function App() {
               submit();
             }
           }}
-          placeholder="Paste the situation. No patient identifiers."
-          className="max-h-[200px] min-h-12 resize-none border-0 bg-transparent px-4 pt-3 shadow-none focus-visible:border-transparent focus-visible:ring-0"
+          placeholder={
+            hasConversation
+              ? "Add detail or paste another situation"
+              : "Paste the situation. No patient identifiers."
+          }
+          className="min-h-[70px] resize-none border-0 bg-transparent px-4 pt-3.5 text-[15px] shadow-none placeholder:text-[16px] placeholder:text-muted-foreground/70 focus-visible:border-transparent focus-visible:ring-0"
         />
-        <div className="flex items-center justify-between gap-2 px-3 pb-2.5">
-          <span className="pl-1 text-xs text-muted-foreground">
-            Enter to send · Shift+Enter for a new line
+        <div className="flex items-center justify-between gap-2 px-3.5 pb-3">
+          <span
+            title={PHI_WARNING}
+            className="flex cursor-help items-center gap-1.5 text-[13px] text-muted-foreground"
+          >
+            <ShieldIcon className="h-3.5 w-3.5" />
+            No patient identifiers
           </span>
-          {isStreaming ? (
-            <Button variant="outline" size="sm" onClick={() => void stop()}>
-              Stop
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              onClick={submit}
-              disabled={!input.trim()}
-              className="bg-brand-teal text-white hover:bg-brand-orange"
-            >
-              Send
-            </Button>
-          )}
+          <span className="flex items-center gap-3">
+            <span className="text-[13px] text-muted-foreground">
+              {MODEL_LABEL}
+            </span>
+            {isStreaming ? (
+              <button
+                type="button"
+                onClick={() => void stop()}
+                aria-label="Stop"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground hover:bg-accent"
+              >
+                <StopIcon className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={submit}
+                disabled={!input.trim()}
+                aria-label="Send"
+                className={
+                  input.trim()
+                    ? "flex h-8 w-8 items-center justify-center rounded-full bg-brand-orange text-white"
+                    : "flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                }
+              >
+                <ArrowUpIcon className="h-4 w-4" />
+              </button>
+            )}
+          </span>
         </div>
       </div>
       {blockedReason && (
@@ -334,116 +374,182 @@ export default function App() {
   );
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="h-14 shrink-0 border-b bg-white">
-        <div className="mx-auto flex h-full w-full max-w-3xl items-center justify-between px-4">
-          <div className="flex items-baseline gap-3">
-            <span className="text-lg font-semibold text-brand-teal">
-              Cortex
-            </span>
-            <span className="text-sm text-muted-foreground">
-              Mindspan operations
-            </span>
-          </div>
-          {hasConversation && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                >
-                  Clear conversation
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Clear this conversation?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    All messages in this conversation will be deleted for
-                    everyone. This can't be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => void agent.stub.clearConversation()}
-                  >
-                    Clear conversation
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+    <div className="flex h-full">
+      <aside className="flex w-[284px] shrink-0 flex-col border-r bg-sidebar">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <span className="font-serif text-[22px] text-foreground">Cortex</span>
+          <span className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={newSituation}
+              aria-label="New situation"
+              className="flex h-8 w-8 items-center justify-center rounded-[6px] border text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <PlusIcon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="SOP library"
+              title="SOP library (phase 3)"
+              className="flex h-8 w-8 items-center justify-center rounded-[6px] border text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <LibraryIcon className="h-4 w-4" />
+            </button>
+          </span>
         </div>
-      </header>
 
-      {hasConversation ? (
-        <>
-          <ScrollArea className="min-h-0 flex-1">
-            <main className="mx-auto w-full max-w-3xl px-4 py-6">
-              <div className="flex flex-col gap-6">
-                {visibleMessages.map((message) =>
-                  message.role === "user" ? (
-                    <div key={message.id} className="flex justify-end">
-                      <Card className="max-w-[80%] bg-secondary px-4 py-3 text-[15px] whitespace-pre-wrap">
-                        {textOf(message)}
-                      </Card>
-                    </div>
-                  ) : (
-                    <div key={message.id} className="flex flex-col gap-4">
-                      {textOf(message).trim() && (
-                        <div className="text-[15px] leading-relaxed [&_a]:font-medium [&_a]:text-brand-teal [&_a]:underline [&_a]:underline-offset-4">
-                          <Streamdown>
-                            {linkifySOPs(textOf(message), sopsOf(message))}
-                          </Streamdown>
-                        </div>
-                      )}
-                      {sopsOf(message) && <SOPCards sops={sopsOf(message)!} />}
-                    </div>
-                  )
-                )}
-                {awaitingSops && <PendingSOPs />}
-                <div ref={bottomRef} />
+        <nav className="flex flex-col gap-0.5 px-2.5 py-2">
+          <button
+            type="button"
+            onClick={newSituation}
+            className="flex h-[34px] items-center gap-2.5 rounded-full bg-accent px-3 text-[15px] font-medium text-foreground"
+          >
+            <PlusIcon className="h-4 w-4 text-brand-orange" />
+            New situation
+          </button>
+          <button
+            type="button"
+            title="SOP library (phase 3)"
+            className="flex h-[34px] items-center gap-2.5 rounded-[6px] px-3 text-[15px] text-foreground/85 hover:bg-accent"
+          >
+            <LibraryIcon className="h-4 w-4 text-muted-foreground" />
+            SOP library
+          </button>
+          <button
+            type="button"
+            className="flex h-[34px] items-center gap-2.5 rounded-[6px] px-3 text-[15px] text-foreground/85 hover:bg-accent"
+          >
+            <ClockIcon className="h-4 w-4 text-muted-foreground" />
+            Recent
+          </button>
+        </nav>
+
+        <ScrollArea className="min-h-0 flex-1 px-2.5">
+          <div className="flex flex-col gap-2 pb-4">
+            <div className="pt-2">
+              <p className="px-2.5 pb-2 text-[13px] text-muted-foreground">
+                Scenarios
+              </p>
+              <div className="flex flex-col">
+                {QUICK_STARTS.map((qs) => (
+                  <SidebarRow
+                    key={qs.label}
+                    label={qs.label}
+                    onSelect={() => insertQuickStart(qs.template)}
+                  />
+                ))}
               </div>
-            </main>
-          </ScrollArea>
-          <div className="shrink-0 border-t bg-white">
-            <div className="mx-auto w-full max-w-3xl px-4 py-3">{composer}</div>
-          </div>
-        </>
-      ) : (
-        <ScrollArea className="min-h-0 flex-1">
-          <main className="mx-auto flex min-h-full w-full max-w-2xl flex-col justify-center px-4 py-10">
-            <h1 className="text-center text-3xl font-semibold tracking-tight text-brand-teal">
-              What's the situation?
-            </h1>
-            <p className="mt-2 text-center text-sm text-muted-foreground">
-              Paste it below — Cortex finds the relevant SOPs and walks you
-              through the steps.
-            </p>
-            <div className="mt-8">{composer}</div>
-            <div className="mt-5 flex flex-wrap justify-center gap-2">
-              {QUICK_STARTS.map((qs) => (
-                <Button
-                  key={qs.label}
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full bg-white text-muted-foreground hover:text-foreground"
-                  onClick={() => insertQuickStart(qs.template)}
-                >
-                  {qs.label}
-                </Button>
-              ))}
             </div>
-            <p className="mt-8 text-center text-xs text-muted-foreground">
-              A good paste covers: what happened, who's involved (by role only —
-              "a caregiver", "the patient's son"), what's been tried, and how
-              urgent it is.
-            </p>
-          </main>
+
+            <div className="pt-2">
+              <p className="px-2.5 pb-2 text-[13px] text-muted-foreground">
+                Pinned SOPs
+              </p>
+              <div className="flex h-[34px] items-center gap-2.5 px-2.5 text-[13px] text-muted-foreground">
+                <PinIcon className="h-4 w-4 shrink-0" />
+                Pin SOPs to keep them here
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <div className="flex items-center justify-between px-2.5 pb-2">
+                <p className="text-[13px] text-muted-foreground">
+                  Recent situations
+                </p>
+                <button
+                  type="button"
+                  aria-label="Search recent situations"
+                  title="Search (phase 3)"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <SearchIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <p className="px-2.5 text-[13px] text-muted-foreground/70">
+                Nothing yet
+              </p>
+            </div>
+          </div>
         </ScrollArea>
-      )}
+
+        <div className="border-t px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-teal-light text-xs font-medium text-white">
+              M
+            </span>
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block truncate text-sm text-foreground">
+                Ops team
+              </span>
+              <span className="block truncate text-xs text-muted-foreground">
+                Mindspan operations
+              </span>
+            </span>
+            <button
+              type="button"
+              aria-label="Collapse sidebar"
+              title="Collapse (phase 3)"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <PanelIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <main className="flex min-w-0 flex-1 flex-col">
+        {hasConversation ? (
+          <>
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="mx-auto w-full max-w-[760px] px-6 py-8">
+                <div className="flex flex-col gap-6">
+                  {visibleMessages.map((message) =>
+                    message.role === "user" ? (
+                      <div key={message.id} className="flex justify-end">
+                        <div className="max-w-[80%] rounded-[12px] bg-surface border px-4 py-3 text-[15px] whitespace-pre-wrap">
+                          {textOf(message)}
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={message.id} className="flex flex-col gap-4">
+                        {textOf(message).trim() && (
+                          <div className="text-[15px] leading-relaxed [&_a]:font-medium [&_a]:text-brand-blue [&_a]:underline [&_a]:underline-offset-4">
+                            <Streamdown>
+                              {linkifySOPs(textOf(message), sopsOf(message))}
+                            </Streamdown>
+                          </div>
+                        )}
+                        {sopsOf(message) && (
+                          <SOPCards sops={sopsOf(message)!} />
+                        )}
+                      </div>
+                    )
+                  )}
+                  {awaitingSops && <PendingSOPs />}
+                  <div ref={bottomRef} />
+                </div>
+              </div>
+            </ScrollArea>
+            <div className="shrink-0 p-6">
+              <div className="mx-auto w-full max-w-[760px]">{composer}</div>
+            </div>
+          </>
+        ) : (
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="mx-auto flex min-h-full w-full max-w-[640px] flex-col justify-center px-6 py-10">
+              <h1 className="flex items-center justify-center gap-3 text-center font-serif text-[40px] leading-tight text-foreground">
+                <SparkleIcon className="h-8 w-8 shrink-0 text-brand-orange" />
+                What's the situation?
+              </h1>
+              <div className="mt-12">{composer}</div>
+              <p className="mt-4 text-center text-[13px] text-muted-foreground">
+                A good paste covers what happened, who's involved by role,
+                what's been tried, and how urgent it is.
+              </p>
+            </div>
+          </ScrollArea>
+        )}
+      </main>
     </div>
   );
 }

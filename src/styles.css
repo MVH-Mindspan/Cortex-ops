@@ -3,13 +3,13 @@
 @import "shadcn/tailwind.css";
 @source "../node_modules/streamdown/dist/*.js";
 
-/* Light mode only: the dark variant is bound to a `.dark` ancestor that is
-   never added, so `dark:` utilities inside components can never activate. */
+/* Single dark theme (no toggle): the `dark:` variant is bound to a `.dark`
+   ancestor that is never added, so component dark: utilities stay inert and
+   the dark values live directly on :root. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Mindspan brand tokens — operator-confirmed 2026-09-01.
-   Hard rules: orange only on cream/white surfaces (badges, send hover);
-   on teal surfaces the accent is baby blue; no gradients, no glass. */
+/* Mindspan brand + Claude-shell warm dark neutrals.
+   One accent (Mindspan orange) — used for the glyph and active send only. */
 :root {
   --brand-teal: #083630;
   --brand-teal-light: #1f514a;
@@ -19,30 +19,34 @@
 
   --radius: 0.625rem;
 
-  --background: var(--brand-cream);
-  --foreground: #201e17;
-  --card: #ffffff;
-  --card-foreground: #201e17;
-  --popover: #ffffff;
-  --popover-foreground: #201e17;
-  --primary: var(--brand-teal);
+  --background: #1f1e1d;
+  --foreground: #f4f2ee;
+  --sidebar: #262523;
+  --surface: #262523;
+  --card: #262523;
+  --card-foreground: #f4f2ee;
+  --popover: #262523;
+  --popover-foreground: #f4f2ee;
+  --primary: #c93a0e;
   --primary-foreground: #ffffff;
-  --secondary: #ede5d6;
-  --secondary-foreground: #201e17;
-  --muted: #f2ede3;
-  --muted-foreground: #70695c;
-  --accent: #ede5d6;
-  --accent-foreground: #201e17;
-  --destructive: #b3261e;
+  --secondary: #2e2c2a;
+  --secondary-foreground: #f4f2ee;
+  --muted: #2e2c2a;
+  --muted-foreground: #9a9590;
+  --accent: #2e2c2a;
+  --accent-foreground: #f4f2ee;
+  --destructive: #e5484d;
   --destructive-foreground: #ffffff;
-  --border: #e5decd;
-  --input: #e5decd;
-  --ring: var(--brand-teal-light);
+  --border: #3a3836;
+  --input: #3a3836;
+  --ring: #c93a0e;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-sidebar: var(--sidebar);
+  --color-surface: var(--surface);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
