@@ -9,7 +9,7 @@ import matter from "gray-matter";
 import { checkPHI } from "./lib/phi";
 
 const SYSTEM_PROMPT =
-  "You are Cortex, Mindspan's operations advisor. Answer only from the retrieved SOP content. Rank which SOPs apply, then state the appropriate action step by step. If the SOPs do not cover the situation, say so plainly and name the closest SOP. Never invent procedure steps. Refer to SOPs by their exact titles as they appear in the retrieved content, and never cite an SOP that is not in the retrieved content.";
+  "You are Cortex, Mindspan's operations advisor. Answer only from the retrieved SOP content. The interface already shows the user the ranked list of relevant SOPs, so do not open with a list or ranking of SOPs — go straight into the appropriate action, step by step. Where a step comes from a specific SOP, name it inline by its exact title as it appears in the retrieved content, never by filename. If the SOPs do not cover the situation, say so plainly and name the closest SOP. Never invent procedure steps, and never cite an SOP that is not in the retrieved content.";
 
 const AI_SEARCH_INSTANCE = "cortex";
 const MAX_SOPS = 5;
@@ -21,6 +21,9 @@ export type SOPRef = {
   last_edited: string | null;
   source_url: string | null;
   score: number;
+  /** R2 object key, e.g. "appointment-scheduling.md" — lets the client
+   * linkify filename mentions too. Optional: absent on older stored turns. */
+  file?: string;
 };
 
 export type CortexMessage = UIMessage<
@@ -301,7 +304,8 @@ export class ChatAgent extends AIChatAgent<Env> {
           category: "uncategorized",
           last_edited: null,
           source_url: null,
-          score
+          score,
+          file: key
         };
         try {
           const object = await this.env.SOP_BUCKET.get(key);
@@ -320,7 +324,8 @@ export class ChatAgent extends AIChatAgent<Env> {
               typeof fm.last_edited === "string" ? fm.last_edited : null,
             source_url:
               typeof fm.source_url === "string" ? fm.source_url : null,
-            score
+            score,
+            file: key
           };
         } catch {
           return fallback;

@@ -112,20 +112,29 @@ function linkifySOPs(text: string, sops: SOPRef[] | null): string {
   let out = text;
   const linkable = sops
     .filter((sop) => sop.source_url)
-    .map((sop) => ({
-      url: sop.source_url as string,
-      clean: sop.title.replace(/^[^\p{L}\p{N}]+/u, "").trim()
-    }))
-    .filter((sop) => sop.clean.length >= 4)
+    .flatMap((sop) => {
+      const url = sop.source_url as string;
+      const title = sop.title.replace(/^[^\p{L}\p{N}]+/u, "").trim();
+      const candidates: { url: string; clean: string; label?: string }[] = [];
+      if (title.length >= 4) candidates.push({ url, clean: title });
+      // The model sometimes cites the underlying filename instead of the
+      // title (that's how retrieval context names files) — link those too,
+      // and swap in the proper title as the visible text.
+      if (sop.file && sop.file.length >= 4) {
+        candidates.push({ url, clean: sop.file, label: title || sop.file });
+      }
+      return candidates;
+    })
     .sort((a, b) => b.clean.length - a.clean.length);
   for (const sop of linkable) {
     out = out.replace(
-      new RegExp(escapeRegExp(sop.clean), "gi"),
+      new RegExp(`\\*{0,2}${escapeRegExp(sop.clean)}\\*{0,2}`, "gi"),
       (match, offset: number, full: string) => {
         const prevOpen = full.lastIndexOf("[", offset);
         const prevClose = full.lastIndexOf("]", offset);
         if (prevOpen > prevClose) return match; // already inside a link
-        return `[${match}](${sop.url})`;
+        const text = sop.label ?? match.replace(/\*/g, "");
+        return `[${text}](${sop.url})`;
       }
     );
   }
@@ -383,7 +392,6 @@ export default function App() {
                     </div>
                   ) : (
                     <div key={message.id} className="flex flex-col gap-4">
-                      {sopsOf(message) && <SOPCards sops={sopsOf(message)!} />}
                       {textOf(message).trim() && (
                         <div className="text-[15px] leading-relaxed [&_a]:font-medium [&_a]:text-brand-teal [&_a]:underline [&_a]:underline-offset-4">
                           <Streamdown>
@@ -391,6 +399,7 @@ export default function App() {
                           </Streamdown>
                         </div>
                       )}
+                      {sopsOf(message) && <SOPCards sops={sopsOf(message)!} />}
                     </div>
                   )
                 )}
