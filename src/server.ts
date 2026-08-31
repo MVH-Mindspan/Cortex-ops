@@ -153,8 +153,13 @@ export class ChatAgent extends AIChatAgent<Env> {
             // for paraphrased ops scenarios. Reranking is requested
             // explicitly because it is off by default at the instance level.
             ai_search_options: {
-              retrieval: { match_threshold: 0.1, max_num_results: 15 },
-              reranking: { enabled: true, match_threshold: 0.05 },
+              // Near-zero thresholds on purpose: colloquial ops scenarios
+              // score 0.1-0.35 against SOP prose, and absolute gates starve
+              // real matches (observed: 50 vector candidates, 0 returned).
+              // Quality comes from rerank ORDERING + the top-5 file cap;
+              // the system prompt handles weak coverage honestly.
+              retrieval: { match_threshold: 0.01, max_num_results: 15 },
+              reranking: { enabled: true, match_threshold: 0.001 },
               // Rewrites the conversation into a standalone search query so
               // mid-conversation follow-ups ("what do I do first?") still
               // retrieve the right SOPs instead of matching nothing.
