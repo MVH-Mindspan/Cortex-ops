@@ -9,7 +9,7 @@ import matter from "gray-matter";
 import { checkPHI } from "./lib/phi";
 
 const SYSTEM_PROMPT =
-  "You are Cortex, Mindspan's operations advisor. Answer only from the retrieved SOP content. Rank which SOPs apply, then state the appropriate action step by step. If the SOPs do not cover the situation, say so plainly and name the closest SOP. Never invent procedure steps.";
+  "You are Cortex, Mindspan's operations advisor. Answer only from the retrieved SOP content. Rank which SOPs apply, then state the appropriate action step by step. If the SOPs do not cover the situation, say so plainly and name the closest SOP. Never invent procedure steps. Refer to SOPs by their exact titles as they appear in the retrieved content, and never cite an SOP that is not in the retrieved content.";
 
 const AI_SEARCH_INSTANCE = "cortex";
 const MAX_SOPS = 5;
@@ -154,7 +154,11 @@ export class ChatAgent extends AIChatAgent<Env> {
             // explicitly because it is off by default at the instance level.
             ai_search_options: {
               retrieval: { match_threshold: 0.1, max_num_results: 15 },
-              reranking: { enabled: true, match_threshold: 0.05 }
+              reranking: { enabled: true, match_threshold: 0.05 },
+              // Rewrites the conversation into a standalone search query so
+              // mid-conversation follow-ups ("what do I do first?") still
+              // retrieve the right SOPs instead of matching nothing.
+              query_rewrite: { enabled: true }
             }
           });
 
@@ -188,6 +192,21 @@ export class ChatAgent extends AIChatAgent<Env> {
                 const sops = await this.buildSops(
                   JSON.parse(payload) as SearchChunk[]
                 );
+                // With zero retrieved sources the model has no SOP context
+                // and will invent plausible-sounding SOPs. Refuse to
+                // generate instead: cancel the stream and say so plainly.
+                if (sops.length === 0) {
+                  writer.write({ type: "text-start", id: textId });
+                  textStarted = true;
+                  writer.write({
+                    type: "text-delta",
+                    id: textId,
+                    delta:
+                      "The SOP library doesn't have anything that matches this situation closely enough for me to advise safely. Try describing the core task directly — for example the scheduling change, order, referral, or escalation involved."
+                  });
+                  await reader.cancel();
+                  break readLoop;
+                }
                 writer.write({ type: "data-sops", id: "sops", data: sops });
                 continue;
               }

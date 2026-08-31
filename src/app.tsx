@@ -99,6 +99,39 @@ function textOf(message: CortexMessage): string {
     .join("");
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Turn SOP title mentions in the streamed answer into Notion links, using the
+// retrieved list as the source of truth. Leading emoji in titles are ignored
+// for matching (the model cites the plain title); longer titles are replaced
+// first so a title that contains another doesn't produce nested links.
+function linkifySOPs(text: string, sops: SOPRef[] | null): string {
+  if (!sops || sops.length === 0) return text;
+  let out = text;
+  const linkable = sops
+    .filter((sop) => sop.source_url)
+    .map((sop) => ({
+      url: sop.source_url as string,
+      clean: sop.title.replace(/^[^\p{L}\p{N}]+/u, "").trim()
+    }))
+    .filter((sop) => sop.clean.length >= 4)
+    .sort((a, b) => b.clean.length - a.clean.length);
+  for (const sop of linkable) {
+    out = out.replace(
+      new RegExp(escapeRegExp(sop.clean), "gi"),
+      (match, offset: number, full: string) => {
+        const prevOpen = full.lastIndexOf("[", offset);
+        const prevClose = full.lastIndexOf("]", offset);
+        if (prevOpen > prevClose) return match; // already inside a link
+        return `[${match}](${sop.url})`;
+      }
+    );
+  }
+  return out;
+}
+
 function isRenderable(message: CortexMessage): boolean {
   if (message.role === "user") return textOf(message).trim().length > 0;
   return sopsOf(message) !== null || textOf(message).trim().length > 0;
@@ -352,8 +385,10 @@ export default function App() {
                     <div key={message.id} className="flex flex-col gap-4">
                       {sopsOf(message) && <SOPCards sops={sopsOf(message)!} />}
                       {textOf(message).trim() && (
-                        <div className="text-[15px] leading-relaxed">
-                          <Streamdown>{textOf(message)}</Streamdown>
+                        <div className="text-[15px] leading-relaxed [&_a]:font-medium [&_a]:text-brand-teal [&_a]:underline [&_a]:underline-offset-4">
+                          <Streamdown>
+                            {linkifySOPs(textOf(message), sopsOf(message))}
+                          </Streamdown>
                         </div>
                       )}
                     </div>
