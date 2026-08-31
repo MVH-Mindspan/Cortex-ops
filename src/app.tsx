@@ -19,7 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import type { ChatAgent, CortexMessage, SOPRef } from "./server";
@@ -191,6 +190,7 @@ export default function App() {
   const last: CortexMessage | undefined = messages.at(-1);
   const awaitingSops =
     isStreaming && !(last?.role === "assistant" && sopsOf(last) !== null);
+  const hasConversation = visibleMessages.length > 0 || isStreaming;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -229,6 +229,68 @@ export default function App() {
     [resizeComposer]
   );
 
+  // One composer, two homes: centered on the empty screen (Claude-style),
+  // docked at the bottom once the conversation starts. The PHI notice stays
+  // directly above it in both, per spec — never dismissible.
+  const composer = (
+    <div>
+      <Alert className="mb-3 border-brand-teal/25 bg-brand-cream">
+        <AlertDescription className="text-foreground/80">
+          Prototype. Do not paste patient names, dates of birth, MRNs, contact
+          details, or anything identifying. Use invented scenarios.
+        </AlertDescription>
+      </Alert>
+      <div className="rounded-2xl border bg-white shadow-sm transition-colors focus-within:border-brand-teal/40 focus-within:ring-2 focus-within:ring-brand-teal/10">
+        <Textarea
+          ref={textareaRef}
+          rows={1}
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value);
+            if (blockedReason) setBlockedReason(null);
+          }}
+          onInput={resizeComposer}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          placeholder="Paste the situation. No patient identifiers."
+          className="max-h-[200px] min-h-12 resize-none border-0 bg-transparent px-4 pt-3 shadow-none focus-visible:border-transparent focus-visible:ring-0"
+        />
+        <div className="flex items-center justify-between gap-2 px-3 pb-2.5">
+          <span className="pl-1 text-xs text-muted-foreground">
+            Enter to send · Shift+Enter for a new line
+          </span>
+          {isStreaming ? (
+            <Button variant="outline" size="sm" onClick={() => void stop()}>
+              Stop
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={submit}
+              disabled={!input.trim()}
+              className="bg-brand-teal text-white hover:bg-brand-orange"
+            >
+              Send
+            </Button>
+          )}
+        </div>
+      </div>
+      {blockedReason && (
+        <Alert variant="destructive" className="mt-3">
+          <AlertTitle>Message blocked</AlertTitle>
+          <AlertDescription>
+            Looks like this contains {blockedReason}. Remove identifiers before
+            sending.
+          </AlertDescription>
+        </Alert>
+      )}
+    </div>
+  );
+
   return (
     <div className="flex h-full flex-col">
       <header className="h-14 shrink-0 border-b bg-white">
@@ -241,147 +303,103 @@ export default function App() {
               Mindspan operations
             </span>
           </div>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
-              >
-                Clear conversation
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear this conversation?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  All messages in this conversation will be deleted for
-                  everyone. This can't be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => void agent.stub.clearConversation()}
+          {hasConversation && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
                 >
                   Clear conversation
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear this conversation?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    All messages in this conversation will be deleted for
+                    everyone. This can't be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => void agent.stub.clearConversation()}
+                  >
+                    Clear conversation
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </header>
 
-      <ScrollArea className="min-h-0 flex-1">
-        <main className="mx-auto w-full max-w-3xl px-4 py-6">
-          {visibleMessages.length === 0 && !isStreaming ? (
-            <div className="py-10">
-              <h1 className="text-xl font-semibold">
-                Paste a situation, get the playbook
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Cortex finds the relevant SOPs and walks you through the steps.
-                Start from a common situation:
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {QUICK_STARTS.map((qs) => (
-                  <Button
-                    key={qs.label}
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full bg-white"
-                    onClick={() => insertQuickStart(qs.template)}
-                  >
-                    {qs.label}
-                  </Button>
-                ))}
+      {hasConversation ? (
+        <>
+          <ScrollArea className="min-h-0 flex-1">
+            <main className="mx-auto w-full max-w-3xl px-4 py-6">
+              <div className="flex flex-col gap-6">
+                {visibleMessages.map((message) =>
+                  message.role === "user" ? (
+                    <div key={message.id} className="flex justify-end">
+                      <Card className="max-w-[80%] bg-secondary px-4 py-3 text-[15px] whitespace-pre-wrap">
+                        {textOf(message)}
+                      </Card>
+                    </div>
+                  ) : (
+                    <div key={message.id} className="flex flex-col gap-4">
+                      {sopsOf(message) && <SOPCards sops={sopsOf(message)!} />}
+                      {textOf(message).trim() && (
+                        <div className="text-[15px] leading-relaxed">
+                          <Streamdown>{textOf(message)}</Streamdown>
+                        </div>
+                      )}
+                    </div>
+                  )
+                )}
+                {awaitingSops && <PendingSOPs />}
+                <div ref={bottomRef} />
               </div>
-              <Separator className="my-6" />
-              <p className="text-sm text-muted-foreground">
-                A good paste covers: what happened, who's involved (by role only
-                — "a caregiver", "the patient's son"), what's been tried, and
-                how urgent it is.
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-6">
-              {visibleMessages.map((message) =>
-                message.role === "user" ? (
-                  <div key={message.id} className="flex justify-end">
-                    <Card className="max-w-[80%] bg-secondary px-4 py-3 text-[15px] whitespace-pre-wrap">
-                      {textOf(message)}
-                    </Card>
-                  </div>
-                ) : (
-                  <div key={message.id} className="flex flex-col gap-4">
-                    {sopsOf(message) && <SOPCards sops={sopsOf(message)!} />}
-                    {textOf(message).trim() && (
-                      <div className="text-[15px] leading-relaxed">
-                        <Streamdown>{textOf(message)}</Streamdown>
-                      </div>
-                    )}
-                  </div>
-                )
-              )}
-              {awaitingSops && <PendingSOPs />}
-              <div ref={bottomRef} />
-            </div>
-          )}
-        </main>
-      </ScrollArea>
-
-      <div className="shrink-0 border-t bg-white">
-        <div className="mx-auto w-full max-w-3xl px-4 py-3">
-          <Alert className="mb-3 border-brand-teal/25 bg-brand-cream">
-            <AlertDescription className="text-foreground/80">
-              Prototype. Do not paste patient names, dates of birth, MRNs,
-              contact details, or anything identifying. Use invented scenarios.
-            </AlertDescription>
-          </Alert>
-          <div className="flex items-end gap-2">
-            <Textarea
-              ref={textareaRef}
-              rows={1}
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                if (blockedReason) setBlockedReason(null);
-              }}
-              onInput={resizeComposer}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  submit();
-                }
-              }}
-              placeholder="Paste the situation. No patient identifiers."
-              className="max-h-[200px] min-h-10 resize-none bg-white"
-            />
-            {isStreaming ? (
-              <Button variant="outline" onClick={() => void stop()}>
-                Stop
-              </Button>
-            ) : (
-              <Button
-                onClick={submit}
-                disabled={!input.trim()}
-                className="bg-brand-teal text-white hover:bg-brand-orange"
-              >
-                Send
-              </Button>
-            )}
+            </main>
+          </ScrollArea>
+          <div className="shrink-0 border-t bg-white">
+            <div className="mx-auto w-full max-w-3xl px-4 py-3">{composer}</div>
           </div>
-          {blockedReason && (
-            <Alert variant="destructive" className="mt-3">
-              <AlertTitle>Message blocked</AlertTitle>
-              <AlertDescription>
-                Looks like this contains {blockedReason}. Remove identifiers
-                before sending.
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-      </div>
+        </>
+      ) : (
+        <ScrollArea className="min-h-0 flex-1">
+          <main className="mx-auto flex min-h-full w-full max-w-2xl flex-col justify-center px-4 py-10">
+            <h1 className="text-center text-3xl font-semibold tracking-tight text-brand-teal">
+              What's the situation?
+            </h1>
+            <p className="mt-2 text-center text-sm text-muted-foreground">
+              Paste it below — Cortex finds the relevant SOPs and walks you
+              through the steps.
+            </p>
+            <div className="mt-8">{composer}</div>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {QUICK_STARTS.map((qs) => (
+                <Button
+                  key={qs.label}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full bg-white text-muted-foreground hover:text-foreground"
+                  onClick={() => insertQuickStart(qs.template)}
+                >
+                  {qs.label}
+                </Button>
+              ))}
+            </div>
+            <p className="mt-8 text-center text-xs text-muted-foreground">
+              A good paste covers: what happened, who's involved (by role only —
+              "a caregiver", "the patient's son"), what's been tried, and how
+              urgent it is.
+            </p>
+          </main>
+        </ScrollArea>
+      )}
     </div>
   );
 }
