@@ -1,10 +1,15 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "agent-starter",
+  "name": "cortex",
   "main": "src/server.ts",
   "compatibility_date": "2026-06-11",
   "compatibility_flags": ["nodejs_compat"],
-  "ai": { "binding": "AI", "remote": true },
+  "ai_search_namespaces": [
+    { "binding": "AI_SEARCH", "namespace": "default", "remote": true }
+  ],
+  "r2_buckets": [
+    { "binding": "SOP_BUCKET", "bucket_name": "cortex-sops", "remote": true }
+  ],
   "assets": {
     "directory": "./public",
     "not_found_handling": "single-page-application",

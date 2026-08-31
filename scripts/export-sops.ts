@@ -22,7 +22,11 @@ import { NotionToMarkdown } from "notion-to-md";
 const BUCKET = "cortex-sops";
 const EXPORT_DIR = path.resolve("export");
 
-type Row = { page: string; status: "exported" | "skipped" | "failed"; detail: string };
+type Row = {
+  page: string;
+  status: "exported" | "skipped" | "failed";
+  detail: string;
+};
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -48,7 +52,10 @@ function slugify(title: string): string {
 function titleOf(page: PageObjectResponse): string {
   for (const prop of Object.values(page.properties)) {
     if (prop.type === "title") {
-      const text = prop.title.map((t) => t.plain_text).join("").trim();
+      const text = prop.title
+        .map((t) => t.plain_text)
+        .join("")
+        .trim();
       if (text) return text;
     }
   }
@@ -57,7 +64,9 @@ function titleOf(page: PageObjectResponse): string {
 
 function categoryOf(page: PageObjectResponse): string {
   const prop = page.properties["Category"];
-  return prop?.type === "select" ? (prop.select?.name ?? "uncategorized") : "uncategorized";
+  return prop?.type === "select"
+    ? (prop.select?.name ?? "uncategorized")
+    : "uncategorized";
 }
 
 function ownerOf(page: PageObjectResponse): string {
@@ -92,7 +101,9 @@ async function main(): Promise<void> {
     const db = await notion.databases.retrieve({ database_id: rootId });
     const dataSources = "data_sources" in db ? db.data_sources : [];
     for (const source of dataSources) {
-      for await (const row of iterateAllDataSourceRows(notion, { data_source_id: source.id })) {
+      for await (const row of iterateAllDataSourceRows(notion, {
+        data_source_id: source.id
+      })) {
         if (row.object === "page" && isFullPage(row)) topLevel.push(row);
       }
     }
@@ -100,13 +111,16 @@ async function main(): Promise<void> {
     if (isNotionClientError(err) && err.code === APIErrorCode.ObjectNotFound) {
       rootKind = "page";
       const page = await notion.pages.retrieve({ page_id: rootId });
-      if (!isFullPage(page)) throw new Error("Root page returned a partial response");
+      if (!isFullPage(page))
+        throw new Error("Root page returned a partial response");
       topLevel.push(page);
     } else {
       throw err;
     }
   }
-  console.log(`Root ${rootId} is a ${rootKind}; found ${topLevel.length} top-level page(s).`);
+  console.log(
+    `Root ${rootId} is a ${rootKind}; found ${topLevel.length} top-level page(s).`
+  );
 
   const rows: Row[] = [];
   const pages = new Map<string, PageObjectResponse>();
@@ -115,10 +129,17 @@ async function main(): Promise<void> {
   // One level of child pages under each top-level page.
   for (const page of topLevel) {
     try {
-      for await (const block of iteratePaginatedAPI(notion.blocks.children.list, {
-        block_id: page.id
-      })) {
-        if ("type" in block && block.type === "child_page" && !pages.has(block.id)) {
+      for await (const block of iteratePaginatedAPI(
+        notion.blocks.children.list,
+        {
+          block_id: page.id
+        }
+      )) {
+        if (
+          "type" in block &&
+          block.type === "child_page" &&
+          !pages.has(block.id)
+        ) {
           const child = await notion.pages.retrieve({ page_id: block.id });
           if (isFullPage(child)) pages.set(child.id, child);
         }
@@ -140,25 +161,34 @@ async function main(): Promise<void> {
   for (const page of pages.values()) {
     const title = titleOf(page);
     if (page.in_trash || page.archived) {
-      rows.push({ page: title, status: "skipped", detail: "archived or in trash" });
+      rows.push({
+        page: title,
+        status: "skipped",
+        detail: "archived or in trash"
+      });
       continue;
     }
     try {
       const mdBlocks = await n2m.pageToMarkdown(page.id);
       const markdown = n2m.toMarkdownString(mdBlocks).parent ?? "";
       if (!markdown.trim()) {
-        rows.push({ page: title, status: "skipped", detail: "page has no convertible content" });
+        rows.push({
+          page: title,
+          status: "skipped",
+          detail: "page has no convertible content"
+        });
         continue;
       }
 
       let slug = slugify(title);
-      if (usedSlugs.has(slug)) slug = `${slug}-${page.id.replace(/-/g, "").slice(0, 8)}`;
+      if (usedSlugs.has(slug))
+        slug = `${slug}-${page.id.replace(/-/g, "").slice(0, 8)}`;
       usedSlugs.add(slug);
 
       // Object form on purpose: string input would be re-parsed as frontmatter,
       // and a Notion divider renders as a leading "---" which would corrupt it.
       const body = matter.stringify(
-        { content: `\n${markdown.trim()}\n`, data: {} },
+        { content: `\n${markdown.trim()}\n` },
         {
           title,
           source_url: page.url,

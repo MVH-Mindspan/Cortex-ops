@@ -1,204 +1,270 @@
-import { createWorkersAI } from "workers-ai-provider";
-import { callable, routeAgentRequest, type Schedule } from "agents";
-import { getSchedulePrompt, scheduleSchema } from "agents/schedule";
+import { callable, routeAgentRequest } from "agents";
 import { AIChatAgent, type OnChatMessageOptions } from "@cloudflare/ai-chat";
 import {
-  convertToModelMessages,
-  pruneMessages,
-  stepCountIs,
-  streamText,
-  tool
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  type UIMessage
 } from "ai";
-import { z } from "zod";
+import matter from "gray-matter";
+import { checkPHI } from "./lib/phi";
+
+const SYSTEM_PROMPT =
+  "You are Cortex, Mindspan's operations advisor. Answer only from the retrieved SOP content. Rank which SOPs apply, then state the appropriate action step by step. If the SOPs do not cover the situation, say so plainly and name the closest SOP. Never invent procedure steps.";
+
+const AI_SEARCH_INSTANCE = "cortex";
+const MAX_SOPS = 5;
+const HISTORY_LIMIT = 12;
+
+export type SOPRef = {
+  title: string;
+  category: string;
+  last_edited: string | null;
+  source_url: string | null;
+  score: number;
+};
+
+export type CortexMessage = UIMessage<
+  { refused?: boolean; reason?: string | null },
+  { sops: SOPRef[]; refusal: { reason: string } }
+>;
+
+// Shape of entries in the AI Search SSE "chunks" event (same as search()).
+type SearchChunk = {
+  id?: string;
+  score?: number;
+  item?: {
+    key?: string;
+    timestamp?: number;
+    metadata?: Record<string, unknown>;
+  };
+};
+
+function textOf(message: UIMessage): string {
+  return message.parts
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("\n")
+    .trim();
+}
 
 export class ChatAgent extends AIChatAgent<Env> {
   maxPersistedMessages = 100;
   chatRecovery = true;
-  // Wait for MCP connections to be re-established after hibernation before
-  // processing a message, so MCP tools aren't intermittently missing.
-  waitForMcpConnections = true;
 
-  onStart() {
-    // Configure OAuth popup behavior for MCP servers that require authentication
-    this.mcp.configureOAuthCallback({
-      customHandler: (result) => {
-        if (result.authSuccess) {
-          return new Response("<script>window.close();</script>", {
-            headers: { "content-type": "text/html" },
-            status: 200
-          });
-        }
-        return new Response(
-          `Authentication Failed: ${result.authError || "Unknown error"}`,
-          { headers: { "content-type": "text/plain" }, status: 400 }
-        );
-      }
-    });
+  // Incoming messages are persisted BEFORE onChatMessage runs, so this hook is
+  // the only thing between raw identifiers and SQLite. Flagged user text is
+  // redacted here; onChatMessage then deletes the row entirely.
+  protected override sanitizeMessageForPersistence(
+    message: UIMessage
+  ): UIMessage {
+    if (message.role !== "user") return message;
+    const { blocked, reason } = checkPHI(textOf(message));
+    if (!blocked) return message;
+    return {
+      ...message,
+      parts: [{ type: "text", text: "[withheld]" }],
+      metadata: { refused: true, reason }
+    };
   }
 
   @callable()
-  async addServer(name: string, url: string) {
-    return await this.addMcpServer(name, url);
-  }
-
-  @callable()
-  async removeServer(serverId: string) {
-    await this.removeMcpServer(serverId);
+  async clearConversation(): Promise<void> {
+    this.resetTurnState();
+    this.sql`delete from cf_ai_chat_agent_messages`;
+    this.messages = [];
+    // Built-in bidirectional frame: connected clients reset their local state.
+    this.broadcast(JSON.stringify({ type: "cf_agent_chat_clear" }));
   }
 
   async onChatMessage(_onFinish: unknown, options?: OnChatMessageOptions) {
-    const mcpTools = this.mcp.getAITools();
-    const workersai = createWorkersAI({ binding: this.env.AI });
+    const last = this.messages.at(-1);
+    if (last?.role === "user") {
+      const meta = (last.metadata ?? {}) as {
+        refused?: boolean;
+        reason?: string | null;
+      };
+      const live = meta.refused ? null : checkPHI(textOf(last));
+      if (meta.refused || live?.blocked) {
+        return this.refuse(
+          last.id,
+          meta.reason ?? live?.reason ?? "an identifier"
+        );
+      }
+    }
 
-    const result = streamText({
-      model: workersai("@cf/moonshotai/kimi-k2.7-code", {
-        sessionAffinity: this.sessionAffinity
-      }),
-      system: `You are a helpful assistant that can understand images. You can check the weather, get the user's timezone, run calculations, and schedule tasks. When users share images, describe what you see and answer questions about them.
+    const history = [
+      { role: "system" as const, content: SYSTEM_PROMPT },
+      ...this.messages
+        .slice(-HISTORY_LIMIT)
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: textOf(m)
+        }))
+        .filter((m) => m.content.length > 0)
+    ];
 
-${getSchedulePrompt({ date: new Date() })}
+    const stream = createUIMessageStream<CortexMessage>({
+      execute: async ({ writer }) => {
+        const textId = crypto.randomUUID();
+        let textStarted = false;
+        try {
+          // One call returns both: an SSE "chunks" event with the ranked
+          // sources first, then OpenAI-style text deltas. The generation
+          // model is deliberately omitted — the instance's dashboard config
+          // is authoritative. Reranking is requested explicitly because it
+          // is off by default at the instance level.
+          const sse = await this.env.AI_SEARCH.get(
+            AI_SEARCH_INSTANCE
+          ).chatCompletions({
+            messages: history,
+            stream: true,
+            ai_search_options: { reranking: { enabled: true } }
+          });
 
-If the user asks to schedule a task, use the schedule tool to schedule the task.`,
-      // Prune old tool calls and reasoning to save tokens on long conversations
-      messages: pruneMessages({
-        messages: await convertToModelMessages(this.messages),
-        toolCalls: "before-last-2-messages",
-        reasoning: "before-last-message"
-      }),
-      tools: {
-        // MCP tools from connected servers
-        ...mcpTools,
+          const reader = (sse as ReadableStream<Uint8Array>).getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let currentEvent = "";
 
-        // Server-side tool: runs automatically on the server
-        getWeather: tool({
-          description: "Get the current weather for a city",
-          inputSchema: z.object({
-            city: z.string().describe("City name")
-          }),
-          execute: async ({ city }) => {
-            // Replace with a real weather API in production
-            const conditions = ["sunny", "cloudy", "rainy", "snowy"];
-            const temp = Math.floor(Math.random() * 30) + 5;
-            return {
-              city,
-              temperature: temp,
-              condition:
-                conditions[Math.floor(Math.random() * conditions.length)],
-              unit: "celsius"
-            };
-          }
-        }),
-
-        // Client-side tool: no execute function — the browser handles it
-        getUserTimezone: tool({
-          description:
-            "Get the user's timezone from their browser. Use this when you need to know the user's local time.",
-          inputSchema: z.object({})
-        }),
-
-        // Approval tool: requires user confirmation before executing
-        calculate: tool({
-          description:
-            "Perform a math calculation with two numbers. Requires user approval for large numbers.",
-          inputSchema: z.object({
-            a: z.number().describe("First number"),
-            b: z.number().describe("Second number"),
-            operator: z
-              .enum(["+", "-", "*", "/", "%"])
-              .describe("Arithmetic operator")
-          }),
-          needsApproval: async ({ a, b }) =>
-            Math.abs(a) > 1000 || Math.abs(b) > 1000,
-          execute: async ({ a, b, operator }) => {
-            const ops: Record<string, (x: number, y: number) => number> = {
-              "+": (x, y) => x + y,
-              "-": (x, y) => x - y,
-              "*": (x, y) => x * y,
-              "/": (x, y) => x / y,
-              "%": (x, y) => x % y
-            };
-            if (operator === "/" && b === 0) {
-              return { error: "Division by zero" };
+          readLoop: while (true) {
+            if (options?.abortSignal?.aborted) {
+              await reader.cancel();
+              break;
             }
-            return {
-              expression: `${a} ${operator} ${b}`,
-              result: ops[operator](a, b)
-            };
-          }
-        }),
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
 
-        scheduleTask: tool({
-          description:
-            "Schedule a task to be executed at a later time. Use this when the user asks to be reminded or wants something done later.",
-          inputSchema: scheduleSchema,
-          execute: async ({ when, description }) => {
-            if (when.type === "no-schedule") {
-              return "Not a valid schedule input";
-            }
-            const input =
-              when.type === "scheduled"
-                ? when.date
-                : when.type === "delayed"
-                  ? when.delayInSeconds
-                  : when.type === "cron"
-                    ? when.cron
-                    : null;
-            if (!input) return "Invalid schedule type";
-            try {
-              this.schedule(input, "executeTask", description, {
-                idempotent: true
-              });
-              return `Task scheduled: "${description}" (${when.type}: ${input})`;
-            } catch (error) {
-              return `Error scheduling task: ${error}`;
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+            for (const line of lines) {
+              if (line.startsWith("event: ")) {
+                currentEvent = line.slice(7).trim();
+                continue;
+              }
+              if (!line.startsWith("data: ")) continue;
+              const payload = line.slice(6).trim();
+              if (payload === "[DONE]") break readLoop;
+
+              if (currentEvent === "chunks") {
+                currentEvent = "";
+                const sops = await this.buildSops(
+                  JSON.parse(payload) as SearchChunk[]
+                );
+                writer.write({ type: "data-sops", id: "sops", data: sops });
+                continue;
+              }
+
+              let delta: string | undefined;
+              try {
+                const parsed = JSON.parse(payload) as {
+                  choices?: { delta?: { content?: string } }[];
+                };
+                delta = parsed.choices?.[0]?.delta?.content;
+              } catch {
+                continue;
+              }
+              if (!delta) continue;
+              if (!textStarted) {
+                writer.write({ type: "text-start", id: textId });
+                textStarted = true;
+              }
+              writer.write({ type: "text-delta", id: textId, delta });
             }
           }
-        }),
-
-        getScheduledTasks: tool({
-          description: "List all tasks that have been scheduled",
-          inputSchema: z.object({}),
-          execute: async () => {
-            const tasks = this.getSchedules();
-            return tasks.length > 0 ? tasks : "No scheduled tasks found.";
+        } catch (err) {
+          console.error("[cortex] retrieval failed", err);
+          if (!textStarted) {
+            writer.write({ type: "text-start", id: textId });
+            textStarted = true;
           }
-        }),
-
-        cancelScheduledTask: tool({
-          description: "Cancel a scheduled task by its ID",
-          inputSchema: z.object({
-            taskId: z.string().describe("The ID of the task to cancel")
-          }),
-          execute: async ({ taskId }) => {
-            try {
-              this.cancelSchedule(taskId);
-              return `Task ${taskId} cancelled.`;
-            } catch (error) {
-              return `Error cancelling task: ${error}`;
-            }
-          }
-        })
-      },
-      stopWhen: stepCountIs(20),
-      abortSignal: options?.abortSignal
+          writer.write({
+            type: "text-delta",
+            id: textId,
+            delta:
+              "Retrieval failed — check that the AI Search index has completed syncing, then try again."
+          });
+        } finally {
+          if (textStarted) writer.write({ type: "text-end", id: textId });
+        }
+      }
     });
 
-    return result.toUIMessageStreamResponse();
+    return createUIMessageStreamResponse({ stream });
   }
 
-  async executeTask(description: string, _task: Schedule<string>) {
-    // Do the actual work here (send email, call API, etc.)
-    console.log(`Executing scheduled task: ${description}`);
-
-    // Notify connected clients via a broadcast event.
-    // We use broadcast() instead of saveMessages() to avoid injecting
-    // into chat history — that would cause the AI to see the notification
-    // as new context and potentially loop.
+  // Refusal path: the sanitize hook already redacted the stored copy; delete
+  // the row outright so the message never survives a reload, then answer with
+  // a transient (never-persisted) refusal event. AI Search is never called.
+  private refuse(messageId: string, reason: string): Response {
+    this.sql`delete from cf_ai_chat_agent_messages where id = ${messageId}`;
+    this.messages = this.messages.filter((m) => m.id !== messageId);
     this.broadcast(
       JSON.stringify({
-        type: "scheduled-task",
-        description,
-        timestamp: new Date().toISOString()
+        type: "cf_agent_chat_messages",
+        messages: this.messages
+      })
+    );
+    const stream = createUIMessageStream<CortexMessage>({
+      execute: async ({ writer }) => {
+        writer.write({
+          type: "data-refusal",
+          data: { reason },
+          transient: true
+        });
+      }
+    });
+    return createUIMessageStreamResponse({ stream });
+  }
+
+  // Display fields come from the markdown frontmatter in R2 — AI Search does
+  // not surface frontmatter as metadata. Dedupe chunks to files, keep each
+  // file's best score, cap at MAX_SOPS.
+  private async buildSops(chunks: SearchChunk[]): Promise<SOPRef[]> {
+    const bestByKey = new Map<string, number>();
+    for (const chunk of chunks) {
+      const key = chunk.item?.key;
+      if (!key) continue;
+      const score = chunk.score ?? 0;
+      const prev = bestByKey.get(key);
+      if (prev === undefined || score > prev) bestByKey.set(key, score);
+    }
+    const ranked = [...bestByKey.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, MAX_SOPS);
+
+    return Promise.all(
+      ranked.map(async ([key, score]) => {
+        const fallback: SOPRef = {
+          title: key,
+          category: "uncategorized",
+          last_edited: null,
+          source_url: null,
+          score
+        };
+        try {
+          const object = await this.env.SOP_BUCKET.get(key);
+          if (!object) return fallback;
+          const fm = matter(await object.text()).data as Record<
+            string,
+            unknown
+          >;
+          return {
+            title: typeof fm.title === "string" && fm.title ? fm.title : key,
+            category:
+              typeof fm.category === "string" && fm.category
+                ? fm.category
+                : "uncategorized",
+            last_edited:
+              typeof fm.last_edited === "string" ? fm.last_edited : null,
+            source_url:
+              typeof fm.source_url === "string" ? fm.source_url : null,
+            score
+          };
+        } catch {
+          return fallback;
+        }
       })
     );
   }
