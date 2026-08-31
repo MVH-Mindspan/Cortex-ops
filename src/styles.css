@@ -1,8 +1,86 @@
 @import "tailwindcss";
-@import "@cloudflare/kumo/styles/tailwind";
-@source "../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 @source "../node_modules/streamdown/dist/*.js";
-@source "../node_modules/@streamdown/code/dist/*.js";
+
+/* Light mode only: the dark variant is bound to a `.dark` ancestor that is
+   never added, so `dark:` utilities inside components can never activate. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Mindspan brand tokens — operator-confirmed 2026-09-01.
+   Hard rules: orange only on cream/white surfaces (badges, send hover);
+   on teal surfaces the accent is baby blue; no gradients, no glass. */
+:root {
+  --brand-teal: #083630;
+  --brand-teal-light: #1f514a;
+  --brand-cream: #fbf7f0;
+  --brand-orange: #c93a0e;
+  --brand-blue: #a8d2fb;
+
+  --radius: 0.625rem;
+
+  --background: var(--brand-cream);
+  --foreground: #201e17;
+  --card: #ffffff;
+  --card-foreground: #201e17;
+  --popover: #ffffff;
+  --popover-foreground: #201e17;
+  --primary: var(--brand-teal);
+  --primary-foreground: #ffffff;
+  --secondary: #ede5d6;
+  --secondary-foreground: #201e17;
+  --muted: #f2ede3;
+  --muted-foreground: #70695c;
+  --accent: #ede5d6;
+  --accent-foreground: #201e17;
+  --destructive: #b3261e;
+  --destructive-foreground: #ffffff;
+  --border: #e5decd;
+  --input: #e5decd;
+  --ring: var(--brand-teal-light);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-teal-light: var(--brand-teal-light);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-blue: var(--brand-blue);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
 
 html,
 body,

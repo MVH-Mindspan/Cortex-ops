@@ -1,979 +1,387 @@
-import { Suspense, useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAgent } from "agents/react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
-import { getToolName, isToolUIPart, type UIMessage } from "ai";
-import type { MCPServersState } from "agents";
-import type { ChatAgent } from "./server";
-import {
-  Badge,
-  Button,
-  Empty,
-  InputArea,
-  PoweredByCloudflare,
-  Surface,
-  Switch,
-  Text
-} from "@cloudflare/kumo";
-import { Toasty, useKumoToastManager } from "@cloudflare/kumo/components/toast";
 import { Streamdown } from "streamdown";
-import { code } from "@streamdown/code";
+import { checkPHI } from "@/lib/phi";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
-  PaperPlaneRightIcon,
-  StopIcon,
-  TrashIcon,
-  GearIcon,
-  ChatCircleDotsIcon,
-  CircleIcon,
-  MoonIcon,
-  SunIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  BrainIcon,
-  CaretDownIcon,
-  BugIcon,
-  PlugsConnectedIcon,
-  PlusIcon,
-  SignInIcon,
-  XIcon,
-  WrenchIcon,
-  PaperclipIcon,
-  ImageIcon
-} from "@phosphor-icons/react";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import type { ChatAgent, CortexMessage, SOPRef } from "./server";
 
-// ── Attachment helpers ────────────────────────────────────────────────
+// Quick starts mirror the ops team's highest-volume task types (operator's
+// Month-2 mix). Every template is an invented, identifier-free scenario —
+// they teach the input shape as much as they accelerate it.
+const QUICK_STARTS: { label: string; template: string }[] = [
+  {
+    label: "Follow-up scheduling",
+    template:
+      "A patient's daughter called asking to move next week's follow-up to a different day. The patient gets confused in the mornings and transport needs rebooking. What's the right process?"
+  },
+  {
+    label: "Missing or misrouted order",
+    template:
+      "A LabCorp order we sent last week isn't showing on the patient's chart and the lab says they never received it. How do I track down and re-route the order?"
+  },
+  {
+    label: "Pre-visit prep chase",
+    template:
+      "An initial visit is in three days and the intake survey and MoCA are still missing. The caregiver isn't answering calls. What are the steps?"
+  },
+  {
+    label: "Family complaint or concern",
+    template:
+      "A spouse called upset that they weren't told about a medication change and wants to speak to someone today. How should I handle and route this?"
+  },
+  {
+    label: "Clinical escalation",
+    template:
+      "A caregiver reports the patient became agitated and more confused after starting a new medication this morning. What's the escalation path?"
+  },
+  {
+    label: "External records request",
+    template:
+      "An outside neurology office is asking us to re-fax records with a corrected code so they can process a referral. What's the procedure?"
+  },
+  {
+    label: "Patient tech failure",
+    template:
+      "A patient can't access the portal — the screening code opens a blank page on their tablet. How do I troubleshoot and who do I loop in?"
+  },
+  {
+    label: "Results and next steps",
+    template:
+      "A caregiver is asking whether imaging results are back and what happens next in the workup. What can I share and what's the process?"
+  },
+  {
+    label: "Billing question",
+    template:
+      "An insurer sent a claim back with a coding question on a cognitive assessment visit. What's the correction process?"
+  }
+];
 
-interface Attachment {
-  id: string;
-  file: File;
-  preview: string;
-  mediaType: string;
-}
-
-function createAttachment(file: File): Attachment {
-  return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    file,
-    preview: URL.createObjectURL(file),
-    mediaType: file.type || "application/octet-stream"
-  };
-}
-
-function fileToDataUri(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+function formatDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
   });
 }
 
-// ── Small components ──────────────────────────────────────────────────
-
-function ThemeToggle() {
-  const [dark, setDark] = useState(
-    () => document.documentElement.getAttribute("data-mode") === "dark"
-  );
-
-  const toggle = useCallback(() => {
-    const next = !dark;
-    setDark(next);
-    const mode = next ? "dark" : "light";
-    document.documentElement.setAttribute("data-mode", mode);
-    document.documentElement.style.colorScheme = mode;
-    localStorage.setItem("theme", mode);
-  }, [dark]);
-
-  return (
-    <Button
-      variant="secondary"
-      shape="square"
-      icon={dark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
-      onClick={toggle}
-      aria-label="Toggle theme"
-    />
-  );
+function sopsOf(message: CortexMessage): SOPRef[] | null {
+  for (const part of message.parts) {
+    if (part.type === "data-sops") return part.data as SOPRef[];
+  }
+  return null;
 }
 
-// ── Tool rendering ────────────────────────────────────────────────────
+function textOf(message: CortexMessage): string {
+  return message.parts
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("");
+}
 
-function ToolIO({ label, value }: { label: string; value: unknown }) {
-  if (value === undefined || value === null) return null;
-  const text =
-    typeof value === "string" ? value : JSON.stringify(value, null, 2);
-  if (!text) return null;
+function isRenderable(message: CortexMessage): boolean {
+  if (message.role === "user") return textOf(message).trim().length > 0;
+  return sopsOf(message) !== null || textOf(message).trim().length > 0;
+}
+
+function SOPCards({ sops }: { sops: SOPRef[] }) {
+  if (sops.length === 0) return null;
   return (
-    <div className="mt-1">
-      <Text size="xs" variant="secondary" bold>
-        {label}
-      </Text>
-      <pre className="mt-0.5 font-mono text-xs text-kumo-subtle whitespace-pre-wrap overflow-auto max-h-64">
-        {text}
-      </pre>
+    <div>
+      <p className="mb-2 text-xs font-medium text-muted-foreground">
+        Relevant SOPs
+      </p>
+      <div className="flex flex-col gap-2">
+        {sops.map((sop) => (
+          <Card
+            key={sop.title + String(sop.score)}
+            className="flex-row items-center justify-between gap-3 px-4 py-3"
+          >
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="truncate text-sm font-medium">
+                  {sop.title}
+                </span>
+                {/* Orange appears only on white/cream surfaces — this badge
+                    sits on a white card. */}
+                <Badge className="border-brand-orange/30 bg-brand-orange/10 text-brand-orange">
+                  {sop.category}
+                </Badge>
+              </div>
+              {formatDate(sop.last_edited) && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Last edited {formatDate(sop.last_edited)}
+                </p>
+              )}
+            </div>
+            {sop.source_url && (
+              <a
+                href={sop.source_url}
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 text-sm font-medium text-brand-teal underline-offset-4 hover:underline"
+              >
+                Open in Notion
+              </a>
+            )}
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
 
-function ToolPartView({
-  part,
-  addToolApprovalResponse
-}: {
-  part: UIMessage["parts"][number];
-  addToolApprovalResponse: (response: {
-    id: string;
-    approved: boolean;
-  }) => void;
-}) {
-  if (!isToolUIPart(part)) return null;
-  const toolName = getToolName(part);
-
-  // Completed
-  if (part.state === "output-available") {
-    return (
-      <div className="flex justify-start">
-        <Surface className="max-w-[85%] px-4 py-2.5 rounded-xl ring ring-kumo-line">
-          <div className="flex items-center gap-2 mb-1">
-            <GearIcon size={14} className="text-kumo-inactive" />
-            <Text size="xs" variant="secondary" bold>
-              {toolName}
-            </Text>
-            <Badge variant="secondary">Done</Badge>
-          </div>
-          <ToolIO label="Input" value={part.input} />
-          <ToolIO label="Output" value={part.output} />
-        </Surface>
-      </div>
-    );
-  }
-
-  // Needs approval
-  if ("approval" in part && part.state === "approval-requested") {
-    const approvalId = (part.approval as { id?: string })?.id;
-    return (
-      <div className="flex justify-start">
-        <Surface className="max-w-[85%] px-4 py-3 rounded-xl ring-2 ring-kumo-warning">
-          <div className="flex items-center gap-2 mb-2">
-            <GearIcon size={14} className="text-kumo-warning" />
-            <Text size="sm" bold>
-              Approval needed: {toolName}
-            </Text>
-          </div>
-          <div className="font-mono mb-3">
-            <Text size="xs" variant="secondary">
-              {JSON.stringify(part.input, null, 2)}
-            </Text>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<CheckCircleIcon size={14} />}
-              onClick={() => {
-                if (approvalId) {
-                  addToolApprovalResponse({ id: approvalId, approved: true });
-                }
-              }}
-            >
-              Approve
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<XCircleIcon size={14} />}
-              onClick={() => {
-                if (approvalId) {
-                  addToolApprovalResponse({ id: approvalId, approved: false });
-                }
-              }}
-            >
-              Reject
-            </Button>
-          </div>
-        </Surface>
-      </div>
-    );
-  }
-
-  // Rejected / denied
-  if (
-    part.state === "output-denied" ||
-    ("approval" in part &&
-      (part.approval as { approved?: boolean })?.approved === false)
-  ) {
-    return (
-      <div className="flex justify-start">
-        <Surface className="max-w-[85%] px-4 py-2.5 rounded-xl ring ring-kumo-line">
-          <div className="flex items-center gap-2">
-            <XCircleIcon size={14} className="text-kumo-danger" />
-            <Text size="xs" variant="secondary" bold>
-              {toolName}
-            </Text>
-            <Badge variant="secondary">Rejected</Badge>
-          </div>
-        </Surface>
-      </div>
-    );
-  }
-
-  // Errored
-  if (part.state === "output-error") {
-    const errorText = part.errorText;
-    return (
-      <div className="flex justify-start">
-        <Surface className="max-w-[85%] px-4 py-2.5 rounded-xl ring-2 ring-kumo-danger">
-          <div className="flex items-center gap-2 mb-1">
-            <XCircleIcon size={14} className="text-kumo-danger" />
-            <Text size="xs" variant="secondary" bold>
-              {toolName}
-            </Text>
-            <Badge variant="destructive">Error</Badge>
-          </div>
-          <div className="font-mono">
-            <Text size="xs" variant="secondary">
-              {errorText || "Tool call failed"}
-            </Text>
-          </div>
-        </Surface>
-      </div>
-    );
-  }
-
-  // Executing
-  if (part.state === "input-available" || part.state === "input-streaming") {
-    return (
-      <div className="flex justify-start">
-        <Surface className="max-w-[85%] px-4 py-2.5 rounded-xl ring ring-kumo-line">
-          <div className="flex items-center gap-2">
-            <GearIcon size={14} className="text-kumo-inactive animate-spin" />
-            <Text size="xs" variant="secondary">
-              Running {toolName}...
-            </Text>
-          </div>
-          <ToolIO label="Input" value={part.input} />
-        </Surface>
-      </div>
-    );
-  }
-
-  return null;
-}
-
-// ── Main chat ─────────────────────────────────────────────────────────
-
-function Chat() {
-  const [connected, setConnected] = useState(false);
-  const [input, setInput] = useState("");
-  const [showDebug, setShowDebug] = useState(false);
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const toasts = useKumoToastManager();
-  const [mcpState, setMcpState] = useState<MCPServersState>({
-    prompts: [],
-    resources: [],
-    servers: {},
-    tools: []
-  });
-  const [showMcpPanel, setShowMcpPanel] = useState(false);
-  const [mcpName, setMcpName] = useState("");
-  const [mcpUrl, setMcpUrl] = useState("");
-  const [isAddingServer, setIsAddingServer] = useState(false);
-  const mcpPanelRef = useRef<HTMLDivElement>(null);
-
-  const agent = useAgent<ChatAgent>({
-    agent: "ChatAgent",
-    onOpen: useCallback(() => setConnected(true), []),
-    onClose: useCallback(() => setConnected(false), []),
-    onError: useCallback(
-      (error: Event) => console.error("WebSocket error:", error),
-      []
-    ),
-    onMcpUpdate: useCallback((state: MCPServersState) => {
-      setMcpState(state);
-    }, []),
-    onMessage: useCallback(
-      (message: MessageEvent) => {
-        try {
-          const data = JSON.parse(String(message.data));
-          if (data.type === "scheduled-task") {
-            toasts.add({
-              title: "Scheduled task completed",
-              description: data.description,
-              timeout: 0
-            });
-          }
-        } catch {
-          // Not JSON or not our event
-        }
-      },
-      [toasts]
-    )
-  });
-
-  // Close MCP panel when clicking outside
-  useEffect(() => {
-    if (!showMcpPanel) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        mcpPanelRef.current &&
-        !mcpPanelRef.current.contains(e.target as Node)
-      ) {
-        setShowMcpPanel(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showMcpPanel]);
-
-  const handleAddServer = async () => {
-    if (!mcpName.trim() || !mcpUrl.trim()) return;
-    setIsAddingServer(true);
-    try {
-      await agent.stub.addServer(mcpName.trim(), mcpUrl.trim());
-      setMcpName("");
-      setMcpUrl("");
-    } catch (e) {
-      console.error("Failed to add MCP server:", e);
-    } finally {
-      setIsAddingServer(false);
-    }
-  };
-
-  const handleRemoveServer = async (serverId: string) => {
-    try {
-      await agent.stub.removeServer(serverId);
-    } catch (e) {
-      console.error("Failed to remove MCP server:", e);
-    }
-  };
-
-  const serverEntries = Object.entries(mcpState.servers);
-  const mcpToolCount = mcpState.tools.length;
-
-  const {
-    messages,
-    sendMessage,
-    clearHistory,
-    addToolApprovalResponse,
-    stop,
-    status
-  } = useAgentChat({
-    agent,
-    experimental_throttle: 100,
-    onToolCall: async ({ toolCall, addToolOutput }) => {
-      if (toolCall.toolName === "getUserTimezone") {
-        addToolOutput({
-          toolCallId: toolCall.toolCallId,
-          output: {
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            localTime: new Date().toLocaleTimeString()
-          }
-        });
-      }
-    }
-  });
-
-  const isStreaming = status === "streaming" || status === "submitted";
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Re-focus the input after streaming ends
-  useEffect(() => {
-    if (!isStreaming && textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }, [isStreaming]);
-
-  const addFiles = useCallback((files: FileList | File[]) => {
-    const images = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    if (images.length === 0) return;
-    setAttachments((prev) => [...prev, ...images.map(createAttachment)]);
-  }, []);
-
-  const removeAttachment = useCallback((id: string) => {
-    setAttachments((prev) => {
-      const att = prev.find((a) => a.id === id);
-      if (att) URL.revokeObjectURL(att.preview);
-      return prev.filter((a) => a.id !== id);
-    });
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer.types.includes("Files")) setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.currentTarget === e.target) setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(false);
-      if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
-    },
-    [addFiles]
-  );
-
-  const handlePaste = useCallback(
-    (e: React.ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      const files: File[] = [];
-      for (const item of items) {
-        if (item.kind === "file") {
-          const file = item.getAsFile();
-          if (file) files.push(file);
-        }
-      }
-      if (files.length > 0) {
-        e.preventDefault();
-        addFiles(files);
-      }
-    },
-    [addFiles]
-  );
-
-  const send = useCallback(async () => {
-    const text = input.trim();
-    if ((!text && attachments.length === 0) || isStreaming) return;
-    setInput("");
-
-    const parts: Array<
-      | { type: "text"; text: string }
-      | { type: "file"; mediaType: string; url: string }
-    > = [];
-    if (text) parts.push({ type: "text", text });
-
-    for (const att of attachments) {
-      const dataUri = await fileToDataUri(att.file);
-      parts.push({ type: "file", mediaType: att.mediaType, url: dataUri });
-    }
-
-    for (const att of attachments) URL.revokeObjectURL(att.preview);
-    setAttachments([]);
-
-    sendMessage({ role: "user", parts });
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
-  }, [input, attachments, isStreaming, sendMessage]);
-
+function PendingSOPs() {
   return (
-    <div
-      className="flex flex-col h-screen bg-kumo-elevated relative"
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-kumo-elevated/80 backdrop-blur-sm border-2 border-dashed border-kumo-brand rounded-xl m-2 pointer-events-none">
-          <div className="flex flex-col items-center gap-2 text-kumo-brand">
-            <ImageIcon size={40} />
-            <Text variant="heading3" as="span">
-              Drop images here
-            </Text>
-          </div>
-        </div>
-      )}
-
-      {/* Header */}
-      <header className="px-5 py-4 bg-kumo-base border-b border-kumo-line">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold text-kumo-default">
-              <span className="mr-2">⛅</span>Agent Starter
-            </h1>
-            <Badge variant="secondary">
-              <ChatCircleDotsIcon size={12} weight="bold" className="mr-1" />
-              AI Chat
-            </Badge>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <CircleIcon
-                size={8}
-                weight="fill"
-                className={connected ? "text-kumo-success" : "text-kumo-danger"}
-              />
-              <Text size="xs" variant="secondary">
-                {connected ? "Connected" : "Disconnected"}
-              </Text>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <BugIcon size={14} className="text-kumo-inactive" />
-              <Switch
-                checked={showDebug}
-                onCheckedChange={setShowDebug}
-                size="sm"
-                aria-label="Toggle debug mode"
-              />
-            </div>
-            <ThemeToggle />
-            <div className="relative" ref={mcpPanelRef}>
-              <Button
-                variant="secondary"
-                icon={<PlugsConnectedIcon size={16} />}
-                onClick={() => setShowMcpPanel(!showMcpPanel)}
-              >
-                MCP
-                {mcpToolCount > 0 && (
-                  <Badge variant="primary" className="ml-1.5">
-                    <WrenchIcon size={10} className="mr-0.5" />
-                    {mcpToolCount}
-                  </Badge>
-                )}
-              </Button>
-
-              {/* MCP Dropdown Panel */}
-              {showMcpPanel && (
-                <div className="absolute right-0 top-full mt-2 w-96 z-50">
-                  <Surface className="rounded-xl ring ring-kumo-line shadow-lg p-4 space-y-4">
-                    {/* Panel Header */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <PlugsConnectedIcon
-                          size={16}
-                          className="text-kumo-accent"
-                        />
-                        <Text size="sm" bold>
-                          MCP Servers
-                        </Text>
-                        {serverEntries.length > 0 && (
-                          <Badge variant="secondary">
-                            {serverEntries.length}
-                          </Badge>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        shape="square"
-                        aria-label="Close MCP panel"
-                        icon={<XIcon size={14} />}
-                        onClick={() => setShowMcpPanel(false)}
-                      />
-                    </div>
-
-                    {/* Add Server Form */}
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        handleAddServer();
-                      }}
-                      className="space-y-2"
-                    >
-                      <input
-                        type="text"
-                        value={mcpName}
-                        onChange={(e) => setMcpName(e.target.value)}
-                        aria-label="MCP server name"
-                        placeholder="Server name"
-                        className="w-full px-3 py-1.5 text-sm rounded-lg border border-kumo-line bg-kumo-base text-kumo-default placeholder:text-kumo-inactive focus:outline-none focus:ring-1 focus:ring-kumo-accent"
-                      />
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={mcpUrl}
-                          onChange={(e) => setMcpUrl(e.target.value)}
-                          aria-label="MCP server URL"
-                          placeholder="https://mcp.example.com"
-                          className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-kumo-line bg-kumo-base text-kumo-default placeholder:text-kumo-inactive focus:outline-none focus:ring-1 focus:ring-kumo-accent font-mono"
-                        />
-                        <Button
-                          type="submit"
-                          variant="primary"
-                          size="sm"
-                          icon={<PlusIcon size={14} />}
-                          disabled={
-                            isAddingServer || !mcpName.trim() || !mcpUrl.trim()
-                          }
-                        >
-                          {isAddingServer ? "..." : "Add"}
-                        </Button>
-                      </div>
-                    </form>
-
-                    {/* Server List */}
-                    {serverEntries.length > 0 && (
-                      <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {serverEntries.map(([id, server]) => (
-                          <div
-                            key={id}
-                            className="flex items-start justify-between p-2.5 rounded-lg border border-kumo-line"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-kumo-default truncate">
-                                  {server.name}
-                                </span>
-                                <Badge
-                                  variant={
-                                    server.state === "ready"
-                                      ? "primary"
-                                      : server.state === "failed"
-                                        ? "destructive"
-                                        : "secondary"
-                                  }
-                                >
-                                  {server.state}
-                                </Badge>
-                              </div>
-                              <span className="text-xs font-mono text-kumo-subtle truncate block mt-0.5">
-                                {server.server_url}
-                              </span>
-                              {server.state === "failed" && server.error && (
-                                <span className="text-xs text-red-500 block mt-0.5">
-                                  {server.error}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0 ml-2">
-                              {server.state === "authenticating" &&
-                                server.auth_url && (
-                                  <Button
-                                    variant="primary"
-                                    size="sm"
-                                    icon={<SignInIcon size={12} />}
-                                    onClick={() =>
-                                      window.open(
-                                        server.auth_url as string,
-                                        "oauth",
-                                        "width=600,height=800"
-                                      )
-                                    }
-                                  >
-                                    Auth
-                                  </Button>
-                                )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                shape="square"
-                                aria-label="Remove server"
-                                icon={<TrashIcon size={12} />}
-                                onClick={() => handleRemoveServer(id)}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Tool Summary */}
-                    {mcpToolCount > 0 && (
-                      <div className="pt-2 border-t border-kumo-line">
-                        <div className="flex items-center gap-2">
-                          <WrenchIcon size={14} className="text-kumo-subtle" />
-                          <span className="text-xs text-kumo-subtle">
-                            {mcpToolCount} tool
-                            {mcpToolCount !== 1 ? "s" : ""} available from MCP
-                            servers
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </Surface>
-                </div>
-              )}
-            </div>
-            <Button
-              variant="secondary"
-              icon={<TrashIcon size={16} />}
-              onClick={clearHistory}
-            >
-              Clear
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-5 py-6 space-y-5">
-          {messages.length === 0 && (
-            <Empty
-              icon={<ChatCircleDotsIcon size={32} />}
-              title="Start a conversation"
-              contents={
-                <div className="flex flex-wrap justify-center gap-2">
-                  {[
-                    "What's the weather in Paris?",
-                    "What timezone am I in?",
-                    "Calculate 5000 * 3",
-                    "Remind me in 5 minutes to take a break"
-                  ].map((prompt) => (
-                    <Button
-                      key={prompt}
-                      variant="outline"
-                      size="sm"
-                      disabled={isStreaming}
-                      onClick={() => {
-                        sendMessage({
-                          role: "user",
-                          parts: [{ type: "text", text: prompt }]
-                        });
-                      }}
-                    >
-                      {prompt}
-                    </Button>
-                  ))}
-                </div>
-              }
-            />
-          )}
-
-          {messages.map((message: UIMessage, index: number) => {
-            const isUser = message.role === "user";
-            const isLastAssistant =
-              message.role === "assistant" && index === messages.length - 1;
-
-            return (
-              <div key={message.id} className="space-y-2">
-                {showDebug && (
-                  <pre className="text-[11px] text-kumo-subtle bg-kumo-control rounded-lg p-3 overflow-auto max-h-64">
-                    {JSON.stringify(message, null, 2)}
-                  </pre>
-                )}
-
-                {/* Render parts in chronological (array) order */}
-                {message.parts.map((part, i) => {
-                  const key = `${message.id}-${i}`;
-
-                  if (isToolUIPart(part)) {
-                    return (
-                      <ToolPartView
-                        key={key}
-                        part={part}
-                        addToolApprovalResponse={addToolApprovalResponse}
-                      />
-                    );
-                  }
-
-                  if (part.type === "reasoning") {
-                    if (!part.text.trim()) return null;
-                    const isDone = part.state === "done" || !isStreaming;
-                    return (
-                      <div key={key} className="flex justify-start">
-                        <details className="max-w-[85%] w-full" open={!isDone}>
-                          <summary className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-sm select-none">
-                            <BrainIcon size={14} className="text-purple-400" />
-                            <span className="font-medium text-kumo-default">
-                              Reasoning
-                            </span>
-                            {isDone ? (
-                              <span className="text-xs text-kumo-success">
-                                Complete
-                              </span>
-                            ) : (
-                              <span className="text-xs text-kumo-brand">
-                                Thinking...
-                              </span>
-                            )}
-                            <CaretDownIcon
-                              size={14}
-                              className="ml-auto text-kumo-inactive"
-                            />
-                          </summary>
-                          <pre className="mt-2 px-3 py-2 rounded-lg bg-kumo-control text-xs text-kumo-default whitespace-pre-wrap overflow-auto max-h-64">
-                            {part.text}
-                          </pre>
-                        </details>
-                      </div>
-                    );
-                  }
-
-                  if (
-                    part.type === "file" &&
-                    part.mediaType.startsWith("image/")
-                  ) {
-                    return (
-                      <div
-                        key={key}
-                        className={`flex ${isUser ? "justify-end" : "justify-start"}`}
-                      >
-                        <img
-                          src={part.url}
-                          alt="Attachment"
-                          className="max-h-64 rounded-xl border border-kumo-line object-contain"
-                        />
-                      </div>
-                    );
-                  }
-
-                  if (part.type === "text") {
-                    if (!part.text) return null;
-
-                    if (isUser) {
-                      return (
-                        <div key={key} className="flex justify-end">
-                          <div className="max-w-[85%] px-4 py-2.5 rounded-2xl rounded-br-md bg-kumo-contrast text-kumo-inverse leading-relaxed">
-                            {part.text}
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div key={key} className="flex justify-start">
-                        <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-kumo-base text-kumo-default leading-relaxed">
-                          <Streamdown
-                            className="sd-theme rounded-2xl rounded-bl-md p-3"
-                            plugins={{ code }}
-                            controls={false}
-                            isAnimating={isLastAssistant && isStreaming}
-                          >
-                            {part.text}
-                          </Streamdown>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  return null;
-                })}
-              </div>
-            );
-          })}
-
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Input */}
-      <div className="border-t border-kumo-line bg-kumo-base">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            send();
-          }}
-          className="max-w-3xl mx-auto px-5 py-4"
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            aria-label="Upload image attachments"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files) addFiles(e.target.files);
-              e.target.value = "";
-            }}
-          />
-
-          {attachments.length > 0 && (
-            <div className="flex gap-2 mb-2 flex-wrap">
-              {attachments.map((att) => (
-                <div
-                  key={att.id}
-                  className="relative group rounded-lg border border-kumo-line bg-kumo-control overflow-hidden"
-                >
-                  <img
-                    src={att.preview}
-                    alt={att.file.name}
-                    className="h-16 w-16 object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeAttachment(att.id)}
-                    className="absolute top-0.5 right-0.5 rounded-full bg-kumo-contrast/80 text-kumo-inverse p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label={`Remove ${att.file.name}`}
-                  >
-                    <XIcon size={10} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-end gap-3 rounded-xl border border-kumo-line bg-kumo-base p-3 shadow-sm focus-within:ring-2 focus-within:ring-kumo-ring focus-within:border-transparent transition-shadow">
-            <Button
-              type="button"
-              variant="ghost"
-              shape="square"
-              aria-label="Attach images"
-              icon={<PaperclipIcon size={18} />}
-              onClick={() => fileInputRef.current?.click()}
-              disabled={!connected || isStreaming}
-              className="mb-0.5"
-            />
-            <InputArea
-              ref={textareaRef}
-              value={input}
-              onValueChange={setInput}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = `${el.scrollHeight}px`;
-              }}
-              onPaste={handlePaste}
-              placeholder={
-                attachments.length > 0
-                  ? "Add a message or send images..."
-                  : "Send a message..."
-              }
-              disabled={!connected || isStreaming}
-              rows={1}
-              className="flex-1 ring-0! focus:ring-0! shadow-none! bg-transparent! outline-none! resize-none max-h-40"
-            />
-            {isStreaming ? (
-              <Button
-                type="button"
-                variant="secondary"
-                shape="square"
-                aria-label="Stop generation"
-                icon={<StopIcon size={18} />}
-                onClick={stop}
-                className="mb-0.5"
-              />
-            ) : (
-              <Button
-                type="submit"
-                variant="primary"
-                shape="square"
-                aria-label="Send message"
-                disabled={
-                  (!input.trim() && attachments.length === 0) || !connected
-                }
-                icon={<PaperPlaneRightIcon size={18} />}
-                className="mb-0.5"
-              />
-            )}
-          </div>
-        </form>
-        <div className="flex justify-center pb-3">
-          <PoweredByCloudflare href="https://developers.cloudflare.com/agents/" />
-        </div>
+    <div>
+      <p className="mb-2 text-xs font-medium text-muted-foreground">
+        Relevant SOPs
+      </p>
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-14 w-full rounded-xl" />
+        <Skeleton className="h-14 w-full rounded-xl" />
       </div>
     </div>
   );
 }
 
 export default function App() {
+  const [input, setInput] = useState("");
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const agent = useAgent<ChatAgent>({ agent: "ChatAgent" });
+
+  const { messages, sendMessage, status, stop } = useAgentChat<
+    unknown,
+    CortexMessage
+  >({
+    agent,
+    onData: useCallback((part: { type: string; data?: unknown }) => {
+      if (part.type === "data-refusal") {
+        setBlockedReason((part.data as { reason: string }).reason);
+      }
+    }, [])
+  });
+
+  const isStreaming = status === "streaming" || status === "submitted";
+  const visibleMessages: CortexMessage[] = messages.filter(isRenderable);
+  const last: CortexMessage | undefined = messages.at(-1);
+  const awaitingSops =
+    isStreaming && !(last?.role === "assistant" && sopsOf(last) !== null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [visibleMessages.length, awaitingSops]);
+
+  const resizeComposer = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, []);
+
+  const submit = useCallback(() => {
+    const text = input.trim();
+    if (!text || isStreaming) return;
+    const { blocked, reason } = checkPHI(text);
+    if (blocked) {
+      setBlockedReason(reason);
+      return;
+    }
+    setBlockedReason(null);
+    sendMessage({ role: "user", parts: [{ type: "text", text }] });
+    setInput("");
+    requestAnimationFrame(resizeComposer);
+  }, [input, isStreaming, sendMessage, resizeComposer]);
+
+  const insertQuickStart = useCallback(
+    (template: string) => {
+      setInput(template);
+      setBlockedReason(null);
+      requestAnimationFrame(() => {
+        resizeComposer();
+        textareaRef.current?.focus();
+      });
+    },
+    [resizeComposer]
+  );
+
   return (
-    <Toasty>
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center h-screen text-kumo-inactive">
-            Loading...
+    <div className="flex h-full flex-col">
+      <header className="h-14 shrink-0 border-b bg-white">
+        <div className="mx-auto flex h-full w-full max-w-3xl items-center justify-between px-4">
+          <div className="flex items-baseline gap-3">
+            <span className="text-lg font-semibold text-brand-teal">
+              Cortex
+            </span>
+            <span className="text-sm text-muted-foreground">
+              Mindspan operations
+            </span>
           </div>
-        }
-      >
-        <Chat />
-      </Suspense>
-    </Toasty>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+              >
+                Clear conversation
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear this conversation?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  All messages in this conversation will be deleted for
+                  everyone. This can't be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => void agent.stub.clearConversation()}
+                >
+                  Clear conversation
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </header>
+
+      <ScrollArea className="min-h-0 flex-1">
+        <main className="mx-auto w-full max-w-3xl px-4 py-6">
+          {visibleMessages.length === 0 && !isStreaming ? (
+            <div className="py-10">
+              <h1 className="text-xl font-semibold">
+                Paste a situation, get the playbook
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Cortex finds the relevant SOPs and walks you through the steps.
+                Start from a common situation:
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {QUICK_STARTS.map((qs) => (
+                  <Button
+                    key={qs.label}
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full bg-white"
+                    onClick={() => insertQuickStart(qs.template)}
+                  >
+                    {qs.label}
+                  </Button>
+                ))}
+              </div>
+              <Separator className="my-6" />
+              <p className="text-sm text-muted-foreground">
+                A good paste covers: what happened, who's involved (by role only
+                — "a caregiver", "the patient's son"), what's been tried, and
+                how urgent it is.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-6">
+              {visibleMessages.map((message) =>
+                message.role === "user" ? (
+                  <div key={message.id} className="flex justify-end">
+                    <Card className="max-w-[80%] bg-secondary px-4 py-3 text-[15px] whitespace-pre-wrap">
+                      {textOf(message)}
+                    </Card>
+                  </div>
+                ) : (
+                  <div key={message.id} className="flex flex-col gap-4">
+                    {sopsOf(message) && <SOPCards sops={sopsOf(message)!} />}
+                    {textOf(message).trim() && (
+                      <div className="text-[15px] leading-relaxed">
+                        <Streamdown>{textOf(message)}</Streamdown>
+                      </div>
+                    )}
+                  </div>
+                )
+              )}
+              {awaitingSops && <PendingSOPs />}
+              <div ref={bottomRef} />
+            </div>
+          )}
+        </main>
+      </ScrollArea>
+
+      <div className="shrink-0 border-t bg-white">
+        <div className="mx-auto w-full max-w-3xl px-4 py-3">
+          <Alert className="mb-3 border-brand-teal/25 bg-brand-cream">
+            <AlertDescription className="text-foreground/80">
+              Prototype. Do not paste patient names, dates of birth, MRNs,
+              contact details, or anything identifying. Use invented scenarios.
+            </AlertDescription>
+          </Alert>
+          <div className="flex items-end gap-2">
+            <Textarea
+              ref={textareaRef}
+              rows={1}
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                if (blockedReason) setBlockedReason(null);
+              }}
+              onInput={resizeComposer}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+              placeholder="Paste the situation. No patient identifiers."
+              className="max-h-[200px] min-h-10 resize-none bg-white"
+            />
+            {isStreaming ? (
+              <Button variant="outline" onClick={() => void stop()}>
+                Stop
+              </Button>
+            ) : (
+              <Button
+                onClick={submit}
+                disabled={!input.trim()}
+                className="bg-brand-teal text-white hover:bg-brand-orange"
+              >
+                Send
+              </Button>
+            )}
+          </div>
+          {blockedReason && (
+            <Alert variant="destructive" className="mt-3">
+              <AlertTitle>Message blocked</AlertTitle>
+              <AlertDescription>
+                Looks like this contains {blockedReason}. Remove identifiers
+                before sending.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
