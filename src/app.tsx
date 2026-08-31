@@ -78,17 +78,6 @@ const QUICK_STARTS: { label: string; template: string }[] = [
   }
 ];
 
-function formatDate(iso: string | null): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric"
-  });
-}
-
 function sopsOf(message: CortexMessage): SOPRef[] | null {
   for (const part of message.parts) {
     if (part.type === "data-sops") return part.data as SOPRef[];
@@ -152,7 +141,20 @@ function displayTitle(title: string): string {
   return title.replace(/^[^\p{L}\p{N}]+/u, "").trim() || title;
 }
 
-function SOPCards({ sops }: { sops: SOPRef[] }) {
+// Pull the model's own citation sentence for a SOP out of the answer text —
+// used as the one-line reason on the result card. Best effort: no quote near
+// the title means no reason line.
+function reasonFor(answer: string, sop: SOPRef): string | null {
+  const clean = displayTitle(sop.title);
+  if (clean.length < 4) return null;
+  const idx = answer.toLowerCase().indexOf(clean.toLowerCase());
+  if (idx === -1) return null;
+  const after = answer.slice(idx, idx + 600);
+  const quote = after.match(/"([^"]{10,220})"/);
+  return quote ? quote[1] : null;
+}
+
+function SOPCards({ sops, answer }: { sops: SOPRef[]; answer: string }) {
   if (sops.length === 0) return null;
   return (
     <div>
@@ -160,41 +162,80 @@ function SOPCards({ sops }: { sops: SOPRef[] }) {
         Relevant SOPs
       </p>
       <div className="flex flex-col gap-2">
-        {sops.map((sop) => (
-          <Card
-            key={sop.title + String(sop.score)}
-            className="flex-row items-center justify-between gap-3 rounded-[12px] px-4 py-3"
-          >
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="truncate text-sm font-medium">
-                  {displayTitle(sop.title)}
+        {sops.map((sop, rank) => {
+          const reason = reasonFor(answer, sop);
+          return (
+            <Card
+              key={sop.title + String(sop.score)}
+              className="flex-row items-center justify-between gap-3 rounded-[12px] px-4 py-3"
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="mt-0.5 w-4 shrink-0 text-right text-[13px] text-muted-foreground">
+                  {rank + 1}
                 </span>
-                <Badge className="border-brand-orange/40 bg-brand-orange/15 text-brand-orange">
-                  {sop.category}
-                </Badge>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="truncate text-sm font-medium">
+                      {displayTitle(sop.title)}
+                    </span>
+                    <Badge className="border-brand-orange/40 bg-brand-orange/15 text-brand-orange">
+                      {sop.category}
+                    </Badge>
+                  </div>
+                  {reason && (
+                    <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                      {reason}
+                    </p>
+                  )}
+                </div>
               </div>
-              {formatDate(sop.last_edited) && (
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Last edited {formatDate(sop.last_edited)}
-                </p>
-              )}
-            </div>
-            {sop.source_url && (
-              <a
-                href={sop.source_url}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 text-sm font-medium text-brand-blue underline-offset-4 hover:underline"
-              >
-                Open in Notion
-              </a>
-            )}
-          </Card>
-        ))}
+              <div className="flex shrink-0 items-center gap-3">
+                {sop.source_url && (
+                  <a
+                    href={sop.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-medium text-brand-blue underline-offset-4 hover:underline"
+                  >
+                    Open in Notion
+                  </a>
+                )}
+                <button
+                  type="button"
+                  aria-label="Pin SOP"
+                  title="Pin (phase 3)"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <PinIcon className="h-4 w-4" />
+                </button>
+              </div>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
+}
+
+type RecentSituation = { id: string; title: string; ts: number };
+const RECENTS_KEY = "cortex-recents";
+
+function loadRecents(): RecentSituation[] {
+  try {
+    const raw = localStorage.getItem(RECENTS_KEY);
+    const parsed = raw ? (JSON.parse(raw) as RecentSituation[]) : [];
+    return Array.isArray(parsed) ? parsed.slice(0, 30) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecents(recents: RecentSituation[]): void {
+  try {
+    localStorage.setItem(RECENTS_KEY, JSON.stringify(recents.slice(0, 30)));
+  } catch {
+    // storage unavailable — recents just don't persist
+  }
 }
 
 function PendingSOPs() {
@@ -229,10 +270,16 @@ function SidebarRow({
 export default function App() {
   const [input, setInput] = useState("");
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
+  // One conversation room per situation: "new situation" navigates to a fresh
+  // room, recents reopen old ones, and the server's 7-day purge cleans up.
+  const [threadId, setThreadId] = useState<string>(() => crypto.randomUUID());
+  const [recents, setRecents] = useState<RecentSituation[]>(() =>
+    loadRecents()
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const agent = useAgent<ChatAgent>({ agent: "ChatAgent" });
+  const agent = useAgent<ChatAgent>({ agent: "ChatAgent", name: threadId });
 
   const { messages, sendMessage, status, stop } = useAgentChat<
     unknown,
@@ -274,9 +321,18 @@ export default function App() {
     }
     setBlockedReason(null);
     sendMessage({ role: "user", parts: [{ type: "text", text }] });
+    setRecents((prev) => {
+      if (prev.some((r) => r.id === threadId)) return prev;
+      const next = [
+        { id: threadId, title: text.slice(0, 48), ts: Date.now() },
+        ...prev
+      ].slice(0, 30);
+      saveRecents(next);
+      return next;
+    });
     setInput("");
     requestAnimationFrame(resizeComposer);
-  }, [input, isStreaming, sendMessage, resizeComposer]);
+  }, [input, isStreaming, sendMessage, resizeComposer, threadId]);
 
   const insertQuickStart = useCallback(
     (template: string) => {
@@ -291,11 +347,17 @@ export default function App() {
   );
 
   const newSituation = useCallback(() => {
-    void agent.stub.clearConversation();
+    setThreadId(crypto.randomUUID());
     setInput("");
     setBlockedReason(null);
     requestAnimationFrame(() => textareaRef.current?.focus());
-  }, [agent]);
+  }, []);
+
+  const openRecent = useCallback((id: string) => {
+    setThreadId(id);
+    setInput("");
+    setBlockedReason(null);
+  }, []);
 
   const composer = (
     <div>
@@ -465,9 +527,21 @@ export default function App() {
                   <SearchIcon className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <p className="px-2.5 text-[13px] text-muted-foreground/70">
-                Nothing yet
-              </p>
+              {recents.length === 0 ? (
+                <p className="px-2.5 text-[13px] text-muted-foreground/70">
+                  Nothing yet
+                </p>
+              ) : (
+                <div className="flex flex-col">
+                  {recents.map((r) => (
+                    <SidebarRow
+                      key={r.id}
+                      label={r.title}
+                      onSelect={() => openRecent(r.id)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </ScrollArea>
@@ -520,7 +594,10 @@ export default function App() {
                           </div>
                         )}
                         {sopsOf(message) && (
-                          <SOPCards sops={sopsOf(message)!} />
+                          <SOPCards
+                            sops={sopsOf(message)!}
+                            answer={textOf(message)}
+                          />
                         )}
                       </div>
                     )
