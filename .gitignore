@@ -148,3 +148,4 @@ export/
 
 # Conductor machine-local settings
 .conductor/settings.local.toml
+.gstack/

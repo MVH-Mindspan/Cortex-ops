@@ -290,6 +290,12 @@ type LibrarySOP = {
   file: string;
 };
 
+// Module scope on purpose: useAgentChat suspends on its initial fetch, and a
+// suspended first mount is discarded and replayed — useState initializers run
+// again on replay. A render-time uuid would mint a new room (and a new fetch)
+// every replay, looping forever. One id per page load, stable across replays.
+const initialThreadId = crypto.randomUUID();
+
 function PendingSOPs() {
   return (
     <div className="flex items-center gap-3 text-muted-foreground">
@@ -324,7 +330,7 @@ export default function App() {
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
   // One conversation room per situation: "new situation" navigates to a fresh
   // room, recents reopen old ones, and the server's 7-day purge cleans up.
-  const [threadId, setThreadId] = useState<string>(() => crypto.randomUUID());
+  const [threadId, setThreadId] = useState<string>(initialThreadId);
   const [recents, setRecents] = useState<RecentSituation[]>(() =>
     loadRecents()
   );
