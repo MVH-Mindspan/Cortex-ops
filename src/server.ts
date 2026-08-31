@@ -209,6 +209,49 @@ export class ChatAgent extends AIChatAgent<Env> {
     };
   }
 
+  // Read-only index for the SOP library view: every object in the bucket
+  // with its frontmatter display fields. Approved backend addition for the
+  // frontend rebuild (phase 3).
+  @callable()
+  async listSOPs(): Promise<
+    {
+      title: string;
+      category: string;
+      source_url: string | null;
+      file: string;
+    }[]
+  > {
+    const listing = await this.env.SOP_BUCKET.list({ limit: 500 });
+    const entries = await Promise.all(
+      listing.objects.map(async (obj) => {
+        try {
+          const object = await this.env.SOP_BUCKET.get(obj.key);
+          if (!object) return null;
+          const fm = matter(await object.text()).data as Record<
+            string,
+            unknown
+          >;
+          return {
+            title:
+              typeof fm.title === "string" && fm.title ? fm.title : obj.key,
+            category:
+              typeof fm.category === "string" && fm.category
+                ? fm.category
+                : "uncategorized",
+            source_url:
+              typeof fm.source_url === "string" ? fm.source_url : null,
+            file: obj.key
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+    return entries
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }
+
   @callable()
   async clearConversation(): Promise<void> {
     this.resetTurnState();

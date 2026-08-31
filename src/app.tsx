@@ -154,7 +154,17 @@ function reasonFor(answer: string, sop: SOPRef): string | null {
   return quote ? quote[1] : null;
 }
 
-function SOPCards({ sops, answer }: { sops: SOPRef[]; answer: string }) {
+function SOPCards({
+  sops,
+  answer,
+  pinned,
+  onTogglePin
+}: {
+  sops: SOPRef[];
+  answer: string;
+  pinned: Set<string>;
+  onTogglePin: (sop: PinnedSOP) => void;
+}) {
   if (sops.length === 0) return null;
   return (
     <div>
@@ -202,9 +212,19 @@ function SOPCards({ sops, answer }: { sops: SOPRef[]; answer: string }) {
                 )}
                 <button
                   type="button"
-                  aria-label="Pin SOP"
-                  title="Pin (phase 3)"
-                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() =>
+                    onTogglePin({
+                      title: sop.title,
+                      source_url: sop.source_url,
+                      file: sop.file
+                    })
+                  }
+                  aria-label={pinned.has(pinKey(sop)) ? "Unpin SOP" : "Pin SOP"}
+                  className={
+                    pinned.has(pinKey(sop))
+                      ? "text-brand-orange"
+                      : "text-muted-foreground hover:text-foreground"
+                  }
                 >
                   <PinIcon className="h-4 w-4" />
                 </button>
@@ -237,6 +257,38 @@ function saveRecents(recents: RecentSituation[]): void {
     // storage unavailable — recents just don't persist
   }
 }
+
+type PinnedSOP = { title: string; source_url: string | null; file?: string };
+const PINS_KEY = "cortex-pins";
+
+function pinKey(pin: { title: string; file?: string }): string {
+  return pin.file ?? pin.title;
+}
+
+function loadPins(): PinnedSOP[] {
+  try {
+    const raw = localStorage.getItem(PINS_KEY);
+    const parsed = raw ? (JSON.parse(raw) as PinnedSOP[]) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePins(pins: PinnedSOP[]): void {
+  try {
+    localStorage.setItem(PINS_KEY, JSON.stringify(pins));
+  } catch {
+    // storage unavailable — pins just don't persist
+  }
+}
+
+type LibrarySOP = {
+  title: string;
+  category: string;
+  source_url: string | null;
+  file: string;
+};
 
 function PendingSOPs() {
   return (
@@ -276,6 +328,17 @@ export default function App() {
   const [recents, setRecents] = useState<RecentSituation[]>(() =>
     loadRecents()
   );
+  const [viewMode, setViewMode] = useState<"chat" | "library">("chat");
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() =>
+    typeof window === "undefined"
+      ? true
+      : window.matchMedia("(min-width: 900px)").matches
+  );
+  const [pins, setPins] = useState<PinnedSOP[]>(() => loadPins());
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [recentsQuery, setRecentsQuery] = useState("");
+  const [library, setLibrary] = useState<LibrarySOP[] | null>(null);
+  const [libraryError, setLibraryError] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -348,6 +411,7 @@ export default function App() {
 
   const newSituation = useCallback(() => {
     setThreadId(crypto.randomUUID());
+    setViewMode("chat");
     setInput("");
     setBlockedReason(null);
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -355,9 +419,42 @@ export default function App() {
 
   const openRecent = useCallback((id: string) => {
     setThreadId(id);
+    setViewMode("chat");
     setInput("");
     setBlockedReason(null);
   }, []);
+
+  const openLibrary = useCallback(() => {
+    setViewMode("library");
+    setLibraryError(false);
+    if (library === null) {
+      agent.stub
+        .listSOPs()
+        .then((sops: unknown) => setLibrary(sops as LibrarySOP[]))
+        .catch(() => setLibraryError(true));
+    }
+  }, [agent, library]);
+
+  const togglePin = useCallback((sop: PinnedSOP) => {
+    setPins((prev) => {
+      const key = pinKey(sop);
+      const next = prev.some((p) => pinKey(p) === key)
+        ? prev.filter((p) => pinKey(p) !== key)
+        : [
+            ...prev,
+            { title: sop.title, source_url: sop.source_url, file: sop.file }
+          ];
+      savePins(next);
+      return next;
+    });
+  }, []);
+
+  const pinnedKeys = new Set(pins.map(pinKey));
+  const filteredRecents = recentsQuery.trim()
+    ? recents.filter((r) =>
+        r.title.toLowerCase().includes(recentsQuery.trim().toLowerCase())
+      )
+    : recents;
 
   const composer = (
     <div>
@@ -437,142 +534,284 @@ export default function App() {
 
   return (
     <div className="flex h-full">
-      <aside className="flex w-[284px] shrink-0 flex-col border-r bg-sidebar">
-        <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <span className="font-serif text-[22px] text-foreground">Cortex</span>
-          <span className="flex items-center gap-1.5">
+      {!sidebarOpen && (
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open sidebar"
+          className="fixed top-3 left-3 z-40 flex h-8 w-8 items-center justify-center rounded-[6px] border bg-sidebar text-muted-foreground hover:text-foreground"
+        >
+          <PanelIcon className="h-4 w-4" />
+        </button>
+      )}
+      {sidebarOpen && (
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close sidebar"
+          className="fixed inset-0 z-30 hidden bg-black/50 max-[900px]:block"
+        />
+      )}
+      {sidebarOpen && (
+        <aside className="flex w-[284px] shrink-0 flex-col border-r bg-sidebar max-[900px]:fixed max-[900px]:inset-y-0 max-[900px]:left-0 max-[900px]:z-40 max-[900px]:shadow-2xl">
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
+            <span className="font-serif text-[22px] text-foreground">
+              Cortex
+            </span>
+            <span className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={newSituation}
+                aria-label="New situation"
+                className="flex h-8 w-8 items-center justify-center rounded-[6px] border text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <PlusIcon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={openLibrary}
+                aria-label="SOP library"
+                className="flex h-8 w-8 items-center justify-center rounded-[6px] border text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <LibraryIcon className="h-4 w-4" />
+              </button>
+            </span>
+          </div>
+
+          <nav className="flex flex-col gap-0.5 px-2.5 py-2">
             <button
               type="button"
               onClick={newSituation}
-              aria-label="New situation"
-              className="flex h-8 w-8 items-center justify-center rounded-[6px] border text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex h-[34px] items-center gap-2.5 rounded-full bg-accent px-3 text-[15px] font-medium text-foreground"
             >
-              <PlusIcon className="h-4 w-4" />
+              <PlusIcon className="h-4 w-4 text-brand-orange" />
+              New situation
             </button>
             <button
               type="button"
-              aria-label="SOP library"
-              title="SOP library (phase 3)"
-              className="flex h-8 w-8 items-center justify-center rounded-[6px] border text-muted-foreground hover:bg-accent hover:text-foreground"
+              onClick={openLibrary}
+              className="flex h-[34px] items-center gap-2.5 rounded-[6px] px-3 text-[15px] text-foreground/85 hover:bg-accent"
             >
-              <LibraryIcon className="h-4 w-4" />
+              <LibraryIcon className="h-4 w-4 text-muted-foreground" />
+              SOP library
             </button>
-          </span>
-        </div>
+            <button
+              type="button"
+              className="flex h-[34px] items-center gap-2.5 rounded-[6px] px-3 text-[15px] text-foreground/85 hover:bg-accent"
+            >
+              <ClockIcon className="h-4 w-4 text-muted-foreground" />
+              Recent
+            </button>
+          </nav>
 
-        <nav className="flex flex-col gap-0.5 px-2.5 py-2">
-          <button
-            type="button"
-            onClick={newSituation}
-            className="flex h-[34px] items-center gap-2.5 rounded-full bg-accent px-3 text-[15px] font-medium text-foreground"
-          >
-            <PlusIcon className="h-4 w-4 text-brand-orange" />
-            New situation
-          </button>
-          <button
-            type="button"
-            title="SOP library (phase 3)"
-            className="flex h-[34px] items-center gap-2.5 rounded-[6px] px-3 text-[15px] text-foreground/85 hover:bg-accent"
-          >
-            <LibraryIcon className="h-4 w-4 text-muted-foreground" />
-            SOP library
-          </button>
-          <button
-            type="button"
-            className="flex h-[34px] items-center gap-2.5 rounded-[6px] px-3 text-[15px] text-foreground/85 hover:bg-accent"
-          >
-            <ClockIcon className="h-4 w-4 text-muted-foreground" />
-            Recent
-          </button>
-        </nav>
-
-        <ScrollArea className="min-h-0 flex-1 px-2.5">
-          <div className="flex flex-col gap-2 pb-4">
-            <div className="pt-2">
-              <p className="px-2.5 pb-2 text-[13px] text-muted-foreground">
-                Scenarios
-              </p>
-              <div className="flex flex-col">
-                {QUICK_STARTS.map((qs) => (
-                  <SidebarRow
-                    key={qs.label}
-                    label={qs.label}
-                    onSelect={() => insertQuickStart(qs.template)}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <p className="px-2.5 pb-2 text-[13px] text-muted-foreground">
-                Pinned SOPs
-              </p>
-              <div className="flex h-[34px] items-center gap-2.5 px-2.5 text-[13px] text-muted-foreground">
-                <PinIcon className="h-4 w-4 shrink-0" />
-                Pin SOPs to keep them here
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <div className="flex items-center justify-between px-2.5 pb-2">
-                <p className="text-[13px] text-muted-foreground">
-                  Recent situations
+          <ScrollArea className="min-h-0 flex-1 px-2.5">
+            <div className="flex flex-col gap-2 pb-4">
+              <div className="pt-2">
+                <p className="px-2.5 pb-2 text-[13px] text-muted-foreground">
+                  Scenarios
                 </p>
-                <button
-                  type="button"
-                  aria-label="Search recent situations"
-                  title="Search (phase 3)"
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <SearchIcon className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              {recents.length === 0 ? (
-                <p className="px-2.5 text-[13px] text-muted-foreground/70">
-                  Nothing yet
-                </p>
-              ) : (
                 <div className="flex flex-col">
-                  {recents.map((r) => (
+                  {QUICK_STARTS.map((qs) => (
                     <SidebarRow
-                      key={r.id}
-                      label={r.title}
-                      onSelect={() => openRecent(r.id)}
+                      key={qs.label}
+                      label={qs.label}
+                      onSelect={() => insertQuickStart(qs.template)}
                     />
                   ))}
                 </div>
-              )}
+              </div>
+
+              <div className="pt-2">
+                <p className="px-2.5 pb-2 text-[13px] text-muted-foreground">
+                  Pinned SOPs
+                </p>
+                {pins.length === 0 ? (
+                  <div className="flex h-[34px] items-center gap-2.5 px-2.5 text-[13px] text-muted-foreground">
+                    <PinIcon className="h-4 w-4 shrink-0" />
+                    Pin SOPs to keep them here
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    {pins.map((pin) => (
+                      <div
+                        key={pinKey(pin)}
+                        className="group flex h-[34px] items-center gap-2.5 rounded-[6px] px-2.5 hover:bg-accent"
+                      >
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full border border-muted-foreground" />
+                        {pin.source_url ? (
+                          <a
+                            href={pin.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="min-w-0 flex-1 truncate text-[15px] text-foreground/85"
+                          >
+                            {displayTitle(pin.title)}
+                          </a>
+                        ) : (
+                          <span className="min-w-0 flex-1 truncate text-[15px] text-foreground/85">
+                            {displayTitle(pin.title)}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => togglePin(pin)}
+                          aria-label="Unpin SOP"
+                          className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground"
+                        >
+                          <PinIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2">
+                <div className="flex items-center justify-between px-2.5 pb-2">
+                  <p className="text-[13px] text-muted-foreground">
+                    Recent situations
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchOpen((open) => !open);
+                      setRecentsQuery("");
+                    }}
+                    aria-label="Search recent situations"
+                    className={
+                      searchOpen
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }
+                  >
+                    <SearchIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {searchOpen && (
+                  <input
+                    value={recentsQuery}
+                    onChange={(e) => setRecentsQuery(e.target.value)}
+                    placeholder="Search situations"
+                    className="mx-2.5 mb-2 h-8 w-[calc(100%-20px)] rounded-[6px] border bg-background px-2.5 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-muted-foreground/60"
+                  />
+                )}
+                {recents.length === 0 ? (
+                  <p className="px-2.5 text-[13px] text-muted-foreground/70">
+                    Nothing yet
+                  </p>
+                ) : filteredRecents.length === 0 ? (
+                  <p className="px-2.5 text-[13px] text-muted-foreground/70">
+                    No matches
+                  </p>
+                ) : (
+                  <div className="flex flex-col">
+                    {filteredRecents.map((r) => (
+                      <SidebarRow
+                        key={r.id}
+                        label={r.title}
+                        onSelect={() => openRecent(r.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </ScrollArea>
+
+          <div className="border-t px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-teal-light text-xs font-medium text-white">
+                M
+              </span>
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block truncate text-sm text-foreground">
+                  Ops team
+                </span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  Mindspan operations
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                aria-label="Collapse sidebar"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <PanelIcon className="h-4 w-4" />
+              </button>
             </div>
           </div>
-        </ScrollArea>
-
-        <div className="border-t px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-teal-light text-xs font-medium text-white">
-              M
-            </span>
-            <span className="min-w-0 flex-1 leading-tight">
-              <span className="block truncate text-sm text-foreground">
-                Ops team
-              </span>
-              <span className="block truncate text-xs text-muted-foreground">
-                Mindspan operations
-              </span>
-            </span>
-            <button
-              type="button"
-              aria-label="Collapse sidebar"
-              title="Collapse (phase 3)"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <PanelIcon className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </aside>
+        </aside>
+      )}
 
       <main className="flex min-w-0 flex-1 flex-col">
-        {hasConversation ? (
+        {viewMode === "library" ? (
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="mx-auto w-full max-w-[760px] px-6 py-10">
+              <h1 className="font-serif text-[28px] text-foreground">
+                SOP library
+              </h1>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                {library
+                  ? `${library.length} SOPs, grouped by category. Rows open in Notion.`
+                  : libraryError
+                    ? "Couldn't load the SOP index. Open the library again to retry."
+                    : "Loading the SOP index"}
+              </p>
+              {library &&
+                [...new Set(library.map((s) => s.category))]
+                  .sort((a, b) => a.localeCompare(b))
+                  .map((category) => (
+                    <div key={category} className="mt-7">
+                      <p className="pb-2 text-[13px] text-muted-foreground">
+                        {category}
+                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        {library
+                          .filter((s) => s.category === category)
+                          .map((sop) => (
+                            <div
+                              key={sop.file}
+                              className="flex h-[40px] items-center justify-between gap-3 rounded-[8px] border bg-surface px-3.5"
+                            >
+                              {sop.source_url ? (
+                                <a
+                                  href={sop.source_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="min-w-0 flex-1 truncate text-sm text-foreground hover:text-brand-blue"
+                                >
+                                  {displayTitle(sop.title)}
+                                </a>
+                              ) : (
+                                <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                                  {displayTitle(sop.title)}
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => togglePin(sop)}
+                                aria-label={
+                                  pinnedKeys.has(pinKey(sop))
+                                    ? "Unpin SOP"
+                                    : "Pin SOP"
+                                }
+                                className={
+                                  pinnedKeys.has(pinKey(sop))
+                                    ? "text-brand-orange"
+                                    : "text-muted-foreground hover:text-foreground"
+                                }
+                              >
+                                <PinIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+            </div>
+          </ScrollArea>
+        ) : hasConversation ? (
           <>
             <ScrollArea className="min-h-0 flex-1">
               <div className="mx-auto w-full max-w-[760px] px-6 py-8">
@@ -597,6 +836,8 @@ export default function App() {
                           <SOPCards
                             sops={sopsOf(message)!}
                             answer={textOf(message)}
+                            pinned={pinnedKeys}
+                            onTogglePin={togglePin}
                           />
                         )}
                       </div>
