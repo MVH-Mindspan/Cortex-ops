@@ -49,7 +49,6 @@ function textOf(message: UIMessage): string {
 
 export class ChatAgent extends AIChatAgent<Env> {
   maxPersistedMessages = 100;
-  chatRecovery = true;
 
   // Incoming messages are persisted BEFORE onChatMessage runs, so this hook is
   // the only thing between raw identifiers and SQLite. Flagged user text is
@@ -119,7 +118,15 @@ export class ChatAgent extends AIChatAgent<Env> {
           ).chatCompletions({
             messages: history,
             stream: true,
-            ai_search_options: { reranking: { enabled: true } }
+            // Low thresholds on purpose: the advisor must surface the closest
+            // SOPs even for loosely-matching situations (the system prompt
+            // handles "not covered" honestly); default 0.4 returns nothing
+            // for paraphrased ops scenarios. Reranking is requested
+            // explicitly because it is off by default at the instance level.
+            ai_search_options: {
+              retrieval: { match_threshold: 0.1, max_num_results: 15 },
+              reranking: { enabled: true, match_threshold: 0.05 }
+            }
           });
 
           const reader = (sse as ReadableStream<Uint8Array>).getReader();
