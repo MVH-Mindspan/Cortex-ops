@@ -1,0 +1,18 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+[scripts]
+setup = "npm ci"
+run_mode = "concurrent"
+
+# Vite dev server with the Worker in workerd. Requires wrangler auth on this
+# Mac (remote AI Search + R2 bindings) — already true for the Mindspan account.
+[scripts.run.dev]
+available_in = [ "local" ]
+command = "npm run dev -- --port $CONDUCTOR_PORT --strictPort"
+default = true
+icon = "play"
+
+[scripts.run.export-sops]
+available_in = [ "local" ]
+command = "npm run export"
+icon = "refresh-cw"

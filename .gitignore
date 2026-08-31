@@ -145,3 +145,6 @@ dist
 
 # Cortex SOP export artifacts
 export/
+
+# Conductor machine-local settings
+.conductor/settings.local.toml
