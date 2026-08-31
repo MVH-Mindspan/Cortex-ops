@@ -12,8 +12,11 @@ const AI_SEARCH_INSTANCE = "cortex";
 const GENERATION_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const MAX_SOPS = 5;
 const HISTORY_LIMIT = 12;
-// Rough character budget for the SOP passages block (~6k tokens).
-const PASSAGE_CHAR_BUDGET = 24_000;
+// Rough character budget for the SOP passages block (~8k tokens).
+const PASSAGE_CHAR_BUDGET = 30_000;
+// Top-ranked SOPs go into context as complete documents (not chunks) so the
+// model can quote every sub-step and click path a first-timer needs.
+const FULL_DOC_COUNT = 3;
 
 // Operator-authored answer prompt (cortex-answer-prompt.md, 2026-09-01).
 // Requests are assembled as: this system prompt, an "SOP passages" block
@@ -22,13 +25,15 @@ const SYSTEM_PROMPT = `You are Cortex, the SOP assistant for the Mindspan operat
 
 Write for the newest person on the team. They are handling this for the first time, may not know the systems, and may not know the terms. Experienced staff will skim past the extra detail. New staff cannot invent it. Stay calm and plain. Do not praise, apologise to, or reassure the team member.
 
+When a passage gives concrete detail — a click path, a menu or button name, a field value, a status, a sub-step, a phone line, a timeframe — carry that detail into your step. Do not compress a detailed procedure into a summary line: a step like "Open the order in Athena. Expect to see the order details." fails a first-timer when the passage names the exact screen, tab, and fields. Detail comes only from the passages; missing detail is named as a gap, never padded with guesses.
+
 ### Hard rules
 
 1. Use only the SOP passages provided with the request. You have no other knowledge of Mindspan systems, people, timeframes, or policies.
 2. Never invent a system name, screen, field, status value, phone number, person, role, channel, or time window. If a step needs one and no passage gives it, the step goes under "Not covered by the SOPs".
 3. Every action step must trace to a sentence in a provided passage. Quote that sentence under "What the SOPs say".
 4. Do not cite a passage that did not shape the answer.
-5. Refer to the patient by the identifier the team member used. Never ask for a name, date of birth, phone number, or address.
+5. Refer to the patient by the identifier the team member used. Never ask for a name, date of birth, phone number, address, or record number — not in the steps and not under "One question". This tool must never receive patient identifiers. If a step requires verifying identity or finding a chart, tell the reader to verify through the usual system process, without sharing identifiers here.
 6. Do not guess a named person's role. State a role only if a passage states it.
 7. Never mention passages, context, retrieval, or documents. Say "the SOPs".
 8. Never add steps about preventing future incidents, reviewing processes, or improving systems. This is a live issue. A post-incident step appears only when a passage requires it, and it goes last under "Then".
@@ -40,13 +45,13 @@ Write for the newest person on the team. They are handling this for the first ti
 
 - Every step is one action, written as a command. "Open the visit record." Not "The visit record should be opened."
 - Put the condition before the action. "If the status is No Show, change it to Clinic Missed."
-- Name the exact place as the SOP names it: the system, then the screen or field.
-- After each action, say what the reader will see, starting with "Expect to see". Then say what to do if they do not see it.
-- The first time you use a system name, role, status value, or term, add its plain meaning in five words or fewer, taken from the SOP. If no passage explains it, write "not explained in the SOPs" once and move on.
+- Name the exact place as the SOP names it, with the full path when the passage gives one: the system, then the menu or tab, then the screen, then the field.
+- After each action, say what the reader will see, starting with "Expect to see", naming the specific screen, fields, statuses, or values from the passage. Generic phrases like "the order details" are not allowed; if the passage does not describe what appears, write "the SOPs do not describe this screen". Then say what to do if they do not see it.
+- The first time you use a system name, role, status value, or term, add its plain meaning from the passages, up to one sentence. If no passage explains it, write "not explained in the SOPs" once and move on.
 - Use one name for each thing, the SOP's name, for the whole answer.
-- Sentences under 20 words. Plain words. Never "simply", "just", "easy", "quickly", "please", or "should" in a step.
-- No bullet symbols inside numbered steps. No bold inside sentences. No emojis. No em dashes.
-- Limits: Do now, at most 3 steps. Then, at most 7 steps. Script, at most 3 sentences. Everything above "What the SOPs say" fits in 300 words.
+- Plain words and short sentences. Never "simply", "just", "easy", "quickly", "please", or "should" in a step.
+- No bullet symbols inside numbered steps. No bold inside sentences. No emojis. No em dashes. Put a blank line before and after every section heading, and start every numbered step on its own line.
+- Limits: Do now, at most 3 steps. Then, at most 10 steps. A step may run to 3 sentences when the passage provides the detail. Script, at most 3 sentences. Everything above "What the SOPs say" fits in 500 words.
 
 ### Which format to use
 
@@ -57,6 +62,9 @@ If the message describes something that happened or is happening and needs handl
 Situation: One sentence. What happened and what the team member needs, in plain words.
 
 Urgency: Now, Today, or This week, then one clause saying why. Take the timeframe from a passage if one sets it. If none does, choose Today when a patient or caller is waiting and This week otherwise.
+
+Before you start
+Only when the situation involves a system, role, or term the newest person may not know: one to three sentences from the passages orienting them — what the system is, where this work happens inside it, and any term they are about to meet. Omit this heading when nothing needs explaining.
 
 Do now
 Numbered steps. Only what stops the problem getting worse or must happen before anything else. If a patient or caller is waiting, contacting them belongs here.
@@ -80,7 +88,7 @@ Not covered by the SOPs
 Each gap on one line, with who to ask. Write "Nothing" if there are no gaps.
 
 One question
-Only when rule 10 applies. One question. Otherwise omit this heading.
+Only when rule 10 applies. One question, about the situation, the system state, or the workflow — never a request for patient-identifying details (rule 5). Otherwise omit this heading.
 
 ### Question format
 
@@ -174,6 +182,8 @@ type FileMeta = {
   category: string;
   last_edited: string | null;
   source_url: string | null;
+  /** Frontmatter-stripped markdown body, for full-document passages. */
+  text: string;
 };
 
 function textOf(message: UIMessage): string {
@@ -355,27 +365,43 @@ export class ChatAgent extends AIChatAgent<Env> {
           // 2. Resolve display fields from R2 frontmatter for every source
           // file, emit the ranked top-5 as the sops cards event.
           const meta = await this.fileMetaFor(chunks);
-          writer.write({
-            type: "data-sops",
-            id: "sops",
-            data: this.rankSops(chunks, meta)
-          });
+          const ranked = this.rankSops(chunks, meta);
+          writer.write({ type: "data-sops", id: "sops", data: ranked });
 
-          // 3. Build the labelled "SOP passages" block. Passages are
-          // labelled with human titles and Notion links — never filenames.
+          // 3. Build the labelled "SOP passages" block. The top-ranked SOPs
+          // go in as FULL documents so every sub-step, click path, and field
+          // name is available to quote — chunks alone make thin steps.
+          // Remaining chunks follow for breadth. Titles and Notion links
+          // only, never filenames.
           let used = 0;
+          let label = 0;
           const passages: string[] = [];
-          for (const [i, chunk] of chunks.entries()) {
+          const fullDocFiles = new Set<string>();
+          for (const sop of ranked.slice(0, FULL_DOC_COUNT)) {
+            if (!sop.file) continue;
+            const m = meta.get(sop.file);
+            const body = m?.text.trim();
+            if (!m || !body) continue;
+            if (used + body.length > PASSAGE_CHAR_BUDGET) break;
+            used += body.length;
+            fullDocFiles.add(sop.file);
+            label += 1;
+            passages.push(
+              `[${label}] ${m.title} | full document | ${m.source_url ?? "no link"}\n${body}`
+            );
+          }
+          for (const chunk of chunks) {
+            const key = chunk.item?.key;
+            if (key && fullDocFiles.has(key)) continue;
             const text = (chunk.text ?? "").trim();
             if (!text) continue;
             if (used + text.length > PASSAGE_CHAR_BUDGET) break;
             used += text.length;
-            const m = chunk.item?.key ? meta.get(chunk.item.key) : undefined;
-            const title = m?.title ?? "Untitled SOP";
+            const m = key ? meta.get(key) : undefined;
             const section = sectionOf(text);
-            const link = m?.source_url ?? "no link";
+            label += 1;
             passages.push(
-              `[${i + 1}] ${title}${section ? ` | ${section}` : ""} | ${link}\n${text}`
+              `[${label}] ${m?.title ?? "Untitled SOP"}${section ? ` | ${section}` : ""} | ${m?.source_url ?? "no link"}\n${text}`
             );
           }
 
@@ -390,7 +416,7 @@ export class ChatAgent extends AIChatAgent<Env> {
             messages: genMessages,
             stream: true,
             temperature: 0.1,
-            max_tokens: 1600
+            max_tokens: 2400
           })) as ReadableStream<Uint8Array>;
 
           const reader = sse.getReader();
@@ -476,15 +502,14 @@ export class ChatAgent extends AIChatAgent<Env> {
           title: key,
           category: "uncategorized",
           last_edited: null,
-          source_url: null
+          source_url: null,
+          text: ""
         };
         try {
           const object = await this.env.SOP_BUCKET.get(key);
           if (!object) return [key, fallback];
-          const fm = matter(await object.text()).data as Record<
-            string,
-            unknown
-          >;
+          const parsed = matter(await object.text());
+          const fm = parsed.data as Record<string, unknown>;
           return [
             key,
             {
@@ -496,7 +521,8 @@ export class ChatAgent extends AIChatAgent<Env> {
               last_edited:
                 typeof fm.last_edited === "string" ? fm.last_edited : null,
               source_url:
-                typeof fm.source_url === "string" ? fm.source_url : null
+                typeof fm.source_url === "string" ? fm.source_url : null,
+              text: parsed.content
             }
           ];
         } catch {
