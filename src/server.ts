@@ -75,6 +75,35 @@ export class ChatAgent extends AIChatAgent<Env> {
     this.broadcast(JSON.stringify({ type: "cf_agent_chat_clear" }));
   }
 
+  // Retention: a daily cron (Durable Object alarm under the hood) purges this
+  // conversation once it has had no activity for 7 days. Cron schedules are
+  // idempotent by default, so registering on every start is safe.
+  async onStart() {
+    const schedule = await this.schedule(
+      "0 3 * * *",
+      "purgeStaleConversations"
+    );
+    console.log(
+      `[cortex] purge cron registered id=${schedule.id} next=${new Date(schedule.time * 1000).toISOString()}`
+    );
+  }
+
+  async purgeStaleConversations() {
+    if (!(await this.waitUntilStable({ timeout: 30_000 }))) return;
+    const [row] = this.sql`
+      select
+        count(*) as total,
+        sum(case when created_at > datetime('now', '-7 days') then 1 else 0 end) as recent
+      from cf_ai_chat_agent_messages
+    `;
+    const total = Number(row?.total ?? 0);
+    if (total === 0 || Number(row?.recent ?? 0) > 0) return;
+    this.sql`delete from cf_ai_chat_agent_messages`;
+    this.messages = [];
+    this.broadcast(JSON.stringify({ type: "cf_agent_chat_clear" }));
+    console.log(`[cortex] purged ${total} stale message(s)`);
+  }
+
   async onChatMessage(_onFinish: unknown, options?: OnChatMessageOptions) {
     const last = this.messages.at(-1);
     if (last?.role === "user") {
