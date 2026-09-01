@@ -11,9 +11,10 @@ Built entirely on Cloudflare: Workers + Agents SDK for the chat backend
 (Durable Objects for per-conversation state), R2 for the exported SOP library,
 AI Search for hybrid retrieval with reranking, and Workers AI
 (llama-3.3-70b) for generation. SOPs are canonical in Notion and synced to R2
-by an export script. No PHI: a layered screen (regex tripwire, live warnings,
-a model name-check at send, and server-side redact-and-delete) blocks patient
-identifiers, and conversations purge after 7 idle days.
+by an export script. A layered screen (regex tripwire, live warnings, a model
+name-check at send, and server-side redact-and-delete) blocks patient names,
+dates of birth, and contact details before they reach the model; patient,
+chart, and record numbers are permitted. Conversations purge after 7 idle days.
 
 ## Commands
 
