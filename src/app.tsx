@@ -539,6 +539,8 @@ const AssistantMessage = memo(function AssistantMessage({
 }) {
   const text = textOf(message);
   const sops = sopsOf(message);
+  // Operator notices (budget, no-match, error lines) are not answers to relay.
+  const isNotice = message.metadata?.notice === true;
   // Link + list repair once per text change, not once per render.
   const rendered = useMemo(
     () => normalizeAnswerMarkdown(linkifySOPs(text, sops)),
@@ -566,7 +568,9 @@ const AssistantMessage = memo(function AssistantMessage({
           </Streamdown>
         </div>
       )}
-      {text.trim() && !streaming && <CopyAnswerButton text={text} />}
+      {text.trim() && !streaming && !isNotice && (
+        <CopyAnswerButton text={text} />
+      )}
       {sops && (
         <SOPCards
           sops={sops}
