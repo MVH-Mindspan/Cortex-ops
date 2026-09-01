@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowUpIcon,
+  ChatIcon,
   ClockIcon,
   LibraryIcon,
   PanelIcon,
@@ -26,6 +27,19 @@ import type { ChatAgent, CortexMessage, SOPRef } from "./server";
 const PHI_WARNING =
   "Prototype. Do not paste patient names, dates of birth, or contact details. Patient numbers, chart numbers, and MRNs are fine.";
 const MODEL_LABEL = "llama-3.3-70b";
+
+// Deep link that opens a Slack direct message to the Cortex admin (MVH). Not a
+// secret: it only resolves for people already signed into the Mindspan Slack,
+// and the app sits behind Cloudflare Access. Slack can't pre-fill DM text, so
+// all three reasons open the same DM — the reasons are guidance for the person
+// reaching out. To change who this messages, swap the member ID (U…).
+const SLACK_DM_URL = "https://slack.com/app_redirect?channel=U06M2DEP693";
+
+const REACH_OUT_REASONS: { label: string; hint: string }[] = [
+  { label: "Request a new SOP", hint: "No SOP covers your situation" },
+  { label: "Report an issue", hint: "Something's broken or wrong" },
+  { label: "Ask a question", hint: "Anything else" }
+];
 
 // Scenario templates mirror the ops team's highest-volume task types
 // (operator's Month-2 mix). Every template is an invented, identifier-free
@@ -295,6 +309,78 @@ type LibrarySOP = {
 // again on replay. A render-time uuid would mint a new room (and a new fetch)
 // every replay, looping forever. One id per page load, stable across replays.
 const initialThreadId = crypto.randomUUID();
+
+// Top-right control: opens a Slack DM to the Cortex admin. Link-out only —
+// nothing is sent from Cortex, so there is no PHI surface here. Menu closes on
+// selection, outside click, or Escape (same lightweight idiom as the sidebar's
+// search toggle and close overlay).
+function ReachOutMenu() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Reach out to the Cortex admin on Slack"
+        className="flex h-8 items-center gap-1.5 rounded-[6px] border px-2.5 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <ChatIcon className="h-4 w-4" />
+        Reach out
+      </button>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-hidden="true"
+            tabIndex={-1}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 cursor-default"
+          />
+          <div
+            role="menu"
+            className="absolute right-0 z-50 mt-1.5 w-[256px] rounded-[10px] border bg-popover p-1.5 shadow-xl"
+          >
+            <p className="px-2.5 pt-1.5 pb-1 text-[12px] text-muted-foreground">
+              Message the Cortex admin on Slack
+            </p>
+            {REACH_OUT_REASONS.map((reason) => (
+              <a
+                key={reason.label}
+                role="menuitem"
+                href={SLACK_DM_URL}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setOpen(false)}
+                className="flex flex-col rounded-[6px] px-2.5 py-2 hover:bg-accent"
+              >
+                <span className="text-[14px] text-foreground">
+                  {reason.label}
+                </span>
+                <span className="text-[12px] text-muted-foreground">
+                  {reason.hint}
+                </span>
+              </a>
+            ))}
+            <p className="px-2.5 pt-1 pb-1.5 text-[12px] text-muted-foreground/70">
+              Opens a Slack DM.
+            </p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function PendingSOPs() {
   return (
@@ -913,6 +999,9 @@ export default function App() {
       )}
 
       <main className="flex min-w-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-center justify-end px-4 pt-3">
+          <ReachOutMenu />
+        </div>
         {viewMode === "library" ? (
           <ScrollArea className="min-h-0 flex-1">
             <div className="mx-auto w-full max-w-[760px] px-6 py-10">
