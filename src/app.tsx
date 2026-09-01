@@ -24,7 +24,7 @@ import {
 import type { ChatAgent, CortexMessage, SOPRef } from "./server";
 
 const PHI_WARNING =
-  "Prototype. Do not paste patient names, dates of birth, MRNs, contact details, or anything identifying. Use invented scenarios.";
+  "Prototype. Do not paste patient names, dates of birth, MRNs, contact details, or anything identifying.";
 const MODEL_LABEL = "llama-3.3-70b";
 
 // Scenario templates mirror the ops team's highest-volume task types
@@ -530,7 +530,7 @@ export default function App() {
         <ShieldIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-orange" />
         <span>
           Do not paste patient names, dates of birth, MRNs, contact details, or
-          anything identifying. Use invented scenarios.
+          anything identifying.
         </span>
       </p>
       {blockedReason && (
