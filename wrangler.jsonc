@@ -19,7 +19,10 @@
   "vars": {
     // Hard monthly cap on answered messages (~$0.005-0.01 each on Workers
     // Paid), enforced by the UsageBudget Durable Object. Raise as needed.
-    "MONTHLY_MESSAGE_BUDGET": "2500"
+    "MONTHLY_MESSAGE_BUDGET": "2500",
+    // AI Gateway that Workers AI calls are routed through for cost/usage
+    // analytics and the dollar spend limit. Empty disables gateway routing.
+    "AI_GATEWAY_ID": "cortex"
   },
   "durable_objects": {
     "bindings": [

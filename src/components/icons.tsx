@@ -143,3 +143,11 @@ export function PanelIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function ChatIcon({ className }: IconProps) {
+  return (
+    <svg {...base({ className })} aria-hidden="true">
+      <path d="M4 3h8a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5H6.5L3.5 12V4.5A1.5 1.5 0 0 1 4 3Z" />
+    </svg>
+  );
+}

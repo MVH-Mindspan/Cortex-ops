@@ -19,6 +19,23 @@ const PASSAGE_CHAR_BUDGET = 30_000;
 // model can quote every sub-step and click path a first-timer needs.
 const FULL_DOC_COUNT = 3;
 
+// Route Workers AI through the `cortex` AI Gateway for cost/usage analytics and
+// the dollar spend limit. Metrics only (collectLog:false) — request/response
+// bodies are never stored, matching Cortex's no-content-retention posture. The
+// gateway id is a var so it can be renamed/disabled without a code change;
+// unset (e.g. local dev) falls back to a direct Workers AI call.
+function gatewayOptions(env: Env, step: "screen" | "generation") {
+  const id = env.AI_GATEWAY_ID;
+  if (!id) return undefined;
+  return {
+    gateway: {
+      id,
+      collectLog: false,
+      metadata: { app: "cortex", team: "ops", step }
+    }
+  };
+}
+
 // Operator-authored answer prompt (cortex-answer-prompt.md, 2026-09-01).
 // Requests are assembled as: this system prompt, an "SOP passages" block
 // with labelled passages, then the team member's message.
@@ -291,14 +308,18 @@ export class ChatAgent extends AIChatAgent<Env> {
   @callable()
   async screenPII(text: string): Promise<{ flagged: boolean }> {
     try {
-      const result = (await this.env.AI.run(SCREEN_MODEL, {
-        messages: [
-          { role: "system", content: SCREEN_PROMPT },
-          { role: "user", content: text.slice(0, 2000) }
-        ],
-        temperature: 0,
-        max_tokens: 4
-      })) as { response?: string };
+      const result = (await this.env.AI.run(
+        SCREEN_MODEL,
+        {
+          messages: [
+            { role: "system", content: SCREEN_PROMPT },
+            { role: "user", content: text.slice(0, 2000) }
+          ],
+          temperature: 0,
+          max_tokens: 4
+        },
+        gatewayOptions(this.env, "screen")
+      )) as { response?: string };
       return { flagged: /\byes\b/i.test(result.response ?? "") };
     } catch {
       return { flagged: false };
@@ -498,12 +519,16 @@ export class ChatAgent extends AIChatAgent<Env> {
             ...conversation.slice(0, -1),
             { role: "user" as const, content: userBlock }
           ];
-          const sse = (await this.env.AI.run(GENERATION_MODEL, {
-            messages: genMessages,
-            stream: true,
-            temperature: 0.1,
-            max_tokens: 2400
-          })) as ReadableStream<Uint8Array>;
+          const sse = (await this.env.AI.run(
+            GENERATION_MODEL,
+            {
+              messages: genMessages,
+              stream: true,
+              temperature: 0.1,
+              max_tokens: 2400
+            },
+            gatewayOptions(this.env, "generation")
+          )) as ReadableStream<Uint8Array>;
 
           const reader = sse.getReader();
           const decoder = new TextDecoder();
@@ -537,9 +562,11 @@ export class ChatAgent extends AIChatAgent<Env> {
           say(
             /allocation.?exceeded|7094/i.test(message)
               ? "The Cloudflare AI daily free allocation is used up, so Cortex can't answer until it resets or the account is upgraded to Workers Paid. Tell the Cortex admin."
-              : /rate.?limit/i.test(message)
-                ? "Cortex is briefly rate limited. Wait a few seconds, then send the message again."
-                : "Something went wrong while retrieving the SOPs. Try again; if it keeps failing, check that the AI Search index has completed syncing."
+              : /budget|spend.?limit|cost.?limit/i.test(message)
+                ? "Cortex has hit its monthly AI cost cap, so answers are paused. Tell the Cortex admin to raise the AI Gateway spend limit."
+                : /rate.?limit/i.test(message)
+                  ? "Cortex is briefly rate limited. Wait a few seconds, then send the message again."
+                  : "Something went wrong while retrieving the SOPs. Try again; if it keeps failing, check that the AI Search index has completed syncing."
           );
         } finally {
           if (textStarted) writer.write({ type: "text-end", id: textId });
