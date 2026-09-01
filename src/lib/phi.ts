@@ -1,9 +1,11 @@
 // Shared PHI tripwire — imported by both the Worker agent and the client
 // composer. Pure module: no imports, no side effects.
 //
-// Order matters: proximity rules (DOB, MRN) run before the generic 10-digit
-// phone rule so "MRN 5551234567" reports a medical record number, not a phone
-// number. First match wins and names what tripped.
+// Medical record, chart, and patient numbers are allowed to stay in messages
+// (operator decision 2026-09-01), so there is no MRN block. A bare digit run
+// next to an MRN/chart keyword is exempt from the phone rule, so a 10-digit
+// MRN is not mistaken for a contact number — but a separator-formatted number
+// still blocks as a phone. First match wins and names what tripped.
 
 export type PHICheckResult = { blocked: boolean; reason: string | null };
 
@@ -11,16 +13,17 @@ const SSN = /(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)/;
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 // "/" is deliberately not a phone separator so dates like 04/12/1941 never
 // read as phone numbers. Digit lookarounds stop matches inside longer runs.
+// Global so phoneNotMRN can enumerate every candidate span.
 const PHONE =
-  /(?<!\d)(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/;
+  /(?<!\d)(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/g;
 
 const DOB_KEYWORD = /\b(?:d\.?\s?o\.?\s?b|date\s+of\s+birth|born)\b/gi;
 const DATE =
   /\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}\b/gi;
 
 // "record #" is a separate alternative: \b fails between "#" and whitespace.
+// Kept only to exempt MRN-adjacent digit runs from the phone rule.
 const MRN_KEYWORD = /\b(?:mrn|chart|record\s+number)\b|\brecord\s*#/gi;
-const DIGIT_RUN = /(?<!\d)\d{5,10}(?!\d)/g;
 
 type Span = { start: number; end: number };
 
@@ -103,6 +106,23 @@ export function checkPossiblePII(text: string): string | null {
   return null;
 }
 
+// Phone numbers stay blocked as contact details. The one exemption: a *bare*
+// run of digits (no separators) sitting within 12 characters of an MRN/chart
+// keyword is a medical record number the team is allowed to include. A number
+// written with separators — 415-555-1234, (415) 555-1234 — is always a contact
+// phone, never an MRN, so it blocks even next to the word "chart".
+function phoneNotMRN(text: string): boolean {
+  const phones = spans(text, PHONE);
+  if (phones.length === 0) return false;
+  const keywords = spans(text, MRN_KEYWORD);
+  return phones.some((p) => {
+    if (!/^\d+$/.test(text.slice(p.start, p.end))) return true;
+    return !keywords.some(
+      (k) => Math.max(k.start - p.end, p.start - k.end, 0) <= 12
+    );
+  });
+}
+
 export function checkPHI(text: string): PHICheckResult {
   if (SSN.test(text)) {
     return { blocked: true, reason: "a Social Security number" };
@@ -113,10 +133,7 @@ export function checkPHI(text: string): PHICheckResult {
   if (near(text, DOB_KEYWORD, DATE, 20)) {
     return { blocked: true, reason: "a date of birth" };
   }
-  if (near(text, MRN_KEYWORD, DIGIT_RUN, 12)) {
-    return { blocked: true, reason: "a medical record number" };
-  }
-  if (PHONE.test(text)) {
+  if (phoneNotMRN(text)) {
     return { blocked: true, reason: "a phone number" };
   }
   return { blocked: false, reason: null };

@@ -24,7 +24,7 @@ import {
 import type { ChatAgent, CortexMessage, SOPRef } from "./server";
 
 const PHI_WARNING =
-  "Prototype. Do not paste patient names, dates of birth, MRNs, contact details, or anything identifying.";
+  "Prototype. Do not paste patient names, dates of birth, or contact details. Patient numbers, chart numbers, and MRNs are fine.";
 const MODEL_LABEL = "llama-3.3-70b";
 
 // Scenario templates mirror the ops team's highest-volume task types
@@ -464,7 +464,7 @@ function Conversation({
           placeholder={
             hasConversation
               ? "Add detail or paste another situation"
-              : "Paste the situation. No patient identifiers."
+              : "Paste the situation. No names or contact info."
           }
           className="max-h-[200px] min-h-[70px] resize-none border-0 bg-transparent px-4 pt-3.5 text-[15px] shadow-none placeholder:text-[16px] placeholder:text-muted-foreground/70 focus-visible:border-transparent focus-visible:ring-0"
         />
@@ -474,7 +474,7 @@ function Conversation({
             className="flex cursor-help items-center gap-1.5 text-[13px] text-muted-foreground"
           >
             <ShieldIcon className="h-3.5 w-3.5" />
-            No patient identifiers
+            No names or contact info
           </span>
           <span className="flex items-center gap-3">
             <span className="text-[13px] text-muted-foreground">
@@ -516,8 +516,8 @@ function Conversation({
       <p className="mt-2.5 flex items-start justify-center gap-1.5 px-2 text-center text-[13px] leading-snug text-foreground/75">
         <ShieldIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-orange" />
         <span>
-          Do not paste patient names, dates of birth, MRNs, contact details, or
-          anything identifying.
+          Do not paste patient names, dates of birth, or contact details.
+          Patient numbers, chart numbers, and MRNs are fine.
         </span>
       </p>
       {blockedReason && (

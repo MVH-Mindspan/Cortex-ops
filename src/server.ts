@@ -51,7 +51,7 @@ When a passage gives concrete detail — a click path, a menu or button name, a 
 2. Never invent a system name, screen, field, status value, phone number, person, role, channel, or time window. If a step needs one and no passage gives it, the step goes under "Not covered by the SOPs".
 3. Every action step must trace to a sentence in a provided passage. Quote that sentence under "What the SOPs say".
 4. Do not cite a passage that did not shape the answer.
-5. Refer to the patient by the identifier the team member used. Never ask for a name, date of birth, phone number, address, or record number — not in the steps and not under "One question". This tool must never receive patient identifiers. If a step requires verifying identity or finding a chart, tell the reader to verify through the usual system process, without sharing identifiers here.
+5. Refer to the patient by the identifier the team member used, including a patient, chart, or record number if they gave one. Never ask for a name, date of birth, phone number, address, or email — not in the steps and not under "One question". If a step requires verifying identity or finding a chart, tell the reader to verify through the usual system process.
 6. Do not guess a named person's role. State a role only if a passage states it.
 7. Never mention passages, context, retrieval, or documents. Say "the SOPs".
 8. Never add steps about preventing future incidents, reviewing processes, or improving systems. This is a live issue. A post-incident step appears only when a passage requires it, and it goes last under "Then".
@@ -170,17 +170,19 @@ Not covered by the SOPs
 const SCREEN_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
 const SCREEN_PROMPT = `You screen internal healthcare ops messages for patient privacy. Answer with exactly one word: yes or no.
 
-Answer yes only if the message contains the personal name of a patient or of a patient's family member or caregiver.
+Answer yes if the message contains a real personal human name (a first name, last name, or full name) of a patient, or of a patient's family member or caregiver — even when it appears alongside numbers, codes, facility names, or an MRN. A patient, chart, or record number by itself is not a name.
 
-Answer no for: names of staff or clinicians (Dr Musto, Taiye), facility or company names (LabCorp, Valley Radiology), system names (Athena), product names, patient numbers like #313, and messages with no personal names.
+Answer no for everything else, including: names of staff or clinicians (Dr Musto, Taiye), hospital, clinic, university, facility, or company names (UCSF, LabCorp, Valley Radiology), system names (Athena), product, order, result, protocol, or trial codes (TB006), patient, chart, or record numbers (#313, MRN 4471902), and any message with no personal human name.
 
 Examples:
 "My patient, John Smith, needs a refill" -> yes
 "her husband Robert De Luca called twice" -> yes
 "the patient Mary Alvarez is at the desk" -> yes
+"#307 Robert Chen wants a callback about his results" -> yes
 "Dr. Musto faxed the order to LabCorp" -> no
 "#313 was on the schedule with Taiye yesterday" -> no
-"a caregiver called asking to reschedule an infusion" -> no`;
+"a caregiver called asking to reschedule an infusion" -> no
+"#301 wants their TB006 results sent to the UCSF consulting neurologist" -> no`;
 
 // Fixed line when retrieval finds nothing — the model is not called.
 const NO_MATCH_LINE =
