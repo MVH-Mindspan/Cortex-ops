@@ -3,6 +3,7 @@ import { useAgent } from "agents/react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
 import { Streamdown } from "streamdown";
 import { checkPHI, checkPossiblePII } from "@/lib/phi";
+import { normalizeAnswerMarkdown } from "@/lib/markdown";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -656,7 +657,9 @@ function Conversation({
                   {textOf(message).trim() && (
                     <div className="text-[15px] leading-relaxed [&_a]:font-medium [&_a]:text-brand-blue [&_a]:underline [&_a]:underline-offset-4">
                       <Streamdown>
-                        {linkifySOPs(textOf(message), sopsOf(message))}
+                        {normalizeAnswerMarkdown(
+                          linkifySOPs(textOf(message), sopsOf(message))
+                        )}
                       </Streamdown>
                     </div>
                   )}
