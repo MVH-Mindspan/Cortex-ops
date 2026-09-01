@@ -23,32 +23,32 @@
      tint by nudging the teal percentage (base neutrals in comments). */
   --background: color-mix(
     in oklab,
-    #1f1e1d 90%,
+    #1f1e1d 84%,
     var(--brand-teal)
   ); /* #1f1e1d */
   --foreground: #f4f2ee;
-  --sidebar: color-mix(in oklab, #262523 90%, var(--brand-teal)); /* #262523 */
-  --surface: color-mix(in oklab, #262523 90%, var(--brand-teal));
-  --card: color-mix(in oklab, #262523 90%, var(--brand-teal));
+  --sidebar: color-mix(in oklab, #262523 84%, var(--brand-teal)); /* #262523 */
+  --surface: color-mix(in oklab, #262523 84%, var(--brand-teal));
+  --card: color-mix(in oklab, #262523 84%, var(--brand-teal));
   --card-foreground: #f4f2ee;
-  --popover: color-mix(in oklab, #262523 90%, var(--brand-teal));
+  --popover: color-mix(in oklab, #262523 84%, var(--brand-teal));
   --popover-foreground: #f4f2ee;
   --primary: #c93a0e;
   --primary-foreground: #ffffff;
   --secondary: color-mix(
     in oklab,
-    #2e2c2a 90%,
+    #2e2c2a 84%,
     var(--brand-teal)
   ); /* #2e2c2a */
   --secondary-foreground: #f4f2ee;
-  --muted: color-mix(in oklab, #2e2c2a 90%, var(--brand-teal));
+  --muted: color-mix(in oklab, #2e2c2a 84%, var(--brand-teal));
   --muted-foreground: #9a9590;
-  --accent: color-mix(in oklab, #2e2c2a 88%, var(--brand-teal));
+  --accent: color-mix(in oklab, #2e2c2a 80%, var(--brand-teal));
   --accent-foreground: #f4f2ee;
   --destructive: #e5484d;
   --destructive-foreground: #ffffff;
-  --border: color-mix(in oklab, #3a3836 90%, var(--brand-teal)); /* #3a3836 */
-  --input: color-mix(in oklab, #3a3836 90%, var(--brand-teal));
+  --border: color-mix(in oklab, #3a3836 84%, var(--brand-teal)); /* #3a3836 */
+  --input: color-mix(in oklab, #3a3836 84%, var(--brand-teal));
   --ring: #c93a0e;
 }
 
