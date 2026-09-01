@@ -61,7 +61,9 @@ being retrieved and cited. Each run lists them at the end, and
 npm run export -- --prune
 ```
 
-deletes them (then reindex).
+deletes them (then reindex). Objects from exports made before the manifest
+existed are not tracked: the first run records what it exports, and only
+changes after that are flagged.
 
 ## Notes for operators
 
