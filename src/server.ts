@@ -7,7 +7,7 @@ import {
   type UIMessage
 } from "ai";
 import matter from "gray-matter";
-import { checkPHI } from "./lib/phi";
+import { checkPHI, PII_SCREEN_REASON } from "./lib/phi";
 
 const AI_SEARCH_INSTANCE = "cortex";
 const GENERATION_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
@@ -200,7 +200,9 @@ export type SOPRef = {
 };
 
 export type CortexMessage = UIMessage<
-  { refused?: boolean; reason?: string | null },
+  // `override` is the operator "break glass" flag: set on send to skip the
+  // probabilistic name-screen (never the checkPHI hard identifiers).
+  { refused?: boolean; reason?: string | null; override?: boolean },
   { sops: SOPRef[]; refusal: { reason: string } }
 >;
 
@@ -368,6 +370,7 @@ export class ChatAgent extends AIChatAgent<Env> {
       const meta = (last.metadata ?? {}) as {
         refused?: boolean;
         reason?: string | null;
+        override?: boolean;
       };
       const live = meta.refused ? null : checkPHI(textOf(last));
       if (meta.refused || live?.blocked) {
@@ -377,9 +380,17 @@ export class ChatAgent extends AIChatAgent<Env> {
         );
       }
       // Backstop name screen for anything that reached the server unscreened.
-      const { flagged } = await this.screenPII(textOf(last));
-      if (flagged) {
-        return this.refuse(last.id, "a possible patient name");
+      // "Break glass": an explicit operator override skips this probabilistic
+      // screen only — the checkPHI hard identifiers above are never bypassed.
+      if (meta.override) {
+        console.log(
+          `[cortex] PII name-screen overridden by operator (message ${last.id})`
+        );
+      } else {
+        const { flagged } = await this.screenPII(textOf(last));
+        if (flagged) {
+          return this.refuse(last.id, PII_SCREEN_REASON);
+        }
       }
     }
 

@@ -2,7 +2,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useAgent } from "agents/react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
 import { Streamdown } from "streamdown";
-import { checkPHI, checkPossiblePII } from "@/lib/phi";
+import { checkPHI, checkPossiblePII, PII_SCREEN_REASON } from "@/lib/phi";
 import { normalizeAnswerMarkdown } from "@/lib/markdown";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -436,6 +436,10 @@ function Conversation({
   onTogglePin: (sop: PinnedSOP) => void;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Text of the last message sent, kept so a server-side refusal can restore it
+  // to the composer (the composer is cleared on send and refuse() drops the row
+  // from the thread) — this is what makes "Send anyway" reachable on that path.
+  const lastSentTextRef = useRef("");
   // Live pre-send check, debounced: hard tripwire matches warn early (they
   // will be blocked at send), fuzzy heuristics advise without blocking.
   const [preWarning, setPreWarning] = useState<string | null>(null);
@@ -470,9 +474,15 @@ function Conversation({
       (part: { type: string; data?: unknown }) => {
         if (part.type === "data-refusal") {
           setBlockedReason((part.data as { reason: string }).reason);
+          // Bring the refused text back so the operator can edit it or break
+          // glass — without this the composer is empty and the action is inert.
+          if (lastSentTextRef.current) {
+            setInput(lastSentTextRef.current);
+            requestAnimationFrame(resizeComposer);
+          }
         }
       },
-      [setBlockedReason]
+      [setBlockedReason, setInput, resizeComposer]
     )
   });
 
@@ -488,47 +498,59 @@ function Conversation({
   }, [visibleMessages.length, awaitingSops]);
 
   const [screening, setScreening] = useState(false);
-  const submit = useCallback(async () => {
-    const text = input.trim();
-    if (!text || isStreaming || screening) return;
-    const { blocked, reason } = checkPHI(text);
-    if (blocked) {
-      setBlockedReason(reason);
-      return;
-    }
-    // Model name-screen before anything leaves the composer — a block keeps
-    // the text here for editing. Fail-open on errors; the server re-screens.
-    setScreening(true);
-    try {
-      const screen = (await agent.stub.screenPII(text)) as {
-        flagged: boolean;
-      };
-      if (screen.flagged) {
-        setBlockedReason("a possible patient name");
+  const submit = useCallback(
+    async (options?: { override?: boolean }) => {
+      const text = input.trim();
+      if (!text || isStreaming || screening) return;
+      const { blocked, reason } = checkPHI(text);
+      // Hard identifiers are never break-glass-able — they are deterministic.
+      if (blocked) {
+        setBlockedReason(reason);
         return;
       }
-    } catch {
-      // screening unavailable — proceed, the server backstop still runs
-    } finally {
-      setScreening(false);
-    }
-    setBlockedReason(null);
-    sendMessage({ role: "user", parts: [{ type: "text", text }] });
-    onFirstMessage(threadId, text.slice(0, 48));
-    setInput("");
-    requestAnimationFrame(resizeComposer);
-  }, [
-    input,
-    isStreaming,
-    screening,
-    agent,
-    sendMessage,
-    onFirstMessage,
-    threadId,
-    setInput,
-    setBlockedReason,
-    resizeComposer
-  ]);
+      // Model name-screen before anything leaves the composer — a block keeps
+      // the text here for editing. Fail-open on errors; the server re-screens.
+      // Break glass (options.override) skips the screen on both ends.
+      if (!options?.override) {
+        setScreening(true);
+        try {
+          const screen = (await agent.stub.screenPII(text)) as {
+            flagged: boolean;
+          };
+          if (screen.flagged) {
+            setBlockedReason(PII_SCREEN_REASON);
+            return;
+          }
+        } catch {
+          // screening unavailable — proceed, the server backstop still runs
+        } finally {
+          setScreening(false);
+        }
+      }
+      setBlockedReason(null);
+      lastSentTextRef.current = text;
+      sendMessage({
+        role: "user",
+        parts: [{ type: "text", text }],
+        ...(options?.override ? { metadata: { override: true } } : {})
+      });
+      onFirstMessage(threadId, text.slice(0, 48));
+      setInput("");
+      requestAnimationFrame(resizeComposer);
+    },
+    [
+      input,
+      isStreaming,
+      screening,
+      agent,
+      sendMessage,
+      onFirstMessage,
+      threadId,
+      setInput,
+      setBlockedReason,
+      resizeComposer
+    ]
+  );
 
   const composer = (
     <div>
@@ -611,9 +633,21 @@ function Conversation({
         <Alert variant="destructive" className="mt-3">
           <AlertTitle>Message blocked</AlertTitle>
           <AlertDescription>
-            Looks like this contains {blockedReason}. Remove identifiers before
-            sending.
+            Looks like this contains {blockedReason}.{" "}
+            {blockedReason === PII_SCREEN_REASON && input.trim().length > 0
+              ? "This check can misfire on de-identified messages. If there's no patient name in this one, confirm below to send it."
+              : "Remove identifiers before sending."}
           </AlertDescription>
+          {blockedReason === PII_SCREEN_REASON && input.trim().length > 0 && (
+            <button
+              type="button"
+              onClick={() => void submit({ override: true })}
+              disabled={isStreaming || screening}
+              className="mt-2 w-fit rounded-[6px] border border-destructive/40 px-2.5 py-1 text-[13px] font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            >
+              Confirm no PII included
+            </button>
+          )}
         </Alert>
       )}
     </div>
