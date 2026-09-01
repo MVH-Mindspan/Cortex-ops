@@ -19,26 +19,36 @@
 
   --radius: 0.625rem;
 
-  --background: #1f1e1d;
+  /* Dark neutrals carry a whisper of brand teal via color-mix — tune the
+     tint by nudging the teal percentage (base neutrals in comments). */
+  --background: color-mix(
+    in oklab,
+    #1f1e1d 90%,
+    var(--brand-teal)
+  ); /* #1f1e1d */
   --foreground: #f4f2ee;
-  --sidebar: #262523;
-  --surface: #262523;
-  --card: #262523;
+  --sidebar: color-mix(in oklab, #262523 90%, var(--brand-teal)); /* #262523 */
+  --surface: color-mix(in oklab, #262523 90%, var(--brand-teal));
+  --card: color-mix(in oklab, #262523 90%, var(--brand-teal));
   --card-foreground: #f4f2ee;
-  --popover: #262523;
+  --popover: color-mix(in oklab, #262523 90%, var(--brand-teal));
   --popover-foreground: #f4f2ee;
   --primary: #c93a0e;
   --primary-foreground: #ffffff;
-  --secondary: #2e2c2a;
+  --secondary: color-mix(
+    in oklab,
+    #2e2c2a 90%,
+    var(--brand-teal)
+  ); /* #2e2c2a */
   --secondary-foreground: #f4f2ee;
-  --muted: #2e2c2a;
+  --muted: color-mix(in oklab, #2e2c2a 90%, var(--brand-teal));
   --muted-foreground: #9a9590;
-  --accent: #2e2c2a;
+  --accent: color-mix(in oklab, #2e2c2a 88%, var(--brand-teal));
   --accent-foreground: #f4f2ee;
   --destructive: #e5484d;
   --destructive-foreground: #ffffff;
-  --border: #3a3836;
-  --input: #3a3836;
+  --border: color-mix(in oklab, #3a3836 90%, var(--brand-teal)); /* #3a3836 */
+  --input: color-mix(in oklab, #3a3836 90%, var(--brand-teal));
   --ring: #c93a0e;
 }
 
