@@ -490,7 +490,7 @@ function Conversation({
       <ScrollArea className="min-h-0 flex-1">
         <div className="mx-auto flex min-h-full w-full max-w-[640px] flex-col justify-center px-6 py-10">
           <h1 className="flex items-center justify-center gap-3 text-center font-serif text-[40px] leading-tight text-foreground">
-            <LogoMark className="h-9 w-9 shrink-0 text-brand-orange" />
+            <LogoMark className="h-9 w-9 shrink-0 text-brand-blue" />
             What's the situation?
           </h1>
           <div className="mt-12">{composer}</div>
