@@ -1,3 +1,4 @@
+import { DurableObject } from "cloudflare:workers";
 import { callable, routeAgentRequest } from "agents";
 import { AIChatAgent, type OnChatMessageOptions } from "@cloudflare/ai-chat";
 import {
@@ -338,6 +339,18 @@ export class ChatAgent extends AIChatAgent<Env> {
           writer.write({ type: "text-delta", id: textId, delta });
         };
         try {
+          // 0. Monthly budget gate — before any AI spend.
+          const budgetStub = this.env.USAGE_BUDGET.get(
+            this.env.USAGE_BUDGET.idFromName("global")
+          );
+          const budget = await budgetStub.consume();
+          if (!budget.allowed) {
+            say(
+              "Cortex has reached its monthly usage budget, so answers are paused to cap spend. Tell the Cortex admin to raise the budget."
+            );
+            return;
+          }
+
           // 1. Retrieval only, via AI Search. Near-zero thresholds on
           // purpose: colloquial ops scenarios score 0.1-0.35 against SOP
           // prose and the reranker scores them lower still — quality comes
@@ -582,6 +595,30 @@ export class ChatAgent extends AIChatAgent<Env> {
           file: key
         };
       });
+  }
+}
+
+// Hard monthly spend breaker: one global instance counts answered messages
+// per UTC month and refuses once MONTHLY_MESSAGE_BUDGET is reached. Cloudflare
+// has no platform-level spend cap, so this is the enforcement layer.
+export class UsageBudget extends DurableObject<Env> {
+  async consume(): Promise<{ allowed: boolean; used: number; budget: number }> {
+    const month = new Date().toISOString().slice(0, 7);
+    const sql = this.ctx.storage.sql;
+    sql.exec(
+      "create table if not exists usage (month text primary key, used integer not null default 0)"
+    );
+    const budget = Number(this.env.MONTHLY_MESSAGE_BUDGET ?? "2500");
+    const row = sql
+      .exec("select used from usage where month = ?", month)
+      .toArray()[0];
+    const used = Number(row?.used ?? 0);
+    if (used >= budget) return { allowed: false, used, budget };
+    sql.exec(
+      "insert into usage (month, used) values (?, 1) on conflict(month) do update set used = used + 1",
+      month
+    );
+    return { allowed: true, used: used + 1, budget };
   }
 }
 
