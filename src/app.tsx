@@ -2,7 +2,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useAgent } from "agents/react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
 import { Streamdown } from "streamdown";
-import { checkPHI } from "@/lib/phi";
+import { checkPHI, checkPossiblePII } from "@/lib/phi";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -349,6 +349,28 @@ function Conversation({
   onTogglePin: (sop: PinnedSOP) => void;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Live pre-send check, debounced: hard tripwire matches warn early (they
+  // will be blocked at send), fuzzy heuristics advise without blocking.
+  const [preWarning, setPreWarning] = useState<string | null>(null);
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const text = input.trim();
+      if (!text) {
+        setPreWarning(null);
+        return;
+      }
+      const hard = checkPHI(text);
+      if (hard.blocked) {
+        setPreWarning(`This contains ${hard.reason} and will be blocked.`);
+        return;
+      }
+      const soft = checkPossiblePII(text);
+      setPreWarning(
+        soft ? `This may contain ${soft}. Check it before sending.` : null
+      );
+    }, 350);
+    return () => clearTimeout(id);
+  }, [input]);
 
   const agent = useAgent<ChatAgent>({ agent: "ChatAgent", name: threadId });
 
@@ -466,6 +488,12 @@ function Conversation({
           </span>
         </div>
       </div>
+      {preWarning && (
+        <p className="mt-2.5 flex items-start justify-center gap-1.5 px-2 text-center text-[13px] leading-snug text-amber-400">
+          <ShieldIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{preWarning}</span>
+        </p>
+      )}
       <p className="mt-2.5 flex items-start justify-center gap-1.5 px-2 text-center text-[13px] leading-snug text-foreground/75">
         <ShieldIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-orange" />
         <span>

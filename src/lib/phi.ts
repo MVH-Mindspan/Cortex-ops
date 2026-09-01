@@ -53,6 +53,30 @@ function near(
   return false;
 }
 
+// Softer "possible PII" heuristics for the live pre-send warning. These are
+// deliberately warn-only: they cannot tell a patient name from a staff name
+// ("Dr. Musto", "Taiye"), so they advise instead of blocking. The five hard
+// identifier patterns above remain the blocking layer.
+const NAMED_PHRASE =
+  /\b(?:patient(?:'s)?\s+name\s+is|patient\s+(?:named|called))\s+\S+/i;
+// Case-sensitive on purpose; excludes Dr (staff are routinely named).
+const HONORIFIC_NAME = /\b(?:Mr|Mrs|Ms|Miss)\.?\s+[A-Z][a-z]+/;
+// Capitalized street-name words on purpose: keeps "PET CT" and similar
+// clinical abbreviations from reading as "<number> ... Ct".
+const STREET_ADDRESS =
+  /\b\d{1,6}\s+(?:[A-Z][a-z]{1,15}\s){1,3}(?:[Ss]treet|[Ss]t|[Aa]venue|[Aa]ve|[Rr]oad|[Rr]d|[Bb]oulevard|[Bb]lvd|[Ll]ane|[Ll]n|[Dd]rive|[Dd]r|[Cc]ourt|[Cc]t|[Pp]lace|[Pp]l|[Ww]ay)\b/;
+const MEMBER_ID =
+  /\b(?:member|policy|subscriber|insurance)\s*(?:id|#|number)?\s*[:#]?\s*(?=[A-Za-z0-9-]*\d)[A-Za-z0-9-]{6,}/i;
+
+export function checkPossiblePII(text: string): string | null {
+  if (NAMED_PHRASE.test(text) || HONORIFIC_NAME.test(text)) {
+    return "a possible patient name";
+  }
+  if (STREET_ADDRESS.test(text)) return "a possible street address";
+  if (MEMBER_ID.test(text)) return "a possible insurance or member ID";
+  return null;
+}
+
 export function checkPHI(text: string): PHICheckResult {
   if (SSN.test(text)) {
     return { blocked: true, reason: "a Social Security number" };

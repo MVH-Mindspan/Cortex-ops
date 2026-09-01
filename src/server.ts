@@ -342,18 +342,35 @@ export class ChatAgent extends AIChatAgent<Env> {
           // purpose: colloquial ops scenarios score 0.1-0.35 against SOP
           // prose and the reranker scores them lower still — quality comes
           // from rerank ORDERING plus the passage/file caps below.
-          const results = await this.env.AI_SEARCH.get(
-            AI_SEARCH_INSTANCE
-          ).search({
-            messages: conversation.length
-              ? conversation
-              : [{ role: "user" as const, content: "" }],
-            ai_search_options: {
-              retrieval: { match_threshold: 0.01, max_num_results: 15 },
-              reranking: { enabled: true, match_threshold: 0.001 },
-              query_rewrite: { enabled: true }
+          // AI Search rate-limits bursts (open beta), so retry briefly with
+          // backoff before surfacing an error.
+          const searchOnce = () =>
+            this.env.AI_SEARCH.get(AI_SEARCH_INSTANCE).search({
+              messages: conversation.length
+                ? conversation
+                : [{ role: "user" as const, content: "" }],
+              ai_search_options: {
+                retrieval: { match_threshold: 0.01, max_num_results: 15 },
+                reranking: { enabled: true, match_threshold: 0.001 },
+                query_rewrite: { enabled: true }
+              }
+            });
+          let results: Awaited<ReturnType<typeof searchOnce>> | undefined;
+          for (let attempt = 0; ; attempt++) {
+            try {
+              results = await searchOnce();
+              break;
+            } catch (err) {
+              const message = err instanceof Error ? err.message : String(err);
+              if (attempt < 2 && /rate.?limit/i.test(message)) {
+                await new Promise((resolve) =>
+                  setTimeout(resolve, 1500 * (attempt + 1))
+                );
+                continue;
+              }
+              throw err;
             }
-          });
+          }
           const chunks = (results?.chunks ?? []) as SearchChunk[];
 
           // Per the answer prompt: nothing retrieved -> fixed line, no model.
@@ -447,8 +464,11 @@ export class ChatAgent extends AIChatAgent<Env> {
           }
         } catch (err) {
           console.error("[cortex] answer pipeline failed", err);
+          const message = err instanceof Error ? err.message : String(err);
           say(
-            "Something went wrong while retrieving the SOPs. Try again; if it keeps failing, check that the AI Search index has completed syncing."
+            /rate.?limit/i.test(message)
+              ? "Cortex is briefly rate limited. Wait a few seconds, then send the message again."
+              : "Something went wrong while retrieving the SOPs. Try again; if it keeps failing, check that the AI Search index has completed syncing."
           );
         } finally {
           if (textStarted) writer.write({ type: "text-end", id: textId });
