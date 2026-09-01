@@ -4,6 +4,9 @@
   "main": "src/server.ts",
   "compatibility_date": "2026-06-11",
   "compatibility_flags": ["nodejs_compat"],
+  // Workers Logs (free tier). Nothing Cortex logs contains message text:
+  // schedule ids, purge counts, message ids, and provider error objects only.
+  "observability": { "enabled": true },
   "ai": { "binding": "AI", "remote": true },
   "ai_search_namespaces": [
     { "binding": "AI_SEARCH", "namespace": "default", "remote": true }
@@ -14,7 +17,7 @@
   "assets": {
     "directory": "./public",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/agents/*", "/oauth/*"]
+    "run_worker_first": ["/agents/*"]
   },
   "vars": {
     // Hard monthly cap on answered messages (~$0.005-0.01 each on Workers

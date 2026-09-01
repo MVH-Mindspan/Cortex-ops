@@ -4,17 +4,14 @@
   "private": true,
   "description": "Cortex: Mindspan's internal SOP assistant on Cloudflare Workers",
   "keywords": [
-    "cortex",
-    "mindspan",
-    "cloudflare",
     "agents",
-    "ai"
+    "ai",
+    "cloudflare",
+    "cortex",
+    "mindspan"
   ],
   "license": "MIT",
   "type": "module",
-  "engines": {
-    "node": ">=24"
-  },
   "scripts": {
     "dev": "vite dev",
     "export": "node --env-file-if-exists=.env scripts/export-sops.ts",
@@ -59,6 +56,9 @@
     "typescript": "^6.0.3",
     "vite": "^8.1.0",
     "wrangler": "^4.113.0"
+  },
+  "engines": {
+    "node": ">=24"
   },
   "allowScripts": {
     "core-js-pure@3.49.0": true,
