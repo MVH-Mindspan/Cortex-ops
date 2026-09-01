@@ -1,0 +1,105 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@source "../node_modules/streamdown/dist/*.js";
+
+/* Single dark theme (no toggle): the `dark:` variant is bound to a `.dark`
+   ancestor that is never added, so component dark: utilities stay inert and
+   the dark values live directly on :root. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Mindspan brand + Claude-shell warm dark neutrals.
+   One accent (Mindspan orange) — used for the glyph and active send only. */
+:root {
+  --brand-teal: #083630;
+  --brand-teal-light: #1f514a;
+  --brand-cream: #fbf7f0;
+  --brand-orange: #c93a0e;
+  --brand-blue: #a8d2fb;
+
+  --radius: 0.625rem;
+
+  /* Dark neutrals carry a whisper of brand teal via color-mix — tune the
+     tint by nudging the teal percentage (base neutrals in comments). */
+  --background: color-mix(
+    in oklab,
+    #1f1e1d 84%,
+    var(--brand-teal)
+  ); /* #1f1e1d */
+  --foreground: #f4f2ee;
+  --sidebar: color-mix(in oklab, #262523 84%, var(--brand-teal)); /* #262523 */
+  --surface: color-mix(in oklab, #262523 84%, var(--brand-teal));
+  --card: color-mix(in oklab, #262523 84%, var(--brand-teal));
+  --card-foreground: #f4f2ee;
+  --popover: color-mix(in oklab, #262523 84%, var(--brand-teal));
+  --popover-foreground: #f4f2ee;
+  --primary: #c93a0e;
+  --primary-foreground: #ffffff;
+  --secondary: color-mix(
+    in oklab,
+    #2e2c2a 84%,
+    var(--brand-teal)
+  ); /* #2e2c2a */
+  --secondary-foreground: #f4f2ee;
+  --muted: color-mix(in oklab, #2e2c2a 84%, var(--brand-teal));
+  --muted-foreground: #9a9590;
+  --accent: color-mix(in oklab, #2e2c2a 80%, var(--brand-teal));
+  --accent-foreground: #f4f2ee;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --border: color-mix(in oklab, #3a3836 84%, var(--brand-teal)); /* #3a3836 */
+  --input: color-mix(in oklab, #3a3836 84%, var(--brand-teal));
+  --ring: #c93a0e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-sidebar: var(--sidebar);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand-teal: var(--brand-teal);
+  --color-brand-teal-light: var(--brand-teal-light);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-blue: var(--brand-blue);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
