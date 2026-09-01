@@ -8,16 +8,40 @@ import {
 } from "ai";
 import matter from "gray-matter";
 import { checkPHI, PII_SCREEN_REASON } from "./lib/phi";
+import { DEGEN_SNIFF_CHARS, looksDegenerate } from "./lib/degenerate";
+import {
+  buildPassages,
+  classifyPipelineError,
+  isTruncated,
+  MAX_MESSAGE_CHARS,
+  MAX_OUTPUT_TOKENS,
+  rankSops,
+  textOf,
+  trimHistory,
+  windows,
+  type FileMeta,
+  type GenerationUsage,
+  type PipelineStage,
+  type SearchChunk,
+  type SOPRef,
+  type Turn
+} from "./lib/pipeline";
+import {
+  ANSWER_CUT_SHORT_LINE,
+  BUDGET_PAUSED_LINE,
+  DEGENERATE_GIVE_UP_LINE,
+  messageTooLongLine,
+  NO_MATCH_LINE,
+  PIPELINE_ERROR_LINES
+} from "./lib/copy";
+
+// Re-exported for the client, which types its message parts with SOPRef.
+export type { SOPRef } from "./lib/pipeline";
 
 const AI_SEARCH_INSTANCE = "cortex";
 const GENERATION_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-const MAX_SOPS = 5;
-const HISTORY_LIMIT = 12;
-// Rough character budget for the SOP passages block (~8k tokens).
-const PASSAGE_CHAR_BUDGET = 30_000;
-// Top-ranked SOPs go into context as complete documents (not chunks) so the
-// model can quote every sub-step and click path a first-timer needs.
-const FULL_DOC_COUNT = 3;
+// Where the id of this conversation's purge schedule is kept between wakes.
+const PURGE_SCHEDULE_KEY = "cortex:purge-schedule-id";
 
 // Route Workers AI through the `cortex` AI Gateway for cost/usage analytics and
 // the dollar spend limit. Metrics only (collectLog:false) — request/response
@@ -184,61 +208,41 @@ Examples:
 "a caregiver called asking to reschedule an infusion" -> no
 "#301 wants their TB006 results sent to the UCSF consulting neurologist" -> no`;
 
-// Fixed line when retrieval finds nothing — the model is not called.
-const NO_MATCH_LINE =
-  "No SOP covers this yet. Ask your team lead, then paste their answer here so it can become one.";
-
-export type SOPRef = {
-  title: string;
-  category: string;
-  last_edited: string | null;
-  source_url: string | null;
-  score: number;
-  /** R2 object key, e.g. "appointment-scheduling.md" — lets the client
-   * linkify filename mentions too. Optional: absent on older stored turns. */
-  file?: string;
-};
+// Sampling per attempt of the fp8 collapse guard: two fresh rolls with the
+// production parameters, then one nudged roll to escape a stuck decoding path.
+const GENERATION_PARAMS: {
+  temperature: number;
+  repetition_penalty?: number;
+}[] = [
+  { temperature: 0.1 },
+  { temperature: 0.1 },
+  { temperature: 0.35, repetition_penalty: 1.2 }
+];
 
 export type CortexMessage = UIMessage<
-  // `override` is the operator "break glass" flag: set on send to skip the
-  // probabilistic name-screen (never the checkPHI hard identifiers).
-  { refused?: boolean; reason?: string | null; override?: boolean },
+  {
+    refused?: boolean;
+    reason?: string | null;
+    // `override` is the operator "break glass" flag: set on send to skip the
+    // probabilistic name-screen (never the checkPHI hard identifiers).
+    override?: boolean;
+    // Set on assistant turns that are operator notices (budget, no-match and
+    // error lines) rather than answers, so they are never replayed as history.
+    notice?: boolean;
+  },
   { sops: SOPRef[]; refusal: { reason: string } }
 >;
 
-type SearchChunk = {
-  id?: string;
-  score?: number;
-  text?: string;
-  item?: {
-    key?: string;
-    timestamp?: number;
-    metadata?: Record<string, unknown>;
-  };
-};
+type ChatTurn = { role: "system" | "user" | "assistant"; content: string };
 
-type FileMeta = {
-  title: string;
-  category: string;
-  last_edited: string | null;
-  source_url: string | null;
-  /** Frontmatter-stripped markdown body, for full-document passages. */
-  text: string;
-};
-
-function textOf(message: UIMessage): string {
-  return message.parts
-    .filter((part) => part.type === "text")
-    .map((part) => part.text)
-    .join("\n")
-    .trim();
-}
-
-// Best-effort section label: the first markdown heading in the passage.
-function sectionOf(chunkText: string): string | null {
-  const heading = chunkText.match(/^#{1,6}\s+(.+)$/m);
-  return heading ? heading[1].trim() : null;
-}
+type ConsumeResult =
+  | { kind: "degenerate" }
+  | {
+      kind: "done";
+      aborted: boolean;
+      text: string;
+      usage: GenerationUsage | undefined;
+    };
 
 export class ChatAgent extends AIChatAgent<Env> {
   maxPersistedMessages = 100;
@@ -303,49 +307,54 @@ export class ChatAgent extends AIChatAgent<Env> {
   }
 
   // Model-based patient-name screen. Called by the client before sending and
-  // by onChatMessage as a backstop. Fail-open: screening must never take the
-  // app down, and the regex tripwire still guards the hard identifiers.
+  // by onChatMessage as a backstop. The whole message is screened, in
+  // overlapping windows run in parallel, so a name in the tail of a long
+  // paste is seen. Fail-open: screening must never take the app down, and the
+  // regex tripwire still guards the hard identifiers.
   @callable()
   async screenPII(text: string): Promise<{ flagged: boolean }> {
     try {
-      const result = (await this.env.AI.run(
-        SCREEN_MODEL,
-        {
-          messages: [
-            { role: "system", content: SCREEN_PROMPT },
-            { role: "user", content: text.slice(0, 2000) }
-          ],
-          temperature: 0,
-          max_tokens: 4
-        },
-        gatewayOptions(this.env, "screen")
-      )) as { response?: string };
-      return { flagged: /\byes\b/i.test(result.response ?? "") };
+      const verdicts = await Promise.all(
+        windows(text).map(async (window) => {
+          const result = (await this.env.AI.run(
+            SCREEN_MODEL,
+            {
+              messages: [
+                { role: "system", content: SCREEN_PROMPT },
+                { role: "user", content: window }
+              ],
+              temperature: 0,
+              max_tokens: 4
+            },
+            gatewayOptions(this.env, "screen")
+          )) as { response?: string };
+          return /\byes\b/i.test(result.response ?? "");
+        })
+      );
+      return { flagged: verdicts.some(Boolean) };
     } catch {
       return { flagged: false };
     }
   }
 
-  @callable()
-  async clearConversation(): Promise<void> {
-    this.resetTurnState();
-    this.sql`delete from cf_ai_chat_agent_messages`;
-    this.messages = [];
-    // Built-in bidirectional frame: connected clients reset their local state.
-    this.broadcast(JSON.stringify({ type: "cf_agent_chat_clear" }));
-  }
-
   // Retention: a daily cron (Durable Object alarm under the hood) purges this
-  // conversation once it has had no activity for 7 days. Cron schedules are
-  // idempotent by default, so registering on every start is safe.
-  async onStart() {
+  // conversation once it has had no activity for 7 days. Registered lazily on
+  // the first answered turn — not on every start — so a page load that never
+  // sends a message leaves no alarm behind; cancelled again after a purge.
+  // Cron schedules are idempotent by default, so re-registering is safe.
+  private async ensurePurgeSchedule(): Promise<void> {
     const schedule = await this.schedule(
       "0 3 * * *",
       "purgeStaleConversations"
     );
-    console.log(
-      `[cortex] purge cron registered id=${schedule.id} next=${new Date(schedule.time * 1000).toISOString()}`
-    );
+    await this.ctx.storage.put(PURGE_SCHEDULE_KEY, schedule.id);
+  }
+
+  private async cancelPurgeSchedule(): Promise<void> {
+    const id = await this.ctx.storage.get<string>(PURGE_SCHEDULE_KEY);
+    if (!id) return;
+    await this.cancelSchedule(id);
+    await this.ctx.storage.delete(PURGE_SCHEDULE_KEY);
   }
 
   async purgeStaleConversations() {
@@ -356,12 +365,19 @@ export class ChatAgent extends AIChatAgent<Env> {
         sum(case when created_at > datetime('now', '-7 days') then 1 else 0 end) as recent
       from cf_ai_chat_agent_messages
     `;
+    // Still active: keep the schedule and look again tomorrow.
+    if (Number(row?.recent ?? 0) > 0) return;
     const total = Number(row?.total ?? 0);
-    if (total === 0 || Number(row?.recent ?? 0) > 0) return;
-    this.sql`delete from cf_ai_chat_agent_messages`;
-    this.messages = [];
-    this.broadcast(JSON.stringify({ type: "cf_agent_chat_clear" }));
-    console.log(`[cortex] purged ${total} stale message(s)`);
+    if (total > 0) {
+      this.resetTurnState();
+      this.sql`delete from cf_ai_chat_agent_messages`;
+      this.messages = [];
+      // Built-in bidirectional frame: connected clients reset their state.
+      this.broadcast(JSON.stringify({ type: "cf_agent_chat_clear" }));
+      console.log(`[cortex] purged ${total} stale message(s)`);
+    }
+    // Nothing left to retain: stop waking up for this conversation.
+    await this.cancelPurgeSchedule();
   }
 
   async onChatMessage(_onFinish: unknown, options?: OnChatMessageOptions) {
@@ -394,18 +410,36 @@ export class ChatAgent extends AIChatAgent<Env> {
       }
     }
 
-    const conversation = this.messages
-      .slice(-HISTORY_LIMIT)
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: textOf(m)
-      }))
-      .filter((m) => m.content.length > 0);
+    await this.ensurePurgeSchedule();
+
+    // The conversation the model sees, sized to its window: empty and notice
+    // turns dropped, oldest turns trimmed, the latest message always kept.
+    const conversation = trimHistory(
+      this.messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map(
+          (m): Turn => ({
+            role: m.role as "user" | "assistant",
+            content: textOf(m),
+            notice:
+              (m.metadata as CortexMessage["metadata"] | undefined)?.notice ===
+              true
+          })
+        )
+    );
     const latest = conversation.at(-1);
+    const tooLong =
+      latest?.role === "user" && latest.content.length > MAX_MESSAGE_CHARS;
+    const searchMessages: ChatTurn[] = conversation.length
+      ? conversation.map(({ role, content }) => ({ role, content }))
+      : [{ role: "user", content: "" }];
 
     const stream = createUIMessageStream<CortexMessage>({
       execute: async ({ writer }) => {
+        // One id shared by both ends: the client adopts it from this `start`
+        // chunk and ai-chat persists under it, so a stopped answer reconciles
+        // by id on the next send instead of being duplicated.
+        writer.write({ type: "start", messageId: crypto.randomUUID() });
         const textId = crypto.randomUUID();
         let textStarted = false;
         const say = (delta: string) => {
@@ -415,16 +449,28 @@ export class ChatAgent extends AIChatAgent<Env> {
           }
           writer.write({ type: "text-delta", id: textId, delta });
         };
+        // Operator notices are tagged so they are never replayed as history.
+        const notice = (line: string) => {
+          writer.write({
+            type: "message-metadata",
+            messageMetadata: { notice: true }
+          });
+          say(line);
+        };
+        let stage: PipelineStage = "budget";
         try {
+          if (tooLong) {
+            notice(messageTooLongLine(MAX_MESSAGE_CHARS));
+            return;
+          }
+
           // 0. Monthly budget gate — before any AI spend.
           const budgetStub = this.env.USAGE_BUDGET.get(
             this.env.USAGE_BUDGET.idFromName("global")
           );
           const budget = await budgetStub.consume();
           if (!budget.allowed) {
-            say(
-              "Cortex has reached its monthly usage budget, so answers are paused to cap spend. Tell the Cortex admin to raise the budget."
-            );
+            notice(BUDGET_PAUSED_LINE);
             return;
           }
 
@@ -434,11 +480,10 @@ export class ChatAgent extends AIChatAgent<Env> {
           // from rerank ORDERING plus the passage/file caps below.
           // AI Search rate-limits bursts (open beta), so retry briefly with
           // backoff before surfacing an error.
+          stage = "retrieval";
           const searchOnce = () =>
             this.env.AI_SEARCH.get(AI_SEARCH_INSTANCE).search({
-              messages: conversation.length
-                ? conversation
-                : [{ role: "user" as const, content: "" }],
+              messages: searchMessages,
               ai_search_options: {
                 retrieval: { match_threshold: 0.01, max_num_results: 15 },
                 reranking: { enabled: true, match_threshold: 0.001 },
@@ -465,109 +510,46 @@ export class ChatAgent extends AIChatAgent<Env> {
 
           // Per the answer prompt: nothing retrieved -> fixed line, no model.
           if (chunks.length === 0) {
-            say(NO_MATCH_LINE);
+            notice(NO_MATCH_LINE);
             return;
           }
 
           // 2. Resolve display fields from R2 frontmatter for every source
           // file, emit the ranked top-5 as the sops cards event.
+          stage = "metadata";
           const meta = await this.fileMetaFor(chunks);
-          const ranked = this.rankSops(chunks, meta);
+          const ranked = rankSops(chunks, meta);
           writer.write({ type: "data-sops", id: "sops", data: ranked });
 
-          // 3. Build the labelled "SOP passages" block. The top-ranked SOPs
-          // go in as FULL documents so every sub-step, click path, and field
-          // name is available to quote — chunks alone make thin steps.
-          // Remaining chunks follow for breadth. Titles and Notion links
-          // only, never filenames.
-          let used = 0;
-          let label = 0;
-          const passages: string[] = [];
-          const fullDocFiles = new Set<string>();
-          for (const sop of ranked.slice(0, FULL_DOC_COUNT)) {
-            if (!sop.file) continue;
-            const m = meta.get(sop.file);
-            const body = m?.text.trim();
-            if (!m || !body) continue;
-            if (used + body.length > PASSAGE_CHAR_BUDGET) break;
-            used += body.length;
-            fullDocFiles.add(sop.file);
-            label += 1;
-            passages.push(
-              `[${label}] ${m.title} | full document | ${m.source_url ?? "no link"}\n${body}`
-            );
-          }
-          for (const chunk of chunks) {
-            const key = chunk.item?.key;
-            if (key && fullDocFiles.has(key)) continue;
-            const text = (chunk.text ?? "").trim();
-            if (!text) continue;
-            if (used + text.length > PASSAGE_CHAR_BUDGET) break;
-            used += text.length;
-            const m = key ? meta.get(key) : undefined;
-            const section = sectionOf(text);
-            label += 1;
-            passages.push(
-              `[${label}] ${m?.title ?? "Untitled SOP"}${section ? ` | ${section}` : ""} | ${m?.source_url ?? "no link"}\n${text}`
-            );
-          }
+          // 3. The labelled "SOP passages" block: top SOPs as full documents,
+          // then remaining chunks for breadth (see buildPassages).
+          const { passages } = buildPassages(ranked, chunks, meta);
 
-          // 4. Generation via Workers AI with the operator's answer prompt.
+          // 4. Generation via Workers AI with the operator's answer prompt,
+          // behind the collapse guard.
+          stage = "generation";
           const userBlock = `SOP passages\n\n${passages.join("\n\n")}\n\nTeam member's message:\n\n${latest?.content ?? ""}`;
-          const genMessages = [
-            { role: "system" as const, content: SYSTEM_PROMPT },
-            ...conversation.slice(0, -1),
-            { role: "user" as const, content: userBlock }
+          const genMessages: ChatTurn[] = [
+            { role: "system", content: SYSTEM_PROMPT },
+            ...conversation
+              .slice(0, -1)
+              .map(({ role, content }) => ({ role, content })),
+            { role: "user", content: userBlock }
           ];
-          const sse = (await this.env.AI.run(
-            GENERATION_MODEL,
-            {
-              messages: genMessages,
-              stream: true,
-              temperature: 0.1,
-              max_tokens: 2400
-            },
-            gatewayOptions(this.env, "generation")
-          )) as ReadableStream<Uint8Array>;
-
-          const reader = sse.getReader();
-          const decoder = new TextDecoder();
-          let buffer = "";
-          readLoop: while (true) {
-            if (options?.abortSignal?.aborted) {
-              await reader.cancel();
-              break;
-            }
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() ?? "";
-            for (const line of lines) {
-              if (!line.startsWith("data: ")) continue;
-              const payload = line.slice(6).trim();
-              if (payload === "[DONE]") break readLoop;
-              try {
-                const delta = (JSON.parse(payload) as { response?: string })
-                  .response;
-                if (delta) say(delta);
-              } catch {
-                // ignore malformed keep-alive lines
-              }
-            }
-          }
-        } catch (err) {
-          console.error("[cortex] answer pipeline failed", err);
-          const message = err instanceof Error ? err.message : String(err);
-          say(
-            /allocation.?exceeded|7094/i.test(message)
-              ? "The Cloudflare AI daily free allocation is used up, so Cortex can't answer until it resets or the account is upgraded to Workers Paid. Tell the Cortex admin."
-              : /budget|spend.?limit|cost.?limit/i.test(message)
-                ? "Cortex has hit its monthly AI cost cap, so answers are paused. Tell the Cortex admin to raise the AI Gateway spend limit."
-                : /rate.?limit/i.test(message)
-                  ? "Cortex is briefly rate limited. Wait a few seconds, then send the message again."
-                  : "Something went wrong while retrieving the SOPs. Try again; if it keeps failing, check that the AI Search index has completed syncing."
+          const outcome = await this.generate(
+            genMessages,
+            say,
+            options?.abortSignal
           );
+          if (outcome === "degenerate") {
+            notice(DEGENERATE_GIVE_UP_LINE);
+            return;
+          }
+          if (outcome.truncated) say(`\n\n${ANSWER_CUT_SHORT_LINE}`);
+        } catch (err) {
+          console.error(`[cortex] answer pipeline failed at ${stage}`, err);
+          const message = err instanceof Error ? err.message : String(err);
+          notice(PIPELINE_ERROR_LINES[classifyPipelineError(stage, message)]);
         } finally {
           if (textStarted) writer.write({ type: "text-end", id: textId });
         }
@@ -575,6 +557,115 @@ export class ChatAgent extends AIChatAgent<Env> {
     });
 
     return createUIMessageStreamResponse({ stream });
+  }
+
+  // Streams one answer into `say`, re-rolling when the opening characters
+  // read as the fp8 collapse. Returns "degenerate" once every attempt has
+  // collapsed; otherwise whether the answer was stopped or cut off.
+  private async generate(
+    messages: ChatTurn[],
+    say: (delta: string) => void,
+    abortSignal?: AbortSignal
+  ): Promise<"degenerate" | { aborted: boolean; truncated: boolean }> {
+    for (const [attempt, params] of GENERATION_PARAMS.entries()) {
+      const sse = (await this.env.AI.run(
+        GENERATION_MODEL,
+        {
+          messages,
+          stream: true,
+          max_tokens: MAX_OUTPUT_TOKENS,
+          ...params
+        },
+        gatewayOptions(this.env, "generation")
+      )) as ReadableStream<Uint8Array>;
+      const result = await this.consume(sse, say, abortSignal);
+      if (result.kind === "degenerate") {
+        console.warn(
+          `[cortex] degenerate generation on attempt ${attempt + 1}/${GENERATION_PARAMS.length}, regenerating`
+        );
+        continue;
+      }
+      return {
+        aborted: result.aborted,
+        truncated:
+          !result.aborted &&
+          isTruncated(result.usage, result.text, MAX_OUTPUT_TOKENS)
+      };
+    }
+    return "degenerate";
+  }
+
+  // Reads one Workers AI SSE stream. Text is held back until DEGEN_SNIFF_CHARS
+  // have arrived (or the stream ends) and released only if it does not read
+  // as collapsed; a collapsed stream is cancelled so nothing reaches the UI.
+  private async consume(
+    sse: ReadableStream<Uint8Array>,
+    say: (delta: string) => void,
+    abortSignal?: AbortSignal
+  ): Promise<ConsumeResult> {
+    const reader = sse.getReader();
+    // Cancel promptly on stop, not just at the next read.
+    const onAbort = () => {
+      void reader.cancel().catch(() => undefined);
+    };
+    abortSignal?.addEventListener("abort", onAbort, { once: true });
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let text = "";
+    let held = "";
+    let released = false;
+    let usage: GenerationUsage | undefined;
+    // Returns true when the held sample reads as collapsed.
+    const emit = (delta: string): boolean => {
+      text += delta;
+      if (released) {
+        say(delta);
+        return false;
+      }
+      held += delta;
+      if (held.length < DEGEN_SNIFF_CHARS) return false;
+      if (looksDegenerate(held)) return true;
+      say(held);
+      held = "";
+      released = true;
+      return false;
+    };
+    try {
+      readLoop: while (!abortSignal?.aborted) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6).trim();
+          if (payload === "[DONE]") break readLoop;
+          try {
+            const event = JSON.parse(payload) as {
+              response?: string;
+              usage?: GenerationUsage;
+            };
+            if (event.usage) usage = event.usage;
+            if (event.response && emit(event.response)) {
+              await reader.cancel();
+              return { kind: "degenerate" };
+            }
+          } catch {
+            // ignore malformed keep-alive lines
+          }
+        }
+      }
+    } finally {
+      abortSignal?.removeEventListener("abort", onAbort);
+    }
+    const aborted = abortSignal?.aborted === true;
+    if (!released) {
+      // The stream ended inside the sniff window: judge what arrived.
+      if (!aborted && looksDegenerate(held)) return { kind: "degenerate" };
+      if (held) say(held);
+    }
+    return { kind: "done", aborted, text, usage };
   }
 
   // Refusal path: the sanitize hook already redacted the stored copy; delete
@@ -649,35 +740,6 @@ export class ChatAgent extends AIChatAgent<Env> {
       })
     );
     return new Map(entries);
-  }
-
-  // Dedupe chunks to files, keep each file's best score, cap at MAX_SOPS.
-  private rankSops(
-    chunks: SearchChunk[],
-    meta: Map<string, FileMeta>
-  ): SOPRef[] {
-    const bestByKey = new Map<string, number>();
-    for (const chunk of chunks) {
-      const key = chunk.item?.key;
-      if (!key) continue;
-      const score = chunk.score ?? 0;
-      const prev = bestByKey.get(key);
-      if (prev === undefined || score > prev) bestByKey.set(key, score);
-    }
-    return [...bestByKey.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, MAX_SOPS)
-      .map(([key, score]) => {
-        const m = meta.get(key);
-        return {
-          title: m?.title ?? key,
-          category: m?.category ?? "uncategorized",
-          last_edited: m?.last_edited ?? null,
-          source_url: m?.source_url ?? null,
-          score,
-          file: key
-        };
-      });
   }
 }
 
