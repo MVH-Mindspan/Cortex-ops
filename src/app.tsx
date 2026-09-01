@@ -526,6 +526,13 @@ export default function App() {
           </span>
         </div>
       </div>
+      <p className="mt-2.5 flex items-start justify-center gap-1.5 px-2 text-center text-[13px] leading-snug text-foreground/75">
+        <ShieldIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-orange" />
+        <span>
+          Do not paste patient names, dates of birth, MRNs, contact details, or
+          anything identifying. Use invented scenarios.
+        </span>
+      </p>
       {blockedReason && (
         <Alert variant="destructive" className="mt-3">
           <AlertTitle>Message blocked</AlertTitle>
