@@ -17,6 +17,33 @@ function base(props: IconProps) {
   };
 }
 
+// The Cortex brand mark (public/cortex-mark.png) rendered through a CSS mask
+// so it takes any color via currentColor — white in the header, brand orange
+// as the accent glyph.
+export function LogoMark({ className }: IconProps) {
+  const mask = {
+    maskImage: "url(/cortex-mark.png)",
+    maskSize: "contain",
+    maskRepeat: "no-repeat",
+    maskPosition: "center",
+    WebkitMaskImage: "url(/cortex-mark.png)",
+    WebkitMaskSize: "contain",
+    WebkitMaskRepeat: "no-repeat",
+    WebkitMaskPosition: "center"
+  } as const;
+  return (
+    <span
+      aria-hidden="true"
+      className={className}
+      style={{
+        display: "inline-block",
+        backgroundColor: "currentColor",
+        ...mask
+      }}
+    />
+  );
+}
+
 export function SparkleIcon({ className }: IconProps) {
   return (
     <svg

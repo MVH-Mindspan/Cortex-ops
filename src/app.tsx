@@ -18,7 +18,7 @@ import {
   PlusIcon,
   SearchIcon,
   ShieldIcon,
-  SparkleIcon,
+  LogoMark,
   StopIcon
 } from "@/components/icons";
 import type { ChatAgent, CortexMessage, SOPRef } from "./server";
@@ -299,7 +299,7 @@ const initialThreadId = crypto.randomUUID();
 function PendingSOPs() {
   return (
     <div className="flex items-center gap-3 text-muted-foreground">
-      <SparkleIcon className="h-5 w-5 animate-pulse text-brand-orange" />
+      <LogoMark className="h-5 w-5 animate-pulse text-brand-orange" />
       <span className="text-sm">Finding SOPs</span>
       <Skeleton className="h-4 w-24" />
     </div>
@@ -490,7 +490,7 @@ function Conversation({
       <ScrollArea className="min-h-0 flex-1">
         <div className="mx-auto flex min-h-full w-full max-w-[640px] flex-col justify-center px-6 py-10">
           <h1 className="flex items-center justify-center gap-3 text-center font-serif text-[40px] leading-tight text-foreground">
-            <SparkleIcon className="h-8 w-8 shrink-0 text-brand-orange" />
+            <LogoMark className="h-9 w-9 shrink-0 text-brand-orange" />
             What's the situation?
           </h1>
           <div className="mt-12">{composer}</div>
@@ -666,8 +666,11 @@ export default function App() {
       {sidebarOpen && (
         <aside className="flex w-[284px] shrink-0 flex-col border-r bg-sidebar max-[900px]:fixed max-[900px]:inset-y-0 max-[900px]:left-0 max-[900px]:z-40 max-[900px]:shadow-2xl">
           <div className="flex items-center justify-between px-4 pt-4 pb-2">
-            <span className="font-serif text-[22px] text-foreground">
-              Cortex
+            <span className="flex items-center gap-2">
+              <LogoMark className="h-6 w-6 text-foreground" />
+              <span className="font-serif text-[22px] text-foreground">
+                Cortex
+              </span>
             </span>
             <span className="flex items-center gap-1.5">
               <button
@@ -926,7 +929,7 @@ export default function App() {
           <Suspense
             fallback={
               <div className="flex min-h-0 flex-1 items-center justify-center">
-                <SparkleIcon className="h-6 w-6 animate-pulse text-brand-orange" />
+                <LogoMark className="h-6 w-6 animate-pulse text-brand-orange" />
               </div>
             }
           >
