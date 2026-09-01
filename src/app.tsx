@@ -5,7 +5,6 @@ import { Streamdown } from "streamdown";
 import { checkPHI, checkPossiblePII, PII_SCREEN_REASON } from "@/lib/phi";
 import { normalizeAnswerMarkdown } from "@/lib/markdown";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -203,9 +202,6 @@ function SOPCards({
                     <span className="truncate text-sm font-medium">
                       {displayTitle(sop.title)}
                     </span>
-                    <Badge className="border-brand-orange/40 bg-brand-orange/15 text-brand-orange">
-                      {sop.category}
-                    </Badge>
                   </div>
                   {reason && (
                     <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
