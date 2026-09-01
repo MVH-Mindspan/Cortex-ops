@@ -41,7 +41,10 @@ export function compileLinkers(sops: SOPRef[]): Linker[] {
       ...candidate,
       // Unicode word boundaries: never link inside a longer word
       // ("Referral" in "Referrals"). Optional bold markers are consumed so
-      // the link replaces them rather than nesting inside them.
+      // the link replaces them rather than nesting inside them. The dynamic
+      // part is a regex-escaped SOP title from trusted R2 frontmatter, so
+      // there is no ReDoS surface.
+      // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp
       pattern: new RegExp(
         `(?<![\\p{L}\\p{N}])\\*{0,2}${escapeRegExp(candidate.clean)}\\*{0,2}(?![\\p{L}\\p{N}])`,
         "giu"

@@ -547,7 +547,7 @@ export class ChatAgent extends AIChatAgent<Env> {
           }
           if (outcome.truncated) say(`\n\n${ANSWER_CUT_SHORT_LINE}`);
         } catch (err) {
-          console.error(`[cortex] answer pipeline failed at ${stage}`, err);
+          console.error("[cortex] answer pipeline failed", stage, err);
           const message = err instanceof Error ? err.message : String(err);
           notice(PIPELINE_ERROR_LINES[classifyPipelineError(stage, message)]);
         } finally {
