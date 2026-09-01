@@ -873,10 +873,6 @@ export default function App() {
                 What's the situation?
               </h1>
               <div className="mt-12">{composer}</div>
-              <p className="mt-4 text-center text-[13px] text-muted-foreground">
-                A good paste covers what happened, who's involved by role,
-                what's been tried, and how urgent it is.
-              </p>
             </div>
           </ScrollArea>
         )}
