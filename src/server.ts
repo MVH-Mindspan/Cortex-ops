@@ -466,9 +466,11 @@ export class ChatAgent extends AIChatAgent<Env> {
           console.error("[cortex] answer pipeline failed", err);
           const message = err instanceof Error ? err.message : String(err);
           say(
-            /rate.?limit/i.test(message)
-              ? "Cortex is briefly rate limited. Wait a few seconds, then send the message again."
-              : "Something went wrong while retrieving the SOPs. Try again; if it keeps failing, check that the AI Search index has completed syncing."
+            /allocation.?exceeded|7094/i.test(message)
+              ? "The Cloudflare AI daily free allocation is used up, so Cortex can't answer until it resets or the account is upgraded to Workers Paid. Tell the Cortex admin."
+              : /rate.?limit/i.test(message)
+                ? "Cortex is briefly rate limited. Wait a few seconds, then send the message again."
+                : "Something went wrong while retrieving the SOPs. Try again; if it keeps failing, check that the AI Search index has completed syncing."
           );
         } finally {
           if (textStarted) writer.write({ type: "text-end", id: textId });
