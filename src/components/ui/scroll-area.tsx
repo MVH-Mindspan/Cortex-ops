@@ -16,7 +16,14 @@ function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        // Radix wraps children in a `display:table` div. A table sizes to its
+        // widest descendant, so one unbreakable child (a code block, wide table
+        // or long token in an answer) stretches every sibling to match, and the
+        // viewport's `overflow-x:hidden` then clips that overflow — on a narrow
+        // (mobile) viewport the whole conversation gets cut off. Forcing the
+        // wrapper to `block` keeps it at the viewport width so text wraps and
+        // only the offending element (not its siblings) can overflow.
+        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 [&>div]:!block"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
