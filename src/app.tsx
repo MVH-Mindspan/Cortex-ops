@@ -486,15 +486,18 @@ function Conversation({
   );
 
   if (!hasConversation) {
+    // Native scroll container on purpose: Radix ScrollArea's inner wrapper
+    // doesn't propagate height, so min-h-full collapses and the content
+    // pins to the top instead of centering vertically.
     return (
-      <ScrollArea className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex min-h-full w-full max-w-[640px] flex-col justify-center px-6 py-10">
           <h1 className="text-center font-serif text-[40px] leading-tight text-foreground">
             What's the situation?
           </h1>
           <div className="mt-12">{composer}</div>
         </div>
-      </ScrollArea>
+      </div>
     );
   }
 
