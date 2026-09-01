@@ -1,11 +1,27 @@
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import {
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction
+} from "react";
 import { useAgent } from "agents/react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
+import { DropdownMenu } from "radix-ui";
 import { Streamdown } from "streamdown";
 import { checkPHI, checkPossiblePII, PII_SCREEN_REASON } from "@/lib/phi";
 import { normalizeAnswerMarkdown } from "@/lib/markdown";
+import { displayTitle, linkifySOPs, reasonFor } from "@/lib/linkify";
+import { MAX_MESSAGE_CHARS, type SOPRef } from "@/lib/pipeline";
 import {
   BLOCKED_GUIDANCE,
+  COMPOSER_PLACEHOLDER,
+  COMPOSER_PLACEHOLDER_FOLLOW_UP,
+  composerCounter,
   COPY_ANSWER,
   COPY_DONE,
   COPY_FAILED,
@@ -18,8 +34,12 @@ import {
   LIBRARY_ERROR,
   LIBRARY_LOADING,
   NO_SEARCH_MATCH,
+  PHI_FOOTER,
+  PHI_WARNING,
+  QUICK_STARTS,
   REACH_OUT_FOOTER,
   REACH_OUT_FOOTER_COPIED,
+  REACH_OUT_REASONS,
   REACH_OUT_STARTERS,
   RETRIEVAL_LINES,
   RETRIEVAL_LONG_WAIT,
@@ -46,11 +66,26 @@ import {
   LogoMark,
   StopIcon
 } from "@/components/icons";
-import type { ChatAgent, CortexMessage, SOPRef } from "./server";
+import type { ChatAgent, CortexMessage } from "./server";
 
-const PHI_WARNING =
-  "Prototype. Do not paste patient names, dates of birth, or contact details. Patient numbers, chart numbers, and MRNs are fine.";
 const MODEL_LABEL = "llama-3.3-70b";
+
+// Pre-send name screen: fail open after this long so a dropped socket never
+// holds the composer (the callable RPC would otherwise wait a full minute).
+// The server backstop still screens the message.
+const SCREEN_TIMEOUT_MS = 8_000;
+// A tab hidden this long refetches its thread on return, so a conversation
+// purged server-side in the meantime is not re-posted from the tab's cache.
+const STALE_TAB_MS = 60 * 60 * 1000;
+// The character counter appears this close to the message cap.
+const COUNTER_FROM = MAX_MESSAGE_CHARS - 1_000;
+// Stable identity: an inline object would defeat the memoized answer block.
+const STREAMDOWN_ANIMATION = {
+  animation: "fadeIn",
+  sep: "word",
+  duration: 250,
+  stagger: 12
+} as const;
 
 // Deep link that opens a Slack direct message to the Cortex admin (MVH). Not a
 // secret: it only resolves for people already signed into the Mindspan Slack,
@@ -58,63 +93,6 @@ const MODEL_LABEL = "llama-3.3-70b";
 // all three reasons open the same DM — the reasons are guidance for the person
 // reaching out. To change who this messages, swap the member ID (U…).
 const SLACK_DM_URL = "https://slack.com/app_redirect?channel=U06M2DEP693";
-
-const REACH_OUT_REASONS: { label: string; hint: string }[] = [
-  { label: "Request a new SOP", hint: "No SOP covers your situation" },
-  { label: "Report an issue", hint: "Something's broken or wrong" },
-  { label: "Ask a question", hint: "Anything else" }
-];
-
-// Scenario templates mirror the ops team's highest-volume task types
-// (operator's Month-2 mix). Every template is an invented, identifier-free
-// scenario — they teach the input shape as much as they accelerate it.
-const QUICK_STARTS: { label: string; template: string }[] = [
-  {
-    label: "Follow-up scheduling",
-    template:
-      "A patient's daughter called asking to move next week's follow-up to a different day. The patient gets confused in the mornings and transport needs rebooking. What's the right process?"
-  },
-  {
-    label: "Missing or misrouted order",
-    template:
-      "A LabCorp order we sent last week isn't showing on the patient's chart and the lab says they never received it. How do I track down and re-route the order?"
-  },
-  {
-    label: "Pre-visit prep chase",
-    template:
-      "An initial visit is in three days and the intake survey and MoCA are still missing. The caregiver isn't answering calls. What are the steps?"
-  },
-  {
-    label: "Family complaint or concern",
-    template:
-      "A spouse called upset that they weren't told about a medication change and wants to speak to someone today. How should I handle and route this?"
-  },
-  {
-    label: "Clinical escalation",
-    template:
-      "A caregiver reports the patient became agitated and more confused after starting a new medication this morning. What's the escalation path?"
-  },
-  {
-    label: "External records request",
-    template:
-      "An outside neurology office is asking us to re-fax records with a corrected code so they can process a referral. What's the procedure?"
-  },
-  {
-    label: "Patient tech failure",
-    template:
-      "A patient can't access the portal — the screening code opens a blank page on their tablet. How do I troubleshoot and who do I loop in?"
-  },
-  {
-    label: "Results and next steps",
-    template:
-      "A caregiver is asking whether imaging results are back and what happens next in the workup. What can I share and what's the process?"
-  },
-  {
-    label: "Billing question",
-    template:
-      "An insurer sent a claim back with a coding question on a cognitive assessment visit. What's the correction process?"
-  }
-];
 
 function sopsOf(message: CortexMessage): SOPRef[] | null {
   for (const part of message.parts) {
@@ -133,63 +111,6 @@ function textOf(message: CortexMessage): string {
 function isRenderable(message: CortexMessage): boolean {
   if (message.role === "user") return textOf(message).trim().length > 0;
   return sopsOf(message) !== null || textOf(message).trim().length > 0;
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// Turn SOP title mentions in the streamed answer into Notion links, using the
-// retrieved list as the source of truth. Leading emoji in titles are ignored
-// for matching; longer titles are replaced first so a title that contains
-// another doesn't produce nested links.
-function linkifySOPs(text: string, sops: SOPRef[] | null): string {
-  if (!sops || sops.length === 0) return text;
-  let out = text;
-  const linkable = sops
-    .filter((sop) => sop.source_url)
-    .flatMap((sop) => {
-      const url = sop.source_url as string;
-      const title = sop.title.replace(/^[^\p{L}\p{N}]+/u, "").trim();
-      const candidates: { url: string; clean: string; label?: string }[] = [];
-      if (title.length >= 4) candidates.push({ url, clean: title });
-      if (sop.file && sop.file.length >= 4) {
-        candidates.push({ url, clean: sop.file, label: title || sop.file });
-      }
-      return candidates;
-    })
-    .sort((a, b) => b.clean.length - a.clean.length);
-  for (const sop of linkable) {
-    out = out.replace(
-      new RegExp(`\\*{0,2}${escapeRegExp(sop.clean)}\\*{0,2}`, "gi"),
-      (match, offset: number, full: string) => {
-        const prevOpen = full.lastIndexOf("[", offset);
-        const prevClose = full.lastIndexOf("]", offset);
-        if (prevOpen > prevClose) return match; // already inside a link
-        const text = sop.label ?? match.replace(/\*/g, "");
-        return `[${text}](${sop.url})`;
-      }
-    );
-  }
-  return out;
-}
-
-// Strip a leading emoji from Notion titles for display (no emojis in the UI).
-function displayTitle(title: string): string {
-  return title.replace(/^[^\p{L}\p{N}]+/u, "").trim() || title;
-}
-
-// Pull the model's own citation sentence for a SOP out of the answer text —
-// used as the one-line reason on the result card. Best effort: no quote near
-// the title means no reason line.
-function reasonFor(answer: string, sop: SOPRef): string | null {
-  const clean = displayTitle(sop.title);
-  if (clean.length < 4) return null;
-  const idx = answer.toLowerCase().indexOf(clean.toLowerCase());
-  if (idx === -1) return null;
-  const after = answer.slice(idx, idx + 600);
-  const quote = after.match(/"([^"]{10,220})"/);
-  return quote ? quote[1] : null;
 }
 
 // Pin toggle with a small "stamp" on pin (scale/rotate decelerating to rest).
@@ -216,6 +137,7 @@ function PinButton({
         onToggle();
       }}
       aria-label={isPinned ? "Unpin SOP" : "Pin SOP"}
+      aria-pressed={isPinned}
       className={cn(
         "pressable",
         isPinned
@@ -444,78 +366,63 @@ type LibrarySOP = {
 const initialThreadId = crypto.randomUUID();
 
 // Top-right control: opens a Slack DM to the Cortex admin. Link-out only —
-// nothing is sent from Cortex, so there is no PHI surface here. Menu closes on
-// selection, outside click, or Escape (same lightweight idiom as the sidebar's
-// search toggle and close overlay).
+// nothing is sent from Cortex, so there is no PHI surface here. Built on the
+// Radix dropdown so arrow-key navigation, focus return, and outside-click /
+// Escape dismissal come for free.
 function ReachOutMenu() {
-  const [open, setOpen] = useState(false);
   // Slack deep links can't pre-fill DM text, so selecting a reason copies a
   // starter message instead. The menu stays open for those items — Slack
   // steals focus anyway, and the swapped footer is the receipt waiting when
   // the operator tabs back to paste.
   const [copiedStarter, setCopiedStarter] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
 
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => {
-          setOpen((o) => !o);
-          setCopiedStarter(false);
-        }}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Reach out to the Cortex admin on Slack"
-        className="pressable flex h-8 items-center gap-1.5 rounded-[6px] border px-2.5 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground"
-      >
-        <ChatIcon className="h-4 w-4" />
-        Reach out
-      </button>
-      {open && (
-        <>
-          <button
-            type="button"
-            aria-hidden="true"
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 cursor-default"
-          />
-          <div
-            role="menu"
-            className="animate-in fade-in zoom-in-95 slide-in-from-top-1 duration-200 ease-out-quart absolute right-0 z-50 mt-1.5 w-[256px] origin-top-right rounded-[10px] border bg-popover p-1.5 shadow-xl"
-          >
-            <p className="px-2.5 pt-1.5 pb-1 text-[12px] text-muted-foreground">
-              Message the Cortex admin on Slack
-            </p>
-            {REACH_OUT_REASONS.map((reason) => (
+    <DropdownMenu.Root
+      onOpenChange={(open) => {
+        if (open) setCopiedStarter(false);
+      }}
+    >
+      <DropdownMenu.Trigger asChild>
+        <button
+          type="button"
+          aria-label="Reach out to the Cortex admin on Slack"
+          className="pressable flex h-8 items-center gap-1.5 rounded-[6px] border px-2.5 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground"
+        >
+          <ChatIcon className="h-4 w-4" />
+          Reach out
+        </button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={6}
+          className="animate-in fade-in zoom-in-95 slide-in-from-top-1 duration-200 ease-out-quart z-50 w-[256px] origin-top-right rounded-[10px] border bg-popover p-1.5 shadow-xl outline-none"
+        >
+          <DropdownMenu.Label className="px-2.5 pt-1.5 pb-1 text-[12px] text-muted-foreground">
+            Message the Cortex admin on Slack
+          </DropdownMenu.Label>
+          {REACH_OUT_REASONS.map((reason) => (
+            <DropdownMenu.Item
+              key={reason.label}
+              asChild
+              onSelect={(event) => {
+                const starter = REACH_OUT_STARTERS[reason.label];
+                if (!starter) return;
+                // Keep the menu open so the copied receipt is visible.
+                event.preventDefault();
+                navigator.clipboard.writeText(starter).then(
+                  () => setCopiedStarter(true),
+                  () => {
+                    // clipboard unavailable — the DM still opens
+                  }
+                );
+              }}
+            >
               <a
-                key={reason.label}
-                role="menuitem"
                 href={SLACK_DM_URL}
                 target="_blank"
                 rel="noreferrer"
-                onClick={() => {
-                  const starter = REACH_OUT_STARTERS[reason.label];
-                  if (starter) {
-                    navigator.clipboard.writeText(starter).then(
-                      () => setCopiedStarter(true),
-                      () => {
-                        // clipboard unavailable — the DM still opens
-                      }
-                    );
-                  } else {
-                    setOpen(false);
-                  }
-                }}
-                className="flex flex-col rounded-[6px] px-2.5 py-2 hover:bg-accent"
+                className="flex flex-col rounded-[6px] px-2.5 py-2 outline-none hover:bg-accent data-[highlighted]:bg-accent"
               >
                 <span className="text-[14px] text-foreground">
                   {reason.label}
@@ -524,21 +431,21 @@ function ReachOutMenu() {
                   {reason.hint}
                 </span>
               </a>
-            ))}
-            <p
-              key={copiedStarter ? "copied" : "default"}
-              className={cn(
-                "px-2.5 pt-1 pb-1.5 text-[12px] text-muted-foreground/70",
-                copiedStarter &&
-                  "animate-in fade-in duration-300 text-muted-foreground"
-              )}
-            >
-              {copiedStarter ? REACH_OUT_FOOTER_COPIED : REACH_OUT_FOOTER}
-            </p>
-          </div>
-        </>
-      )}
-    </div>
+            </DropdownMenu.Item>
+          ))}
+          <p
+            key={copiedStarter ? "copied" : "default"}
+            className={cn(
+              "px-2.5 pt-1 pb-1.5 text-[12px] text-muted-foreground/70",
+              copiedStarter &&
+                "animate-in fade-in duration-300 text-muted-foreground"
+            )}
+          >
+            {copiedStarter ? REACH_OUT_FOOTER_COPIED : REACH_OUT_FOOTER}
+          </p>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 
@@ -570,6 +477,107 @@ function PendingSOPs() {
     </div>
   );
 }
+
+// Resolves with `fallback` if the promise takes longer than `ms`.
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  fallback: T
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err: unknown) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
+// Memoized message blocks: the thread re-renders on every streamed delta and
+// every composer keystroke, so each message must be able to skip work when
+// its own inputs are unchanged.
+const UserBubble = memo(function UserBubble({
+  text,
+  fresh
+}: {
+  text: string;
+  fresh: boolean;
+}) {
+  return (
+    <div className="flex justify-end">
+      <div
+        className={cn(
+          "max-w-[80%] rounded-[12px] border bg-surface px-4 py-3 text-[15px] whitespace-pre-wrap",
+          fresh &&
+            "animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out-quart"
+        )}
+      >
+        {text}
+      </div>
+    </div>
+  );
+});
+
+const AssistantMessage = memo(function AssistantMessage({
+  message,
+  streaming,
+  fresh,
+  pinnedKeys,
+  onTogglePin
+}: {
+  message: CortexMessage;
+  streaming: boolean;
+  fresh: boolean;
+  pinnedKeys: Set<string>;
+  onTogglePin: (sop: PinnedSOP) => void;
+}) {
+  const text = textOf(message);
+  const sops = sopsOf(message);
+  // Link + list repair once per text change, not once per render.
+  const rendered = useMemo(
+    () => normalizeAnswerMarkdown(linkifySOPs(text, sops)),
+    [text, sops]
+  );
+  return (
+    // Fade only on the answer block — its streamed text pushes the cards
+    // below it down continuously, and opacity is the one axis that can't
+    // fight that.
+    <div
+      className={cn(
+        "flex flex-col gap-4",
+        fresh && "animate-in fade-in duration-300"
+      )}
+    >
+      {text.trim() && (
+        <div className="text-[15px] leading-relaxed [&_a]:font-medium [&_a]:text-brand-blue [&_a]:underline [&_a]:underline-offset-4">
+          <Streamdown
+            mode="streaming"
+            isAnimating={streaming}
+            caret="circle"
+            animated={STREAMDOWN_ANIMATION}
+          >
+            {rendered}
+          </Streamdown>
+        </div>
+      )}
+      {text.trim() && !streaming && <CopyAnswerButton text={text} />}
+      {sops && (
+        <SOPCards
+          sops={sops}
+          answer={text}
+          pinned={pinnedKeys}
+          onTogglePin={onTogglePin}
+        />
+      )}
+    </div>
+  );
+});
 
 function SidebarRow({
   label,
@@ -605,7 +613,7 @@ function Conversation({
 }: {
   threadId: string;
   input: string;
-  setInput: (value: string) => void;
+  setInput: Dispatch<SetStateAction<string>>;
   blockedReason: string | null;
   setBlockedReason: (reason: string | null) => void;
   textareaRef: { current: HTMLTextAreaElement | null };
@@ -652,6 +660,8 @@ function Conversation({
     CortexMessage
   >({
     agent,
+    // Coalesce streamed deltas: one re-render per ~50ms instead of per token.
+    experimental_throttle: 50,
     onData: useCallback(
       (part: { type: string; data?: unknown }) => {
         if (part.type === "data-refusal") {
@@ -660,7 +670,9 @@ function Conversation({
           // Bring the refused text back so the operator can edit it or break
           // glass — without this the composer is empty and the action is inert.
           if (lastSentTextRef.current) {
-            setInput(lastSentTextRef.current);
+            // Never clobber a draft typed while the request was in flight.
+            const sent = lastSentTextRef.current;
+            setInput((prev) => (prev.trim() ? prev : sent));
             requestAnimationFrame(resizeComposer);
           }
         }
@@ -681,6 +693,40 @@ function Conversation({
   const awaitingSops =
     isStreaming && !(last?.role === "assistant" && sopsOf(last) !== null);
   const hasConversation = visibleMessages.length > 0 || isStreaming;
+
+  // Unmount guard for the async send path: a thread switch while the name
+  // screen is in flight must not set state on the new thread.
+  const aliveRef = useRef(true);
+  useEffect(
+    () => () => {
+      aliveRef.current = false;
+    },
+    []
+  );
+
+  // The recents entry is written only once the server has accepted the first
+  // message (its answer has started to arrive) — never at send time, so a
+  // refused message leaves nothing behind on the device.
+  const recordedRef = useRef(false);
+  useEffect(() => {
+    if (recordedRef.current) return;
+    const firstUser = messages.find(
+      (m) => m.role === "user" && textOf(m).trim().length > 0
+    );
+    const answered = messages.some(
+      (m) => m.role === "assistant" && isRenderable(m)
+    );
+    if (!firstUser || !answered) return;
+    recordedRef.current = true;
+    onFirstMessage(threadId, textOf(firstUser).slice(0, 48));
+  }, [messages, threadId, onFirstMessage]);
+
+  // The empty state and the conversation lay the composer out differently,
+  // so the first send remounts the textarea; hand focus back to it.
+  const composerHadFocusRef = useRef(false);
+  useEffect(() => {
+    if (composerHadFocusRef.current) textareaRef.current?.focus();
+  }, [hasConversation, textareaRef]);
 
   // Follow the stream only while the operator is near the bottom: scrolling
   // up more than 80px disengages, returning re-engages. Instant scroll during
@@ -802,14 +848,18 @@ function Conversation({
         return;
       }
       // Model name-screen before anything leaves the composer — a block keeps
-      // the text here for editing. Fail-open on errors; the server re-screens.
-      // Break glass (options.override) skips the screen on both ends.
+      // the text here for editing. Fail-open on errors and on timeout; the
+      // server re-screens. Break glass (options.override) skips the screen on
+      // both ends.
       if (!options?.override) {
         setScreening(true);
         try {
-          const screen = (await agent.stub.screenPII(text)) as {
-            flagged: boolean;
-          };
+          const screen = await withTimeout(
+            agent.stub.screenPII(text) as Promise<{ flagged: boolean }>,
+            SCREEN_TIMEOUT_MS,
+            { flagged: false }
+          );
+          if (!aliveRef.current) return;
           if (screen.flagged) {
             setBlockedReason(PII_SCREEN_REASON);
             return;
@@ -817,11 +867,14 @@ function Conversation({
         } catch {
           // screening unavailable — proceed, the server backstop still runs
         } finally {
-          setScreening(false);
+          if (aliveRef.current) setScreening(false);
         }
       }
+      if (!aliveRef.current) return;
       setBlockedReason(null);
       lastSentTextRef.current = text;
+      composerHadFocusRef.current =
+        document.activeElement === textareaRef.current;
       // Sending your own message always re-engages follow-scroll, even if
       // you'd scrolled up to re-read an earlier answer.
       nearBottomRef.current = true;
@@ -830,7 +883,6 @@ function Conversation({
         parts: [{ type: "text", text }],
         ...(options?.override ? { metadata: { override: true } } : {})
       });
-      onFirstMessage(threadId, text.slice(0, 48));
       setInput("");
       requestAnimationFrame(resizeComposer);
     },
@@ -840,8 +892,7 @@ function Conversation({
       screening,
       agent,
       sendMessage,
-      onFirstMessage,
-      threadId,
+      textareaRef,
       setInput,
       setBlockedReason,
       resizeComposer
@@ -873,9 +924,11 @@ function Conversation({
           }}
           placeholder={
             hasConversation
-              ? "Add detail or paste another situation"
-              : "Paste the situation. No names or contact info."
+              ? COMPOSER_PLACEHOLDER_FOLLOW_UP
+              : COMPOSER_PLACEHOLDER
           }
+          aria-label="Situation"
+          maxLength={MAX_MESSAGE_CHARS}
           className="max-h-[200px] min-h-[70px] resize-none border-0 bg-transparent px-4 pt-3.5 text-[15px] shadow-none placeholder:text-[16px] placeholder:text-muted-foreground/70 focus-visible:border-transparent focus-visible:ring-0"
         />
         <div className="flex items-center justify-between gap-2 px-3.5 pb-3">
@@ -895,6 +948,19 @@ function Conversation({
               <output className="animate-in fade-in fill-mode-backwards delay-400 duration-300 text-[13px] text-muted-foreground">
                 {SCREENING_LINE}
               </output>
+            ) : input.length >= COUNTER_FROM ? (
+              // Near the cap the model label gives way to a counter; at the
+              // cap it turns amber (the textarea stops accepting input there).
+              <span
+                className={cn(
+                  "text-[13px] tabular-nums",
+                  input.length >= MAX_MESSAGE_CHARS
+                    ? "text-amber-400"
+                    : "text-muted-foreground"
+                )}
+              >
+                {composerCounter(input.length, MAX_MESSAGE_CHARS)}
+              </span>
             ) : (
               <span className="text-[13px] text-muted-foreground">
                 {MODEL_LABEL}
@@ -953,10 +1019,7 @@ function Conversation({
       )}
       <p className="mt-2.5 flex items-start justify-center gap-1.5 px-2 text-center text-[13px] leading-snug text-foreground/75">
         <ShieldIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-orange" />
-        <span>
-          Do not paste patient names, dates of birth, or contact details.
-          Patient numbers, chart numbers, and MRNs are fine.
-        </span>
+        <span>{PHI_FOOTER}</span>
       </p>
       {blockedReason && (
         <Alert variant="destructive" className="mt-3">
@@ -1011,68 +1074,24 @@ function Conversation({
       <ScrollArea className="min-h-0 flex-1">
         <main className="mx-auto w-full max-w-[760px] px-6 py-8">
           <div className="flex flex-col gap-6">
-            {visibleMessages.map((message) => {
-              const freshMessage = !initialIds.has(message.id);
-              if (message.role === "user") {
-                return (
-                  <div key={message.id} className="flex justify-end">
-                    <div
-                      className={cn(
-                        "max-w-[80%] rounded-[12px] border bg-surface px-4 py-3 text-[15px] whitespace-pre-wrap",
-                        freshMessage &&
-                          "animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out-quart"
-                      )}
-                    >
-                      {textOf(message)}
-                    </div>
-                  </div>
-                );
-              }
-              const streamingThis = isStreaming && message.id === last?.id;
-              return (
-                // Fade only on the answer block — its streamed text pushes the
-                // cards below it down continuously, and opacity is the one
-                // axis that can't fight that.
-                <div
+            {visibleMessages.map((message) =>
+              message.role === "user" ? (
+                <UserBubble
                   key={message.id}
-                  className={cn(
-                    "flex flex-col gap-4",
-                    freshMessage && "animate-in fade-in duration-300"
-                  )}
-                >
-                  {textOf(message).trim() && (
-                    <div className="text-[15px] leading-relaxed [&_a]:font-medium [&_a]:text-brand-blue [&_a]:underline [&_a]:underline-offset-4">
-                      <Streamdown
-                        mode="streaming"
-                        isAnimating={streamingThis}
-                        caret="circle"
-                        animated={{
-                          animation: "fadeIn",
-                          sep: "word",
-                          duration: 250,
-                          stagger: 12
-                        }}
-                      >
-                        {normalizeAnswerMarkdown(
-                          linkifySOPs(textOf(message), sopsOf(message))
-                        )}
-                      </Streamdown>
-                    </div>
-                  )}
-                  {textOf(message).trim() && !streamingThis && (
-                    <CopyAnswerButton text={textOf(message)} />
-                  )}
-                  {sopsOf(message) && (
-                    <SOPCards
-                      sops={sopsOf(message)!}
-                      answer={textOf(message)}
-                      pinned={pinnedKeys}
-                      onTogglePin={onTogglePin}
-                    />
-                  )}
-                </div>
-              );
-            })}
+                  text={textOf(message)}
+                  fresh={!initialIds.has(message.id)}
+                />
+              ) : (
+                <AssistantMessage
+                  key={message.id}
+                  message={message}
+                  streaming={isStreaming && message.id === last?.id}
+                  fresh={!initialIds.has(message.id)}
+                  pinnedKeys={pinnedKeys}
+                  onTogglePin={onTogglePin}
+                />
+              )
+            )}
             {firstAnswerHint && (
               <p className="animate-hint-fade text-[13px] text-muted-foreground">
                 {HINT_FIRST_ANSWER}
@@ -1097,6 +1116,25 @@ export default function App() {
   // threadId, so switching threads remounts it: fresh socket, fresh initial
   // fetch, fresh chat state — no reliance on in-place room switching.
   const [threadId, setThreadId] = useState<string>(initialThreadId);
+  // Bumped when the tab returns from a long sleep: the keyed Conversation
+  // remounts and refetches its history instead of trusting a cache that may
+  // predate the server-side purge.
+  const [threadEpoch, setThreadEpoch] = useState(0);
+  useEffect(() => {
+    let hiddenAt: number | null = null;
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
+      if (hiddenAt !== null && Date.now() - hiddenAt >= STALE_TAB_MS) {
+        setThreadEpoch((n) => n + 1);
+      }
+      hiddenAt = null;
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
   const [recents, setRecents] = useState<RecentSituation[]>(() =>
     loadRecents()
   );
@@ -1199,7 +1237,8 @@ export default function App() {
     [pins]
   );
 
-  const pinnedKeys = new Set(pins.map(pinKey));
+  // Memoized: a fresh Set every render would defeat the message memoization.
+  const pinnedKeys = useMemo(() => new Set(pins.map(pinKey)), [pins]);
   const filteredRecents = recentsQuery.trim()
     ? recents.filter((r) =>
         r.title.toLowerCase().includes(recentsQuery.trim().toLowerCase())
@@ -1347,7 +1386,7 @@ export default function App() {
                           type="button"
                           onClick={() => togglePin(pin)}
                           aria-label="Unpin SOP"
-                          className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground"
+                          className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100"
                         >
                           <PinIcon className="h-3.5 w-3.5" />
                         </button>
@@ -1383,6 +1422,7 @@ export default function App() {
                   <input
                     value={recentsQuery}
                     onChange={(e) => setRecentsQuery(e.target.value)}
+                    aria-label="Search recent situations"
                     placeholder="Search situations"
                     className="mx-2.5 mb-2 h-8 w-[calc(100%-20px)] rounded-[6px] border bg-background px-2.5 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-muted-foreground/60"
                   />
@@ -1503,7 +1543,7 @@ export default function App() {
             }
           >
             <Conversation
-              key={threadId}
+              key={`${threadId}:${threadEpoch}`}
               threadId={threadId}
               input={input}
               setInput={setInput}

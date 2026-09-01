@@ -135,3 +135,72 @@ export function messageTooLongLine(max: number): string {
 export function composerCounter(count: number, max: number): string {
   return `${count.toLocaleString("en-US")} / ${max.toLocaleString("en-US")}`;
 }
+
+// --- Composer and sidebar copy ---
+
+export const PHI_FOOTER =
+  "Do not paste patient names, dates of birth, or contact details. Patient numbers, chart numbers, and MRNs are fine.";
+export const PHI_WARNING = `Prototype. ${PHI_FOOTER}`;
+export const COMPOSER_PLACEHOLDER =
+  "Paste the situation. No names or contact info.";
+export const COMPOSER_PLACEHOLDER_FOLLOW_UP =
+  "Add detail or paste another situation";
+
+// "Reach out" menu reasons. All three open the same Slack DM; the reasons
+// are guidance for the person reaching out (see REACH_OUT_STARTERS).
+export const REACH_OUT_REASONS: { label: string; hint: string }[] = [
+  { label: "Request a new SOP", hint: "No SOP covers your situation" },
+  { label: "Report an issue", hint: "Something's broken or wrong" },
+  { label: "Ask a question", hint: "Anything else" }
+];
+
+// Scenario templates mirror the ops team's highest-volume task types
+// (operator's Month-2 mix). Every template is an invented, identifier-free
+// scenario — they teach the input shape as much as they accelerate it.
+export const QUICK_STARTS: { label: string; template: string }[] = [
+  {
+    label: "Follow-up scheduling",
+    template:
+      "A patient's daughter called asking to move next week's follow-up to a different day. The patient gets confused in the mornings and transport needs rebooking. What's the right process?"
+  },
+  {
+    label: "Missing or misrouted order",
+    template:
+      "A LabCorp order we sent last week isn't showing on the patient's chart and the lab says they never received it. How do I track down and re-route the order?"
+  },
+  {
+    label: "Pre-visit prep chase",
+    template:
+      "An initial visit is in three days and the intake survey and MoCA are still missing. The caregiver isn't answering calls. What are the steps?"
+  },
+  {
+    label: "Family complaint or concern",
+    template:
+      "A spouse called upset that they weren't told about a medication change and wants to speak to someone today. How should I handle and route this?"
+  },
+  {
+    label: "Clinical escalation",
+    template:
+      "A caregiver reports the patient became agitated and more confused after starting a new medication this morning. What's the escalation path?"
+  },
+  {
+    label: "External records request",
+    template:
+      "An outside neurology office is asking us to re-fax records with a corrected code so they can process a referral. What's the procedure?"
+  },
+  {
+    label: "Patient tech failure",
+    template:
+      "A patient can't access the portal — the screening code opens a blank page on their tablet. How do I troubleshoot and who do I loop in?"
+  },
+  {
+    label: "Results and next steps",
+    template:
+      "A caregiver is asking whether imaging results are back and what happens next in the workup. What can I share and what's the process?"
+  },
+  {
+    label: "Billing question",
+    template:
+      "An insurer sent a claim back with a coding question on a cognitive assessment visit. What's the correction process?"
+  }
+];
