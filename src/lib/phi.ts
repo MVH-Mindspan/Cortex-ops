@@ -9,6 +9,10 @@
 
 export type PHICheckResult = { blocked: boolean; reason: string | null };
 
+// Shared so the client button gate, the client screen block, and the server
+// refusal all key off one string — the block an operator can break glass past.
+export const PII_SCREEN_REASON = "a possible patient name";
+
 const SSN = /(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)/;
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 // "/" is deliberately not a phone separator so dates like 04/12/1941 never
@@ -99,7 +103,7 @@ export function checkPossiblePII(text: string): string | null {
     relationNameHit(text) ||
     POSSESSIVE_NAME.test(text)
   ) {
-    return "a possible patient name";
+    return PII_SCREEN_REASON;
   }
   if (STREET_ADDRESS.test(text)) return "a possible street address";
   if (MEMBER_ID.test(text)) return "a possible insurance or member ID";
