@@ -147,6 +147,24 @@ What the SOPs say
 Not covered by the SOPs
 - What to tell the patient about self-pay charges. The SOPs do not say. Ask your team lead.`;
 
+// Small fast model that screens messages for patient names the regexes miss.
+// Few-shot examples on purpose: llama-3.2-3b without them misclassified
+// "My patient, Michael Van Havill" as clean.
+const SCREEN_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
+const SCREEN_PROMPT = `You screen internal healthcare ops messages for patient privacy. Answer with exactly one word: yes or no.
+
+Answer yes only if the message contains the personal name of a patient or of a patient's family member or caregiver.
+
+Answer no for: names of staff or clinicians (Dr Musto, Taiye), facility or company names (LabCorp, Valley Radiology), system names (Athena), product names, patient numbers like #313, and messages with no personal names.
+
+Examples:
+"My patient, John Smith, needs a refill" -> yes
+"her husband Robert De Luca called twice" -> yes
+"the patient Mary Alvarez is at the desk" -> yes
+"Dr. Musto faxed the order to LabCorp" -> no
+"#313 was on the schedule with Taiye yesterday" -> no
+"a caregiver called asking to reschedule an infusion" -> no`;
+
 // Fixed line when retrieval finds nothing — the model is not called.
 const NO_MATCH_LINE =
   "No SOP covers this. Ask your team lead, then paste their answer here so we can add it.";
@@ -263,6 +281,26 @@ export class ChatAgent extends AIChatAgent<Env> {
       .sort((a, b) => a.title.localeCompare(b.title));
   }
 
+  // Model-based patient-name screen. Called by the client before sending and
+  // by onChatMessage as a backstop. Fail-open: screening must never take the
+  // app down, and the regex tripwire still guards the hard identifiers.
+  @callable()
+  async screenPII(text: string): Promise<{ flagged: boolean }> {
+    try {
+      const result = (await this.env.AI.run(SCREEN_MODEL, {
+        messages: [
+          { role: "system", content: SCREEN_PROMPT },
+          { role: "user", content: text.slice(0, 2000) }
+        ],
+        temperature: 0,
+        max_tokens: 4
+      })) as { response?: string };
+      return { flagged: /\byes\b/i.test(result.response ?? "") };
+    } catch {
+      return { flagged: false };
+    }
+  }
+
   @callable()
   async clearConversation(): Promise<void> {
     this.resetTurnState();
@@ -314,6 +352,11 @@ export class ChatAgent extends AIChatAgent<Env> {
           last.id,
           meta.reason ?? live?.reason ?? "an identifier"
         );
+      }
+      // Backstop name screen for anything that reached the server unscreened.
+      const { flagged } = await this.screenPII(textOf(last));
+      if (flagged) {
+        return this.refuse(last.id, "a possible patient name");
       }
     }
 

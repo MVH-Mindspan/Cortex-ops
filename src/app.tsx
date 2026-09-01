@@ -400,13 +400,30 @@ function Conversation({
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [visibleMessages.length, awaitingSops]);
 
-  const submit = useCallback(() => {
+  const [screening, setScreening] = useState(false);
+  const submit = useCallback(async () => {
     const text = input.trim();
-    if (!text || isStreaming) return;
+    if (!text || isStreaming || screening) return;
     const { blocked, reason } = checkPHI(text);
     if (blocked) {
       setBlockedReason(reason);
       return;
+    }
+    // Model name-screen before anything leaves the composer — a block keeps
+    // the text here for editing. Fail-open on errors; the server re-screens.
+    setScreening(true);
+    try {
+      const screen = (await agent.stub.screenPII(text)) as {
+        flagged: boolean;
+      };
+      if (screen.flagged) {
+        setBlockedReason("a possible patient name");
+        return;
+      }
+    } catch {
+      // screening unavailable — proceed, the server backstop still runs
+    } finally {
+      setScreening(false);
     }
     setBlockedReason(null);
     sendMessage({ role: "user", parts: [{ type: "text", text }] });
@@ -416,6 +433,8 @@ function Conversation({
   }, [
     input,
     isStreaming,
+    screening,
+    agent,
     sendMessage,
     onFirstMessage,
     threadId,
@@ -439,7 +458,7 @@ function Conversation({
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              submit();
+              void submit();
             }
           }}
           placeholder={
@@ -473,11 +492,11 @@ function Conversation({
             ) : (
               <button
                 type="button"
-                onClick={submit}
-                disabled={!input.trim()}
+                onClick={() => void submit()}
+                disabled={!input.trim() || screening}
                 aria-label="Send"
                 className={
-                  input.trim()
+                  input.trim() && !screening
                     ? "flex h-8 w-8 items-center justify-center rounded-full bg-brand-orange text-white"
                     : "flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
                 }

@@ -68,8 +68,34 @@ const STREET_ADDRESS =
 const MEMBER_ID =
   /\b(?:member|policy|subscriber|insurance)\s*(?:id|#|number)?\s*[:#]?\s*(?=[A-Za-z0-9-]*\d)[A-Za-z0-9-]{6,}/i;
 
+// A relation word (patient, wife, son...) followed closely by a capitalized
+// full name — catches "My patient, Michael Van Havill". Matches whose gap
+// contains a preposition ("patient in Valley Radiology") are discarded in
+// relationNameHit below.
+const RELATION_NAME =
+  /\b(?:patient|caregiver|wife|husband|spouse|son|daughter|mother|father|mom|dad)\b([^.!?\n]{0,20}?)\s(?:[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|Van|De|La|Da|Le|Mac|Mc))+)\b/g;
+
+function relationNameHit(text: string): boolean {
+  for (const match of text.matchAll(RELATION_NAME)) {
+    if (
+      !/\b(?:in|at|from|to|for|with|the|a|an|of|by|near|on)\b/i.test(match[1])
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+// "<First> <Last>'s chart/visit/..." possessives.
+const POSSESSIVE_NAME =
+  /\b[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|Van|De|La|Da|Le))+['']s\s+(?:chart|visit|appointment|record|file|order|results?)\b/;
+
 export function checkPossiblePII(text: string): string | null {
-  if (NAMED_PHRASE.test(text) || HONORIFIC_NAME.test(text)) {
+  if (
+    NAMED_PHRASE.test(text) ||
+    HONORIFIC_NAME.test(text) ||
+    relationNameHit(text) ||
+    POSSESSIVE_NAME.test(text)
+  ) {
     return "a possible patient name";
   }
   if (STREET_ADDRESS.test(text)) return "a possible street address";
