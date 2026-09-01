@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useAgent } from "agents/react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
 import { Streamdown } from "streamdown";
@@ -325,27 +325,29 @@ function SidebarRow({
   );
 }
 
-export default function App() {
-  const [input, setInput] = useState("");
-  const [blockedReason, setBlockedReason] = useState<string | null>(null);
-  // One conversation room per situation: "new situation" navigates to a fresh
-  // room, recents reopen old ones, and the server's 7-day purge cleans up.
-  const [threadId, setThreadId] = useState<string>(initialThreadId);
-  const [recents, setRecents] = useState<RecentSituation[]>(() =>
-    loadRecents()
-  );
-  const [viewMode, setViewMode] = useState<"chat" | "library">("chat");
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() =>
-    typeof window === "undefined"
-      ? true
-      : window.matchMedia("(min-width: 900px)").matches
-  );
-  const [pins, setPins] = useState<PinnedSOP[]>(() => loadPins());
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [recentsQuery, setRecentsQuery] = useState("");
-  const [library, setLibrary] = useState<LibrarySOP[] | null>(null);
-  const [libraryError, setLibraryError] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+function Conversation({
+  threadId,
+  input,
+  setInput,
+  blockedReason,
+  setBlockedReason,
+  textareaRef,
+  resizeComposer,
+  onFirstMessage,
+  pinnedKeys,
+  onTogglePin
+}: {
+  threadId: string;
+  input: string;
+  setInput: (value: string) => void;
+  blockedReason: string | null;
+  setBlockedReason: (reason: string | null) => void;
+  textareaRef: { current: HTMLTextAreaElement | null };
+  resizeComposer: () => void;
+  onFirstMessage: (id: string, title: string) => void;
+  pinnedKeys: Set<string>;
+  onTogglePin: (sop: PinnedSOP) => void;
+}) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const agent = useAgent<ChatAgent>({ agent: "ChatAgent", name: threadId });
@@ -355,11 +357,14 @@ export default function App() {
     CortexMessage
   >({
     agent,
-    onData: useCallback((part: { type: string; data?: unknown }) => {
-      if (part.type === "data-refusal") {
-        setBlockedReason((part.data as { reason: string }).reason);
-      }
-    }, [])
+    onData: useCallback(
+      (part: { type: string; data?: unknown }) => {
+        if (part.type === "data-refusal") {
+          setBlockedReason((part.data as { reason: string }).reason);
+        }
+      },
+      [setBlockedReason]
+    )
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
@@ -373,13 +378,6 @@ export default function App() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [visibleMessages.length, awaitingSops]);
 
-  const resizeComposer = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
-  }, []);
-
   const submit = useCallback(() => {
     const text = input.trim();
     if (!text || isStreaming) return;
@@ -390,77 +388,19 @@ export default function App() {
     }
     setBlockedReason(null);
     sendMessage({ role: "user", parts: [{ type: "text", text }] });
-    setRecents((prev) => {
-      if (prev.some((r) => r.id === threadId)) return prev;
-      const next = [
-        { id: threadId, title: text.slice(0, 48), ts: Date.now() },
-        ...prev
-      ].slice(0, 30);
-      saveRecents(next);
-      return next;
-    });
+    onFirstMessage(threadId, text.slice(0, 48));
     setInput("");
     requestAnimationFrame(resizeComposer);
-  }, [input, isStreaming, sendMessage, resizeComposer, threadId]);
-
-  const insertQuickStart = useCallback(
-    (template: string) => {
-      setInput(template);
-      setBlockedReason(null);
-      requestAnimationFrame(() => {
-        resizeComposer();
-        textareaRef.current?.focus();
-      });
-    },
-    [resizeComposer]
-  );
-
-  const newSituation = useCallback(() => {
-    setThreadId(crypto.randomUUID());
-    setViewMode("chat");
-    setInput("");
-    setBlockedReason(null);
-    requestAnimationFrame(() => textareaRef.current?.focus());
-  }, []);
-
-  const openRecent = useCallback((id: string) => {
-    setThreadId(id);
-    setViewMode("chat");
-    setInput("");
-    setBlockedReason(null);
-  }, []);
-
-  const openLibrary = useCallback(() => {
-    setViewMode("library");
-    setLibraryError(false);
-    if (library === null) {
-      agent.stub
-        .listSOPs()
-        .then((sops: unknown) => setLibrary(sops as LibrarySOP[]))
-        .catch(() => setLibraryError(true));
-    }
-  }, [agent, library]);
-
-  const togglePin = useCallback((sop: PinnedSOP) => {
-    setPins((prev) => {
-      const key = pinKey(sop);
-      const next = prev.some((p) => pinKey(p) === key)
-        ? prev.filter((p) => pinKey(p) !== key)
-        : [
-            ...prev,
-            { title: sop.title, source_url: sop.source_url, file: sop.file }
-          ];
-      savePins(next);
-      return next;
-    });
-  }, []);
-
-  const pinnedKeys = new Set(pins.map(pinKey));
-  const filteredRecents = recentsQuery.trim()
-    ? recents.filter((r) =>
-        r.title.toLowerCase().includes(recentsQuery.trim().toLowerCase())
-      )
-    : recents;
+  }, [
+    input,
+    isStreaming,
+    sendMessage,
+    onFirstMessage,
+    threadId,
+    setInput,
+    setBlockedReason,
+    resizeComposer
+  ]);
 
   const composer = (
     <div>
@@ -485,7 +425,7 @@ export default function App() {
               ? "Add detail or paste another situation"
               : "Paste the situation. No patient identifiers."
           }
-          className="min-h-[70px] resize-none border-0 bg-transparent px-4 pt-3.5 text-[15px] shadow-none placeholder:text-[16px] placeholder:text-muted-foreground/70 focus-visible:border-transparent focus-visible:ring-0"
+          className="max-h-[200px] min-h-[70px] resize-none border-0 bg-transparent px-4 pt-3.5 text-[15px] shadow-none placeholder:text-[16px] placeholder:text-muted-foreground/70 focus-visible:border-transparent focus-visible:ring-0"
         />
         <div className="flex items-center justify-between gap-2 px-3.5 pb-3">
           <span
@@ -544,6 +484,164 @@ export default function App() {
       )}
     </div>
   );
+
+  if (!hasConversation) {
+    return (
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="mx-auto flex min-h-full w-full max-w-[640px] flex-col justify-center px-6 py-10">
+          <h1 className="flex items-center justify-center gap-3 text-center font-serif text-[40px] leading-tight text-foreground">
+            <SparkleIcon className="h-8 w-8 shrink-0 text-brand-orange" />
+            What's the situation?
+          </h1>
+          <div className="mt-12">{composer}</div>
+        </div>
+      </ScrollArea>
+    );
+  }
+
+  return (
+    <>
+      <ScrollArea className="min-h-0 flex-1">
+        <main className="mx-auto w-full max-w-[760px] px-6 py-8">
+          <div className="flex flex-col gap-6">
+            {visibleMessages.map((message) =>
+              message.role === "user" ? (
+                <div key={message.id} className="flex justify-end">
+                  <div className="max-w-[80%] rounded-[12px] border bg-surface px-4 py-3 text-[15px] whitespace-pre-wrap">
+                    {textOf(message)}
+                  </div>
+                </div>
+              ) : (
+                <div key={message.id} className="flex flex-col gap-4">
+                  {textOf(message).trim() && (
+                    <div className="text-[15px] leading-relaxed [&_a]:font-medium [&_a]:text-brand-blue [&_a]:underline [&_a]:underline-offset-4">
+                      <Streamdown>
+                        {linkifySOPs(textOf(message), sopsOf(message))}
+                      </Streamdown>
+                    </div>
+                  )}
+                  {sopsOf(message) && (
+                    <SOPCards
+                      sops={sopsOf(message)!}
+                      answer={textOf(message)}
+                      pinned={pinnedKeys}
+                      onTogglePin={onTogglePin}
+                    />
+                  )}
+                </div>
+              )
+            )}
+            {awaitingSops && <PendingSOPs />}
+            <div ref={bottomRef} />
+          </div>
+        </main>
+      </ScrollArea>
+      <div className="shrink-0 p-6">
+        <div className="mx-auto w-full max-w-[760px]">{composer}</div>
+      </div>
+    </>
+  );
+}
+
+export default function App() {
+  const [input, setInput] = useState("");
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
+  // One conversation room per situation. The Conversation subtree is keyed by
+  // threadId, so switching threads remounts it: fresh socket, fresh initial
+  // fetch, fresh chat state — no reliance on in-place room switching.
+  const [threadId, setThreadId] = useState<string>(initialThreadId);
+  const [recents, setRecents] = useState<RecentSituation[]>(() =>
+    loadRecents()
+  );
+  const [viewMode, setViewMode] = useState<"chat" | "library">("chat");
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() =>
+    typeof window === "undefined"
+      ? true
+      : window.matchMedia("(min-width: 900px)").matches
+  );
+  const [pins, setPins] = useState<PinnedSOP[]>(() => loadPins());
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [recentsQuery, setRecentsQuery] = useState("");
+  const [library, setLibrary] = useState<LibrarySOP[] | null>(null);
+  const [libraryError, setLibraryError] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Dedicated connection for RPC that isn't tied to any one conversation.
+  const rpcAgent = useAgent<ChatAgent>({ agent: "ChatAgent", name: "app-rpc" });
+
+  const resizeComposer = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, []);
+
+  const insertQuickStart = useCallback(
+    (template: string) => {
+      setInput(template);
+      setBlockedReason(null);
+      requestAnimationFrame(() => {
+        resizeComposer();
+        textareaRef.current?.focus();
+      });
+    },
+    [resizeComposer]
+  );
+
+  const newSituation = useCallback(() => {
+    setThreadId(crypto.randomUUID());
+    setViewMode("chat");
+    setInput("");
+    setBlockedReason(null);
+  }, []);
+
+  const openRecent = useCallback((id: string) => {
+    setThreadId(id);
+    setViewMode("chat");
+    setInput("");
+    setBlockedReason(null);
+  }, []);
+
+  const recordRecent = useCallback((id: string, title: string) => {
+    setRecents((prev) => {
+      if (prev.some((r) => r.id === id)) return prev;
+      const next = [{ id, title, ts: Date.now() }, ...prev].slice(0, 30);
+      saveRecents(next);
+      return next;
+    });
+  }, []);
+
+  const openLibrary = useCallback(() => {
+    setViewMode("library");
+    setLibraryError(false);
+    if (library === null) {
+      rpcAgent.stub
+        .listSOPs()
+        .then((sops: unknown) => setLibrary(sops as LibrarySOP[]))
+        .catch(() => setLibraryError(true));
+    }
+  }, [rpcAgent, library]);
+
+  const togglePin = useCallback((sop: PinnedSOP) => {
+    setPins((prev) => {
+      const key = pinKey(sop);
+      const next = prev.some((p) => pinKey(p) === key)
+        ? prev.filter((p) => pinKey(p) !== key)
+        : [
+            ...prev,
+            { title: sop.title, source_url: sop.source_url, file: sop.file }
+          ];
+      savePins(next);
+      return next;
+    });
+  }, []);
+
+  const pinnedKeys = new Set(pins.map(pinKey));
+  const filteredRecents = recentsQuery.trim()
+    ? recents.filter((r) =>
+        r.title.toLowerCase().includes(recentsQuery.trim().toLowerCase())
+      )
+    : recents;
 
   return (
     <div className="flex h-full">
@@ -824,57 +922,28 @@ export default function App() {
                   ))}
             </div>
           </ScrollArea>
-        ) : hasConversation ? (
-          <>
-            <ScrollArea className="min-h-0 flex-1">
-              <div className="mx-auto w-full max-w-[760px] px-6 py-8">
-                <div className="flex flex-col gap-6">
-                  {visibleMessages.map((message) =>
-                    message.role === "user" ? (
-                      <div key={message.id} className="flex justify-end">
-                        <div className="max-w-[80%] rounded-[12px] bg-surface border px-4 py-3 text-[15px] whitespace-pre-wrap">
-                          {textOf(message)}
-                        </div>
-                      </div>
-                    ) : (
-                      <div key={message.id} className="flex flex-col gap-4">
-                        {textOf(message).trim() && (
-                          <div className="text-[15px] leading-relaxed [&_a]:font-medium [&_a]:text-brand-blue [&_a]:underline [&_a]:underline-offset-4">
-                            <Streamdown>
-                              {linkifySOPs(textOf(message), sopsOf(message))}
-                            </Streamdown>
-                          </div>
-                        )}
-                        {sopsOf(message) && (
-                          <SOPCards
-                            sops={sopsOf(message)!}
-                            answer={textOf(message)}
-                            pinned={pinnedKeys}
-                            onTogglePin={togglePin}
-                          />
-                        )}
-                      </div>
-                    )
-                  )}
-                  {awaitingSops && <PendingSOPs />}
-                  <div ref={bottomRef} />
-                </div>
-              </div>
-            </ScrollArea>
-            <div className="shrink-0 p-6">
-              <div className="mx-auto w-full max-w-[760px]">{composer}</div>
-            </div>
-          </>
         ) : (
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="mx-auto flex min-h-full w-full max-w-[640px] flex-col justify-center px-6 py-10">
-              <h1 className="flex items-center justify-center gap-3 text-center font-serif text-[40px] leading-tight text-foreground">
-                <SparkleIcon className="h-8 w-8 shrink-0 text-brand-orange" />
-                What's the situation?
-              </h1>
-              <div className="mt-12">{composer}</div>
-            </div>
-          </ScrollArea>
+          <Suspense
+            fallback={
+              <div className="flex min-h-0 flex-1 items-center justify-center">
+                <SparkleIcon className="h-6 w-6 animate-pulse text-brand-orange" />
+              </div>
+            }
+          >
+            <Conversation
+              key={threadId}
+              threadId={threadId}
+              input={input}
+              setInput={setInput}
+              blockedReason={blockedReason}
+              setBlockedReason={setBlockedReason}
+              textareaRef={textareaRef}
+              resizeComposer={resizeComposer}
+              onFirstMessage={recordRecent}
+              pinnedKeys={pinnedKeys}
+              onTogglePin={togglePin}
+            />
+          </Suspense>
         )}
       </main>
     </div>
