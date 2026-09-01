@@ -4,10 +4,34 @@ import { useAgentChat } from "@cloudflare/ai-chat/react";
 import { Streamdown } from "streamdown";
 import { checkPHI, checkPossiblePII, PII_SCREEN_REASON } from "@/lib/phi";
 import { normalizeAnswerMarkdown } from "@/lib/markdown";
+import {
+  BLOCKED_GUIDANCE,
+  COPY_ANSWER,
+  COPY_DONE,
+  COPY_FAILED,
+  EMPTY_PINS,
+  EMPTY_RECENTS,
+  greetingForHour,
+  hardBlockWarning,
+  HINT_FIRST_ANSWER,
+  HINT_FIRST_PIN,
+  LIBRARY_ERROR,
+  LIBRARY_LOADING,
+  NO_SEARCH_MATCH,
+  REACH_OUT_FOOTER,
+  REACH_OUT_FOOTER_COPIED,
+  REACH_OUT_STARTERS,
+  RETRIEVAL_LINES,
+  RETRIEVAL_LONG_WAIT,
+  SCREENING_LINE,
+  softPIIWarning,
+  THANKS_LINE,
+  THANKS_RE
+} from "@/lib/copy";
+import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowUpIcon,
@@ -168,6 +192,85 @@ function reasonFor(answer: string, sop: SOPRef): string | null {
   return quote ? quote[1] : null;
 }
 
+// Pin toggle with a small "stamp" on pin (scale/rotate decelerating to rest).
+// The icon is remounted via key so the animation retriggers; `stamped` stays
+// false until the first interaction so history replays mount silently. Unpin
+// never animates — removal is instant.
+function PinButton({
+  isPinned,
+  onToggle,
+  iconClass = "h-4 w-4",
+  className
+}: {
+  isPinned: boolean;
+  onToggle: () => void;
+  iconClass?: string;
+  className?: string;
+}) {
+  const [stamped, setStamped] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (!isPinned) setStamped(true);
+        onToggle();
+      }}
+      aria-label={isPinned ? "Unpin SOP" : "Pin SOP"}
+      className={cn(
+        "pressable",
+        isPinned
+          ? "text-brand-orange"
+          : "text-muted-foreground hover:text-foreground",
+        className
+      )}
+    >
+      <PinIcon
+        key={isPinned ? "pinned" : "unpinned"}
+        className={cn(iconClass, isPinned && stamped && "animate-pin-stamp")}
+      />
+    </button>
+  );
+}
+
+// End-of-answer action: operators relay answers into Slack threads and call
+// notes. Copies the raw answer text — Notion links are already inline and the
+// text contains no identifiers by construction.
+function CopyAnswerButton({ text }: { text: string }) {
+  const [state, setState] = useState<"idle" | "done" | "failed">("idle");
+  const revertRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (revertRef.current) clearTimeout(revertRef.current);
+    },
+    []
+  );
+  return (
+    <div className="animate-rise-in">
+      <button
+        type="button"
+        aria-label="Copy answer to clipboard"
+        onClick={() => {
+          navigator.clipboard.writeText(text).then(
+            () => {
+              setState("done");
+              if (revertRef.current) clearTimeout(revertRef.current);
+              revertRef.current = setTimeout(() => setState("idle"), 2000);
+            },
+            () => setState("failed")
+          );
+        }}
+        className="text-[13px] font-medium text-muted-foreground hover:text-foreground"
+      >
+        {state === "idle"
+          ? COPY_ANSWER
+          : state === "done"
+            ? COPY_DONE
+            : COPY_FAILED}
+      </button>
+    </div>
+  );
+}
+
 function SOPCards({
   sops,
   answer,
@@ -179,19 +282,45 @@ function SOPCards({
   pinned: Set<string>;
   onTogglePin: (sop: PinnedSOP) => void;
 }) {
+  // Live retrieval mounts the cards before any answer text exists; a history
+  // replay arrives with the answer already present. Only the live case gets
+  // the staggered entrance — a replayed thread fades in as one unit.
+  // (Lazy useState = captured once at mount, never re-evaluated.)
+  const [fresh] = useState(() => answer.trim().length === 0);
+  const [pinHint, setPinHint] = useState(false);
+  useEffect(() => {
+    if (!pinHint) return;
+    const t = setTimeout(() => setPinHint(false), 5000);
+    return () => clearTimeout(t);
+  }, [pinHint]);
   if (sops.length === 0) return null;
   return (
     <div>
-      <p className="mb-2 text-[13px] font-medium text-muted-foreground">
+      <p
+        className={cn(
+          "mb-2 text-[13px] font-medium text-muted-foreground",
+          fresh && "animate-in fade-in duration-300"
+        )}
+      >
         Relevant SOPs
       </p>
       <div className="flex flex-col gap-2">
         {sops.map((sop, rank) => {
           const reason = reasonFor(answer, sop);
+          const isPinned = pinned.has(pinKey(sop));
           return (
             <Card
               key={sop.title + String(sop.score)}
-              className="flex-row items-center justify-between gap-3 rounded-[12px] px-4 py-3"
+              className={cn(
+                "flex-row items-center justify-between gap-3 rounded-[12px] px-4 py-3",
+                fresh &&
+                  "animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 ease-out-quart"
+              )}
+              style={
+                fresh
+                  ? { animationDelay: `${Math.min(rank, 4) * 50}ms` }
+                  : undefined
+              }
             >
               <div className="flex min-w-0 items-start gap-3">
                 <span className="mt-0.5 w-4 shrink-0 text-right text-[13px] text-muted-foreground">
@@ -221,29 +350,36 @@ function SOPCards({
                     Open in Notion
                   </a>
                 )}
-                <button
-                  type="button"
-                  onClick={() =>
+                <PinButton
+                  isPinned={isPinned}
+                  onToggle={() => {
+                    if (!isPinned) {
+                      try {
+                        if (!localStorage.getItem("cortex-hint-pin")) {
+                          localStorage.setItem("cortex-hint-pin", "1");
+                          setPinHint(true);
+                        }
+                      } catch {
+                        // storage unavailable — skip the hint
+                      }
+                    }
                     onTogglePin({
                       title: sop.title,
                       source_url: sop.source_url,
                       file: sop.file
-                    })
-                  }
-                  aria-label={pinned.has(pinKey(sop)) ? "Unpin SOP" : "Pin SOP"}
-                  className={
-                    pinned.has(pinKey(sop))
-                      ? "text-brand-orange"
-                      : "text-muted-foreground hover:text-foreground"
-                  }
-                >
-                  <PinIcon className="h-4 w-4" />
-                </button>
+                    });
+                  }}
+                />
               </div>
             </Card>
           );
         })}
       </div>
+      {pinHint && (
+        <p className="animate-hint-fade mt-2 text-[13px] text-muted-foreground">
+          {HINT_FIRST_PIN}
+        </p>
+      )}
     </div>
   );
 }
@@ -313,6 +449,11 @@ const initialThreadId = crypto.randomUUID();
 // search toggle and close overlay).
 function ReachOutMenu() {
   const [open, setOpen] = useState(false);
+  // Slack deep links can't pre-fill DM text, so selecting a reason copies a
+  // starter message instead. The menu stays open for those items — Slack
+  // steals focus anyway, and the swapped footer is the receipt waiting when
+  // the operator tabs back to paste.
+  const [copiedStarter, setCopiedStarter] = useState(false);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -326,11 +467,14 @@ function ReachOutMenu() {
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setOpen((o) => !o);
+          setCopiedStarter(false);
+        }}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Reach out to the Cortex admin on Slack"
-        className="flex h-8 items-center gap-1.5 rounded-[6px] border px-2.5 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground"
+        className="pressable flex h-8 items-center gap-1.5 rounded-[6px] border px-2.5 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground"
       >
         <ChatIcon className="h-4 w-4" />
         Reach out
@@ -346,7 +490,7 @@ function ReachOutMenu() {
           />
           <div
             role="menu"
-            className="absolute right-0 z-50 mt-1.5 w-[256px] rounded-[10px] border bg-popover p-1.5 shadow-xl"
+            className="animate-in fade-in zoom-in-95 slide-in-from-top-1 duration-200 ease-out-quart absolute right-0 z-50 mt-1.5 w-[256px] origin-top-right rounded-[10px] border bg-popover p-1.5 shadow-xl"
           >
             <p className="px-2.5 pt-1.5 pb-1 text-[12px] text-muted-foreground">
               Message the Cortex admin on Slack
@@ -358,7 +502,19 @@ function ReachOutMenu() {
                 href={SLACK_DM_URL}
                 target="_blank"
                 rel="noreferrer"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  const starter = REACH_OUT_STARTERS[reason.label];
+                  if (starter) {
+                    navigator.clipboard.writeText(starter).then(
+                      () => setCopiedStarter(true),
+                      () => {
+                        // clipboard unavailable — the DM still opens
+                      }
+                    );
+                  } else {
+                    setOpen(false);
+                  }
+                }}
                 className="flex flex-col rounded-[6px] px-2.5 py-2 hover:bg-accent"
               >
                 <span className="text-[14px] text-foreground">
@@ -369,8 +525,15 @@ function ReachOutMenu() {
                 </span>
               </a>
             ))}
-            <p className="px-2.5 pt-1 pb-1.5 text-[12px] text-muted-foreground/70">
-              Opens a Slack DM.
+            <p
+              key={copiedStarter ? "copied" : "default"}
+              className={cn(
+                "px-2.5 pt-1 pb-1.5 text-[12px] text-muted-foreground/70",
+                copiedStarter &&
+                  "animate-in fade-in duration-300 text-muted-foreground"
+              )}
+            >
+              {copiedStarter ? REACH_OUT_FOOTER_COPIED : REACH_OUT_FOOTER}
             </p>
           </div>
         </>
@@ -379,12 +542,31 @@ function ReachOutMenu() {
   );
 }
 
+// Retrieval wait: the lines advance through the real pipeline stages and hold
+// on the last (never loop) — progress, not flavor. Mounts fresh per retrieval,
+// so the timers reset for free; removal is instant (the cards fading in over
+// it reads as a crossfade).
 function PendingSOPs() {
+  const [step, setStep] = useState(0);
+  const [longWait, setLongWait] = useState(false);
+  useEffect(() => {
+    const advance = setInterval(
+      () => setStep((s) => Math.min(s + 1, RETRIEVAL_LINES.length - 1)),
+      2500
+    );
+    const long = setTimeout(() => setLongWait(true), 10000);
+    return () => {
+      clearInterval(advance);
+      clearTimeout(long);
+    };
+  }, []);
+  const line = longWait ? RETRIEVAL_LONG_WAIT : RETRIEVAL_LINES[step];
   return (
-    <div className="flex items-center gap-3 text-muted-foreground">
-      <LogoMark className="h-5 w-5 animate-pulse text-brand-orange" />
-      <span className="text-sm">Finding SOPs</span>
-      <Skeleton className="h-4 w-24" />
+    <div className="animate-in fade-in duration-300 flex items-center gap-3 text-muted-foreground">
+      <LogoMark className="animate-thinking h-5 w-5 text-brand-orange" />
+      <span key={line} className="animate-in fade-in duration-300 text-sm">
+        {line}
+      </span>
     </div>
   );
 }
@@ -418,7 +600,8 @@ function Conversation({
   resizeComposer,
   onFirstMessage,
   pinnedKeys,
-  onTogglePin
+  onTogglePin,
+  insertPulse
 }: {
   threadId: string;
   input: string;
@@ -430,12 +613,17 @@ function Conversation({
   onFirstMessage: (id: string, title: string) => void;
   pinnedKeys: Set<string>;
   onTogglePin: (sop: PinnedSOP) => void;
+  insertPulse: number;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   // Text of the last message sent, kept so a server-side refusal can restore it
   // to the composer (the composer is cleared on send and refuse() drops the row
   // from the thread) — this is what makes "Send anyway" reachable on that path.
   const lastSentTextRef = useRef("");
+  // Set when the server refuses a message: the stream still "completes", but a
+  // refusal round must not fire the completion beat or the first-answer hint
+  // (refuse() deletes the user row, so `last` points at the PREVIOUS answer).
+  const refusedRef = useRef(false);
   // Live pre-send check, debounced: hard tripwire matches warn early (they
   // will be blocked at send), fuzzy heuristics advise without blocking.
   const [preWarning, setPreWarning] = useState<string | null>(null);
@@ -448,13 +636,11 @@ function Conversation({
       }
       const hard = checkPHI(text);
       if (hard.blocked) {
-        setPreWarning(`This contains ${hard.reason} and will be blocked.`);
+        setPreWarning(hardBlockWarning(hard.reason ?? "an identifier"));
         return;
       }
       const soft = checkPossiblePII(text);
-      setPreWarning(
-        soft ? `This may contain ${soft}. Check it before sending.` : null
-      );
+      setPreWarning(soft ? softPIIWarning(soft) : null);
     }, 350);
     return () => clearTimeout(id);
   }, [input]);
@@ -469,6 +655,7 @@ function Conversation({
     onData: useCallback(
       (part: { type: string; data?: unknown }) => {
         if (part.type === "data-refusal") {
+          refusedRef.current = true;
           setBlockedReason((part.data as { reason: string }).reason);
           // Bring the refused text back so the operator can edit it or break
           // glass — without this the composer is empty and the action is inert.
@@ -483,21 +670,131 @@ function Conversation({
   });
 
   const isStreaming = status === "streaming" || status === "submitted";
+  // Messages already present at mount are a history replay — they arrive as
+  // one unit (the Suspense reveal) and must not each perform an entrance.
+  // Only messages that appear after mount animate. (Lazy useState = captured
+  // once; useAgentChat suspends until history is loaded, so the first render
+  // sees the full replay.)
+  const [initialIds] = useState(() => new Set(messages.map((m) => m.id)));
   const visibleMessages: CortexMessage[] = messages.filter(isRenderable);
   const last: CortexMessage | undefined = messages.at(-1);
   const awaitingSops =
     isStreaming && !(last?.role === "assistant" && sopsOf(last) !== null);
   const hasConversation = visibleMessages.length > 0 || isStreaming;
 
+  // Follow the stream only while the operator is near the bottom: scrolling
+  // up more than 80px disengages, returning re-engages. Instant scroll during
+  // token streaming (queued smooth scrolls lag and rubber-band); smooth for
+  // discrete arrivals. Refs only — no re-render per scroll event.
+  const viewportRef = useRef<HTMLElement | null>(null);
+  const nearBottomRef = useRef(true);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [visibleMessages.length, awaitingSops]);
+    const vp = bottomRef.current?.closest<HTMLElement>(
+      '[data-slot="scroll-area-viewport"]'
+    );
+    viewportRef.current = vp ?? null;
+    if (!vp) return;
+    const onScroll = () => {
+      nearBottomRef.current =
+        vp.scrollHeight - vp.scrollTop - vp.clientHeight < 80;
+    };
+    vp.addEventListener("scroll", onScroll, { passive: true });
+    return () => vp.removeEventListener("scroll", onScroll);
+  }, [hasConversation]);
+
+  const lastTextLen = last ? textOf(last).length : 0;
+  useEffect(() => {
+    const vp = viewportRef.current;
+    if (!vp) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      return;
+    }
+    if (!nearBottomRef.current) return;
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    vp.scrollTo({
+      top: vp.scrollHeight,
+      behavior: isStreaming || reduce ? "auto" : "smooth"
+    });
+  }, [lastTextLen, visibleMessages.length, awaitingSops, isStreaming]);
 
   const [screening, setScreening] = useState(false);
+
+  // Completion beat: when a stream finishes with a real answer, the composer
+  // border breathes teal once ("Cortex finished for you") and — exactly once
+  // per device — a hint under the answer teaches the SOP grounding.
+  const wasStreaming = useRef(false);
+  const [settled, setSettled] = useState(false);
+  const [firstAnswerHint, setFirstAnswerHint] = useState(false);
+  useEffect(() => {
+    const completed = wasStreaming.current && !isStreaming;
+    wasStreaming.current = isStreaming;
+    if (!completed) return;
+    // A server refusal also ends the stream; it must read as a block, not a
+    // completion (and must not consume the one-time hint).
+    if (refusedRef.current) {
+      refusedRef.current = false;
+      return;
+    }
+    if (!(last?.role === "assistant" && textOf(last).trim())) return;
+    setSettled(true);
+    // The hint's claim ("every step comes from the SOPs") is only true of a
+    // grounded answer — error lines and the no-match line carry no SOPs.
+    const sops = sopsOf(last);
+    if (sops && sops.length > 0) {
+      try {
+        if (!localStorage.getItem("cortex-hint-first-answer")) {
+          localStorage.setItem("cortex-hint-first-answer", "1");
+          setFirstAnswerHint(true);
+        }
+      } catch {
+        // storage unavailable — skip the hint
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStreaming]);
+  // Dedicated reset so a follow-up send inside the 750ms window can't cancel
+  // the timer and strand `settled` (which would swallow the next breath).
+  useEffect(() => {
+    if (!settled) return;
+    const t = setTimeout(() => setSettled(false), 750);
+    return () => clearTimeout(t);
+  }, [settled]);
+  useEffect(() => {
+    if (!firstAnswerHint) return;
+    const t = setTimeout(() => setFirstAnswerHint(false), 5000);
+    return () => clearTimeout(t);
+  }, [firstAnswerHint]);
+
+  // A scenario insert reuses the same breath — "Cortex handed you something".
+  // Seeding the ref from the mount-time prop makes remounts (thread switch,
+  // library round-trip) a no-op; only genuine increments pulse.
+  const lastPulseRef = useRef(insertPulse);
+  useEffect(() => {
+    if (insertPulse === lastPulseRef.current) return;
+    lastPulseRef.current = insertPulse;
+    setSettled(true);
+  }, [insertPulse]);
+
+  // Gratitude intercept: a bare "thanks" would burn a full pipeline run and
+  // come back with the no-match line. Answer it locally instead.
+  const [thanks, setThanks] = useState(false);
+  useEffect(() => {
+    if (!thanks) return;
+    const t = setTimeout(() => setThanks(false), 5000);
+    return () => clearTimeout(t);
+  }, [thanks]);
   const submit = useCallback(
     async (options?: { override?: boolean }) => {
       const text = input.trim();
       if (!text || isStreaming || screening) return;
+      if (THANKS_RE.test(text)) {
+        setInput("");
+        setThanks(true);
+        requestAnimationFrame(resizeComposer);
+        return;
+      }
       const { blocked, reason } = checkPHI(text);
       // Hard identifiers are never break-glass-able — they are deterministic.
       if (blocked) {
@@ -525,6 +822,9 @@ function Conversation({
       }
       setBlockedReason(null);
       lastSentTextRef.current = text;
+      // Sending your own message always re-engages follow-scroll, even if
+      // you'd scrolled up to re-read an earlier answer.
+      nearBottomRef.current = true;
       sendMessage({
         role: "user",
         parts: [{ type: "text", text }],
@@ -550,7 +850,12 @@ function Conversation({
 
   const composer = (
     <div>
-      <div className="rounded-[12px] border bg-surface transition-colors focus-within:border-muted-foreground/50">
+      <div
+        className={cn(
+          "rounded-[12px] border bg-surface transition-colors focus-within:border-muted-foreground/50",
+          settled && "animate-settle-border"
+        )}
+      >
         <Textarea
           ref={textareaRef}
           rows={2}
@@ -582,31 +887,54 @@ function Conversation({
             No names or contact info
           </span>
           <span className="flex items-center gap-3">
-            <span className="text-[13px] text-muted-foreground">
-              {MODEL_LABEL}
-            </span>
+            {screening ? (
+              // Mounted immediately, invisible for 400ms (fill-mode-backwards
+              // holds the from-frame through the delay) so fast screens never
+              // flash text. <output> is an implicit status live region, so
+              // the appearance is announced.
+              <output className="animate-in fade-in fill-mode-backwards delay-400 duration-300 text-[13px] text-muted-foreground">
+                {SCREENING_LINE}
+              </output>
+            ) : (
+              <span className="text-[13px] text-muted-foreground">
+                {MODEL_LABEL}
+              </span>
+            )}
             {isStreaming ? (
               <button
                 type="button"
                 onClick={() => void stop()}
                 aria-label="Stop"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground hover:bg-accent"
+                className="pressable flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground hover:bg-accent"
               >
                 <StopIcon className="h-4 w-4" />
               </button>
             ) : (
+              // One persistent button absorbs the screening state: the press
+              // "took", so it stays orange with the brand mark doing the
+              // working loop. Keeping the element (not disabling it) preserves
+              // keyboard focus; submit() already guards re-entry while
+              // screening. The exhale replays via the class toggle on the
+              // same node — no remount, no focus loss.
               <button
                 type="button"
                 onClick={() => void submit()}
-                disabled={!input.trim() || screening}
-                aria-label="Send"
-                className={
-                  input.trim() && !screening
-                    ? "flex h-8 w-8 items-center justify-center rounded-full bg-brand-orange text-white"
-                    : "flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
-                }
+                disabled={!input.trim() && !screening}
+                aria-label={screening ? "Checking for patient names" : "Send"}
+                className={cn(
+                  "pressable flex h-8 w-8 items-center justify-center rounded-full",
+                  screening || input.trim()
+                    ? "bg-brand-orange text-white"
+                    : "bg-muted text-muted-foreground",
+                  settled &&
+                    "animate-in fade-in zoom-in-90 duration-200 ease-out-quart"
+                )}
               >
-                <ArrowUpIcon className="h-4 w-4" />
+                {screening ? (
+                  <LogoMark className="animate-thinking h-4 w-4" />
+                ) : (
+                  <ArrowUpIcon className="h-4 w-4" />
+                )}
               </button>
             )}
           </span>
@@ -616,6 +944,11 @@ function Conversation({
         <p className="mt-2.5 flex items-start justify-center gap-1.5 px-2 text-center text-[13px] leading-snug text-amber-400">
           <ShieldIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>{preWarning}</span>
+        </p>
+      )}
+      {thanks && !preWarning && (
+        <p className="animate-hint-fade mt-2.5 px-2 text-center text-[13px] leading-snug text-muted-foreground">
+          {THANKS_LINE}
         </p>
       )}
       <p className="mt-2.5 flex items-start justify-center gap-1.5 px-2 text-center text-[13px] leading-snug text-foreground/75">
@@ -632,7 +965,7 @@ function Conversation({
             Looks like this contains {blockedReason}.{" "}
             {blockedReason === PII_SCREEN_REASON && input.trim().length > 0
               ? "This check can misfire on de-identified messages. If there's no patient name in this one, confirm below to send it."
-              : "Remove identifiers before sending."}
+              : BLOCKED_GUIDANCE}
           </AlertDescription>
           {blockedReason === PII_SCREEN_REASON && input.trim().length > 0 && (
             <button
@@ -656,6 +989,9 @@ function Conversation({
     return (
       <div className="relative min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex min-h-full w-full max-w-[640px] flex-col justify-center px-6 py-10">
+          <p className="animate-in fade-in duration-300 mb-3 text-center text-[15px] text-muted-foreground">
+            {greetingForHour(new Date().getHours())}
+          </p>
           <h1 className="text-center font-serif text-[40px] leading-tight text-foreground">
             What's the situation?
           </h1>
@@ -675,23 +1011,56 @@ function Conversation({
       <ScrollArea className="min-h-0 flex-1">
         <main className="mx-auto w-full max-w-[760px] px-6 py-8">
           <div className="flex flex-col gap-6">
-            {visibleMessages.map((message) =>
-              message.role === "user" ? (
-                <div key={message.id} className="flex justify-end">
-                  <div className="max-w-[80%] rounded-[12px] border bg-surface px-4 py-3 text-[15px] whitespace-pre-wrap">
-                    {textOf(message)}
+            {visibleMessages.map((message) => {
+              const freshMessage = !initialIds.has(message.id);
+              if (message.role === "user") {
+                return (
+                  <div key={message.id} className="flex justify-end">
+                    <div
+                      className={cn(
+                        "max-w-[80%] rounded-[12px] border bg-surface px-4 py-3 text-[15px] whitespace-pre-wrap",
+                        freshMessage &&
+                          "animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out-quart"
+                      )}
+                    >
+                      {textOf(message)}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div key={message.id} className="flex flex-col gap-4">
+                );
+              }
+              const streamingThis = isStreaming && message.id === last?.id;
+              return (
+                // Fade only on the answer block — its streamed text pushes the
+                // cards below it down continuously, and opacity is the one
+                // axis that can't fight that.
+                <div
+                  key={message.id}
+                  className={cn(
+                    "flex flex-col gap-4",
+                    freshMessage && "animate-in fade-in duration-300"
+                  )}
+                >
                   {textOf(message).trim() && (
                     <div className="text-[15px] leading-relaxed [&_a]:font-medium [&_a]:text-brand-blue [&_a]:underline [&_a]:underline-offset-4">
-                      <Streamdown>
+                      <Streamdown
+                        mode="streaming"
+                        isAnimating={streamingThis}
+                        caret="circle"
+                        animated={{
+                          animation: "fadeIn",
+                          sep: "word",
+                          duration: 250,
+                          stagger: 12
+                        }}
+                      >
                         {normalizeAnswerMarkdown(
                           linkifySOPs(textOf(message), sopsOf(message))
                         )}
                       </Streamdown>
                     </div>
+                  )}
+                  {textOf(message).trim() && !streamingThis && (
+                    <CopyAnswerButton text={textOf(message)} />
                   )}
                   {sopsOf(message) && (
                     <SOPCards
@@ -702,7 +1071,12 @@ function Conversation({
                     />
                   )}
                 </div>
-              )
+              );
+            })}
+            {firstAnswerHint && (
+              <p className="animate-hint-fade text-[13px] text-muted-foreground">
+                {HINT_FIRST_ANSWER}
+              </p>
             )}
             {awaitingSops && <PendingSOPs />}
             <div ref={bottomRef} />
@@ -733,11 +1107,23 @@ export default function App() {
       : window.matchMedia("(min-width: 900px)").matches
   );
   const [pins, setPins] = useState<PinnedSOP[]>(() => loadPins());
+  // Key of the pin added in the last ~moment — only that sidebar row plays
+  // the entrance, so sidebar remounts never re-perform the whole list.
+  const [lastAddedPinKey, setLastAddedPinKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (lastAddedPinKey === null) return;
+    const t = setTimeout(() => setLastAddedPinKey(null), 500);
+    return () => clearTimeout(t);
+  }, [lastAddedPinKey]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [recentsQuery, setRecentsQuery] = useState("");
   const [library, setLibrary] = useState<LibrarySOP[] | null>(null);
   const [libraryError, setLibraryError] = useState(false);
+  // Counts scenario inserts so the composer can acknowledge each one with the
+  // same settle breath used on answer completion.
+  const [insertPulse, setInsertPulse] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recentsRef = useRef<HTMLDivElement>(null);
 
   // Dedicated connection for RPC that isn't tied to any one conversation.
   const rpcAgent = useAgent<ChatAgent>({ agent: "ChatAgent", name: "app-rpc" });
@@ -753,6 +1139,7 @@ export default function App() {
     (template: string) => {
       setInput(template);
       setBlockedReason(null);
+      setInsertPulse((n) => n + 1);
       requestAnimationFrame(() => {
         resizeComposer();
         textareaRef.current?.focus();
@@ -795,19 +1182,22 @@ export default function App() {
     }
   }, [rpcAgent, library]);
 
-  const togglePin = useCallback((sop: PinnedSOP) => {
-    setPins((prev) => {
+  const togglePin = useCallback(
+    (sop: PinnedSOP) => {
       const key = pinKey(sop);
-      const next = prev.some((p) => pinKey(p) === key)
-        ? prev.filter((p) => pinKey(p) !== key)
+      const removing = pins.some((p) => pinKey(p) === key);
+      setLastAddedPinKey(removing ? null : key);
+      const next = removing
+        ? pins.filter((p) => pinKey(p) !== key)
         : [
-            ...prev,
+            ...pins,
             { title: sop.title, source_url: sop.source_url, file: sop.file }
           ];
       savePins(next);
-      return next;
-    });
-  }, []);
+      setPins(next);
+    },
+    [pins]
+  );
 
   const pinnedKeys = new Set(pins.map(pinKey));
   const filteredRecents = recentsQuery.trim()
@@ -823,7 +1213,7 @@ export default function App() {
           type="button"
           onClick={() => setSidebarOpen(true)}
           aria-label="Open sidebar"
-          className="fixed top-3 left-3 z-40 flex h-8 w-8 items-center justify-center rounded-[6px] border bg-sidebar text-muted-foreground hover:text-foreground"
+          className="pressable fixed top-3 left-3 z-40 flex h-8 w-8 items-center justify-center rounded-[6px] border bg-sidebar text-muted-foreground hover:text-foreground"
         >
           <PanelIcon className="h-4 w-4" />
         </button>
@@ -833,11 +1223,11 @@ export default function App() {
           type="button"
           onClick={() => setSidebarOpen(false)}
           aria-label="Close sidebar"
-          className="fixed inset-0 z-30 hidden bg-black/50 max-[900px]:block"
+          className="animate-in fade-in duration-300 fixed inset-0 z-30 hidden bg-black/50 max-[900px]:block"
         />
       )}
       {sidebarOpen && (
-        <aside className="flex w-[284px] shrink-0 flex-col border-r bg-sidebar max-[900px]:fixed max-[900px]:inset-y-0 max-[900px]:left-0 max-[900px]:z-40 max-[900px]:shadow-2xl">
+        <aside className="flex w-[284px] shrink-0 flex-col border-r bg-sidebar max-[900px]:fixed max-[900px]:inset-y-0 max-[900px]:left-0 max-[900px]:z-40 max-[900px]:shadow-2xl max-[900px]:animate-in max-[900px]:slide-in-from-left max-[900px]:fade-in-50 max-[900px]:duration-300 max-[900px]:ease-out-expo">
           <div className="flex items-center justify-between px-4 pt-4 pb-2">
             <span className="flex items-center gap-2">
               <LogoMark className="h-6 w-6 text-foreground" />
@@ -850,7 +1240,7 @@ export default function App() {
                 type="button"
                 onClick={newSituation}
                 aria-label="New situation"
-                className="flex h-8 w-8 items-center justify-center rounded-[6px] border text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="pressable flex h-8 w-8 items-center justify-center rounded-[6px] border text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 <PlusIcon className="h-4 w-4" />
               </button>
@@ -858,7 +1248,7 @@ export default function App() {
                 type="button"
                 onClick={openLibrary}
                 aria-label="SOP library"
-                className="flex h-8 w-8 items-center justify-center rounded-[6px] border text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="pressable flex h-8 w-8 items-center justify-center rounded-[6px] border text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 <LibraryIcon className="h-4 w-4" />
               </button>
@@ -884,6 +1274,16 @@ export default function App() {
             </button>
             <button
               type="button"
+              onClick={() =>
+                recentsRef.current?.scrollIntoView({
+                  behavior: window.matchMedia(
+                    "(prefers-reduced-motion: reduce)"
+                  ).matches
+                    ? "auto"
+                    : "smooth",
+                  block: "start"
+                })
+              }
               className="flex h-[34px] items-center gap-2.5 rounded-[6px] px-3 text-[15px] text-foreground/85 hover:bg-accent"
             >
               <ClockIcon className="h-4 w-4 text-muted-foreground" />
@@ -913,16 +1313,20 @@ export default function App() {
                   Pinned SOPs
                 </p>
                 {pins.length === 0 ? (
-                  <div className="flex h-[34px] items-center gap-2.5 px-2.5 text-[13px] text-muted-foreground">
+                  <div className="flex min-h-[34px] items-center gap-2.5 px-2.5 py-1.5 text-[13px] text-muted-foreground">
                     <PinIcon className="h-4 w-4 shrink-0" />
-                    Pin SOPs to keep them here
+                    {EMPTY_PINS}
                   </div>
                 ) : (
                   <div className="flex flex-col">
                     {pins.map((pin) => (
                       <div
                         key={pinKey(pin)}
-                        className="group flex h-[34px] items-center gap-2.5 rounded-[6px] px-2.5 hover:bg-accent"
+                        className={cn(
+                          "group flex h-[34px] items-center gap-2.5 rounded-[6px] px-2.5 hover:bg-accent",
+                          pinKey(pin) === lastAddedPinKey &&
+                            "animate-in fade-in slide-in-from-left-1 duration-200 ease-out-quart"
+                        )}
                       >
                         <span className="h-1.5 w-1.5 shrink-0 rounded-full border border-muted-foreground" />
                         {pin.source_url ? (
@@ -953,7 +1357,7 @@ export default function App() {
                 )}
               </div>
 
-              <div className="pt-2">
+              <div ref={recentsRef} className="pt-2">
                 <div className="flex items-center justify-between px-2.5 pb-2">
                   <p className="text-[13px] text-muted-foreground">
                     Recent situations
@@ -965,11 +1369,12 @@ export default function App() {
                       setRecentsQuery("");
                     }}
                     aria-label="Search recent situations"
-                    className={
+                    className={cn(
+                      "pressable",
                       searchOpen
                         ? "text-foreground"
                         : "text-muted-foreground hover:text-foreground"
-                    }
+                    )}
                   >
                     <SearchIcon className="h-3.5 w-3.5" />
                   </button>
@@ -984,11 +1389,11 @@ export default function App() {
                 )}
                 {recents.length === 0 ? (
                   <p className="px-2.5 text-[13px] text-muted-foreground/70">
-                    Nothing yet
+                    {EMPTY_RECENTS}
                   </p>
                 ) : filteredRecents.length === 0 ? (
                   <p className="px-2.5 text-[13px] text-muted-foreground/70">
-                    No matches
+                    {NO_SEARCH_MATCH}
                   </p>
                 ) : (
                   <div className="flex flex-col">
@@ -1022,7 +1427,7 @@ export default function App() {
                 type="button"
                 onClick={() => setSidebarOpen(false)}
                 aria-label="Collapse sidebar"
-                className="text-muted-foreground hover:text-foreground"
+                className="pressable text-muted-foreground hover:text-foreground"
               >
                 <PanelIcon className="h-4 w-4" />
               </button>
@@ -1045,8 +1450,8 @@ export default function App() {
                 {library
                   ? `${library.length} SOPs, grouped by category. Rows open in Notion.`
                   : libraryError
-                    ? "Couldn't load the SOP index. Open the library again to retry."
-                    : "Loading the SOP index"}
+                    ? LIBRARY_ERROR
+                    : LIBRARY_LOADING}
               </p>
               {library &&
                 [...new Set(library.map((s) => s.category))]
@@ -1078,22 +1483,10 @@ export default function App() {
                                   {displayTitle(sop.title)}
                                 </span>
                               )}
-                              <button
-                                type="button"
-                                onClick={() => togglePin(sop)}
-                                aria-label={
-                                  pinnedKeys.has(pinKey(sop))
-                                    ? "Unpin SOP"
-                                    : "Pin SOP"
-                                }
-                                className={
-                                  pinnedKeys.has(pinKey(sop))
-                                    ? "text-brand-orange"
-                                    : "text-muted-foreground hover:text-foreground"
-                                }
-                              >
-                                <PinIcon className="h-4 w-4" />
-                              </button>
+                              <PinButton
+                                isPinned={pinnedKeys.has(pinKey(sop))}
+                                onToggle={() => togglePin(sop)}
+                              />
                             </div>
                           ))}
                       </div>
@@ -1105,7 +1498,7 @@ export default function App() {
           <Suspense
             fallback={
               <div className="flex min-h-0 flex-1 items-center justify-center">
-                <LogoMark className="h-6 w-6 animate-pulse text-brand-orange" />
+                <LogoMark className="animate-thinking h-6 w-6 text-brand-orange" />
               </div>
             }
           >
@@ -1121,6 +1514,7 @@ export default function App() {
               onFirstMessage={recordRecent}
               pinnedKeys={pinnedKeys}
               onTogglePin={togglePin}
+              insertPulse={insertPulse}
             />
           </Suspense>
         )}
