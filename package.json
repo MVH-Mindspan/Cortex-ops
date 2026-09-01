@@ -1,12 +1,14 @@
 {
-  "name": "agent-starter",
+  "name": "cortex",
   "version": "1.0.0",
   "private": true,
-  "description": "Starter template for building AI chat agents on Cloudflare",
+  "description": "Cortex: Mindspan's internal SOP assistant on Cloudflare Workers",
   "keywords": [
     "agents",
     "ai",
-    "cloudflare"
+    "cloudflare",
+    "cortex",
+    "mindspan"
   ],
   "license": "MIT",
   "type": "module",
@@ -14,12 +16,12 @@
     "dev": "vite dev",
     "export": "node --env-file-if-exists=.env scripts/export-sops.ts",
     "build": "vite build",
-    "start": "vite dev",
     "deploy": "vite build && wrangler deploy",
     "types": "wrangler types env.d.ts",
     "format": "oxfmt --write .",
-    "lint": "oxlint src/",
-    "check": "oxfmt --check . && oxlint src/ && tsc"
+    "lint": "oxlint src/ scripts/",
+    "test": "node --test \"src/**/*.test.ts\" \"scripts/**/*.test.ts\"",
+    "check": "oxfmt --check . && oxlint src/ scripts/ && tsc && npm test"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.276",
@@ -54,6 +56,9 @@
     "typescript": "^6.0.3",
     "vite": "^8.1.0",
     "wrangler": "^4.113.0"
+  },
+  "engines": {
+    "node": ">=24"
   },
   "allowScripts": {
     "core-js-pure@3.49.0": true,

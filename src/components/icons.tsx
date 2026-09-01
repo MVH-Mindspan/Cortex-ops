@@ -44,22 +44,6 @@ export function LogoMark({ className }: IconProps) {
   );
 }
 
-export function SparkleIcon({ className }: IconProps) {
-  return (
-    <svg
-      className={className}
-      width="28"
-      height="28"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M12 1.5 13.9 8.1 20.5 10 13.9 11.9 12 18.5 10.1 11.9 3.5 10 10.1 8.1 Z" />
-      <path d="M18.8 15.2 19.6 17.9 22.3 18.7 19.6 19.5 18.8 22.2 18 19.5 15.3 18.7 18 17.9 Z" />
-    </svg>
-  );
-}
-
 export function PlusIcon({ className }: IconProps) {
   return (
     <svg {...base({ className })} aria-hidden="true">

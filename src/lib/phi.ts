@@ -9,8 +9,10 @@
 
 export type PHICheckResult = { blocked: boolean; reason: string | null };
 
-// Shared so the client button gate, the client screen block, and the server
-// refusal all key off one string — the block an operator can break glass past.
+// The reason the model name-screen blocks with. Shared so the client button
+// gate, the client screen block, and the server refusal all key off one
+// string — the one block an operator can break glass past. (The soft
+// heuristics below return plain nouns instead; they warn, never block.)
 export const PII_SCREEN_REASON = "a possible patient name";
 
 const SSN = /(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)/;
@@ -22,12 +24,21 @@ const PHONE =
   /(?<!\d)(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/g;
 
 const DOB_KEYWORD = /\b(?:d\.?\s?o\.?\s?b|date\s+of\s+birth|born)\b/gi;
+// Numeric (04/12/1941, 1941-04-12), month-first ("April 12, 1941") and
+// day-first ("12 April 1941", "12th of April, 1941") forms.
 const DATE =
-  /\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}\b/gi;
+  /\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}\b|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+\d{4}\b/gi;
+// A DOB keyword and its date can sit a clause apart ("DOB doesn't match what
+// Athena has, Athena shows 04/12/1941"), so the proximity window is generous.
+const DOB_GAP = 48;
 
-// "record #" is a separate alternative: \b fails between "#" and whitespace.
-// Kept only to exempt MRN-adjacent digit runs from the phone rule.
-const MRN_KEYWORD = /\b(?:mrn|chart|record\s+number)\b|\brecord\s*#/gi;
+// "record #" / "patient #" are separate alternatives: \b fails between "#"
+// and whitespace. "patient number/id/no." is the narrow phrase the UI copy
+// promises is allowed — bare "patient" is deliberately NOT a keyword (it is
+// in nearly every message). Kept only to exempt record-number digit runs from
+// the phone rule.
+const MRN_KEYWORD =
+  /\b(?:mrn|chart|record\s+number|patient\s*(?:number|id|no))\b\.?|\b(?:record|patient)\s*#/gi;
 
 type Span = { start: number; end: number };
 
@@ -64,8 +75,9 @@ function near(
 // deliberately warn-only: they cannot tell a patient name from a staff name
 // ("Dr. Musto", "Taiye"), so they advise instead of blocking. The five hard
 // identifier patterns above remain the blocking layer.
+// Apostrophe classes accept the curly form macOS smart punctuation inserts.
 const NAMED_PHRASE =
-  /\b(?:patient(?:'s)?\s+name\s+is|patient\s+(?:named|called))\s+\S+/i;
+  /\b(?:patient(?:['’]s)?\s+name\s+is|patient\s+(?:named|called))\s+\S+/i;
 // Case-sensitive on purpose; excludes Dr (staff are routinely named).
 const HONORIFIC_NAME = /\b(?:Mr|Mrs|Ms|Miss)\.?\s+[A-Z][a-z]+/;
 // Capitalized street-name words on purpose: keeps "PET CT" and similar
@@ -94,8 +106,10 @@ function relationNameHit(text: string): boolean {
 }
 // "<First> <Last>'s chart/visit/..." possessives.
 const POSSESSIVE_NAME =
-  /\b[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|Van|De|La|Da|Le))+['']s\s+(?:chart|visit|appointment|record|file|order|results?)\b/;
+  /\b[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|Van|De|La|Da|Le))+['’]s\s+(?:chart|visit|appointment|record|file|order|results?)\b/;
 
+// Returns a plain noun phrase ("a patient name") for the soft warning copy,
+// which already hedges ("This might include ..."), or null.
 export function checkPossiblePII(text: string): string | null {
   if (
     NAMED_PHRASE.test(text) ||
@@ -103,10 +117,10 @@ export function checkPossiblePII(text: string): string | null {
     relationNameHit(text) ||
     POSSESSIVE_NAME.test(text)
   ) {
-    return PII_SCREEN_REASON;
+    return "a patient name";
   }
-  if (STREET_ADDRESS.test(text)) return "a possible street address";
-  if (MEMBER_ID.test(text)) return "a possible insurance or member ID";
+  if (STREET_ADDRESS.test(text)) return "a street address";
+  if (MEMBER_ID.test(text)) return "an insurance or member ID";
   return null;
 }
 
@@ -134,7 +148,7 @@ export function checkPHI(text: string): PHICheckResult {
   if (EMAIL.test(text)) {
     return { blocked: true, reason: "an email address" };
   }
-  if (near(text, DOB_KEYWORD, DATE, 20)) {
+  if (near(text, DOB_KEYWORD, DATE, DOB_GAP)) {
     return { blocked: true, reason: "a date of birth" };
   }
   if (phoneNotMRN(text)) {
