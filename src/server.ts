@@ -186,7 +186,7 @@ Examples:
 
 // Fixed line when retrieval finds nothing — the model is not called.
 const NO_MATCH_LINE =
-  "No SOP covers this. Ask your team lead, then paste their answer here so we can add it.";
+  "No SOP covers this yet. Ask your team lead, then paste their answer here so it can become one.";
 
 export type SOPRef = {
   title: string;

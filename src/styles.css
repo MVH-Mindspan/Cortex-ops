@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+/* Streamdown's word-entrance animation rules ([data-sd-animate] + sd-*
+   keyframes) live in this separate export — without it the `animated`
+   prop stamps attributes that no CSS consumes. */
+@import "streamdown/styles.css";
 @source "../node_modules/streamdown/dist/*.js";
 
 /* Single dark theme (no toggle): the `dark:` variant is bound to a `.dark`
@@ -50,6 +54,14 @@
   --border: color-mix(in oklab, #3a3836 84%, var(--brand-teal)); /* #3a3836 */
   --input: color-mix(in oklab, #3a3836 84%, var(--brand-teal));
   --ring: #c93a0e;
+
+  /* Motion primitives — exponential decelerations only, no overshoot.
+     Duration scale (used via Tailwind numerics): 150 hover/press ·
+     200 micro (pin, button swap) · 300 entrance/reveal · 700 one-shot
+     ambient. Nothing exceeds 1s except infinite status loops. */
+  --motion-ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --motion-ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --motion-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @theme inline {
@@ -85,6 +97,66 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Easing utilities (ease-out-quart etc.) — tw-animate's animate-in reads
+     these via --tw-ease, so they compose with entrance utilities. */
+  --ease-out-quad: var(--motion-ease-out-quad);
+  --ease-out-quart: var(--motion-ease-out-quart);
+  --ease-out-expo: var(--motion-ease-out-expo);
+
+  /* Named one-shot / status animations. Motion means one of two things:
+     Cortex is working (thinking, caret) or something arrived to help you
+     (rise-in). Removals are never animated. */
+  --animate-rise-in: rise-in 300ms var(--motion-ease-out-quart) both;
+  --animate-pin-stamp: pin-stamp 200ms var(--motion-ease-out-quart);
+  --animate-settle-border: settle-border 700ms var(--motion-ease-out-quad);
+  --animate-thinking: thinking 1.6s ease-in-out infinite;
+  --animate-hint-fade: hint-fade 5s var(--motion-ease-out-quad) both;
+
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+  @keyframes pin-stamp {
+    from {
+      opacity: 0.4;
+      transform: scale(0.5) rotate(-16deg);
+    }
+  }
+  /* One breath of teal on the composer border: "Cortex just handed you
+     something / finished for you". Border-color only — no glow. */
+  @keyframes settle-border {
+    30% {
+      border-color: color-mix(
+        in oklab,
+        var(--border) 55%,
+        var(--brand-teal-light)
+      );
+    }
+  }
+  @keyframes thinking {
+    50% {
+      opacity: 0.55;
+      transform: scale(0.92);
+    }
+  }
+  /* Transient hints carry their own fade-out tail (the one sanctioned exit);
+     unmount on animationend. */
+  @keyframes hint-fade {
+    0%,
+    8% {
+      opacity: 0;
+    }
+    12%,
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
 }
 
 @layer base {
@@ -94,6 +166,24 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  /* Every interactive surface eases instead of snapping — one rule, zero
+     specificity (:where), so per-site utilities still win. The opacity entry
+     is what makes group-hover reveals fade. */
+  :where(button, a, [role="menuitem"]) {
+    transition:
+      color 150ms var(--motion-ease-out-quad),
+      background-color 150ms var(--motion-ease-out-quad),
+      border-color 150ms var(--motion-ease-out-quad),
+      opacity 150ms var(--motion-ease-out-quad),
+      transform 150ms var(--motion-ease-out-quad);
+  }
+}
+
+/* Press feedback for icon-size buttons only — never full-width rows. */
+@utility pressable {
+  &:active {
+    transform: scale(0.96);
+  }
 }
 
 html,
@@ -102,4 +192,27 @@ body,
   width: 100%;
   height: 100%;
   margin: 0;
+}
+
+/* Reduced motion: single global kill-switch. Entrances snap to their final
+   frame (fill-mode resolves instantly), status loops freeze as static glyphs
+   — every loop is paired with text, so state stays legible without motion.
+   animation-delay is deliberately PRESERVED: the boot fallback and the
+   screening line use delay + fill-mode-backwards as anti-flash holds, so
+   zeroing delays would flash them on every fast boot/screen. Delayed
+   reveals appear instantly once their hold elapses. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* Transient hints end their keyframe at opacity 0 — an instantly-completed
+     animation would hide them entirely. Show them statically instead; a JS
+     timer (not animationend) removes them. */
+  .animate-hint-fade {
+    animation: none !important;
+  }
 }
