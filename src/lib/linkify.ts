@@ -52,7 +52,7 @@ export function compileLinkers(sops: SOPRef[]): Linker[] {
 // surface (hence the suppression).
 function mentionPattern(mention: string): RegExp {
   const source = `(?<![\\p{L}\\p{N}])\\*{0,2}${escapeRegExp(mention)}\\*{0,2}(?![\\p{L}\\p{N}])`;
-  return new RegExp(source, "giu"); // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp
+  return new RegExp(source, "giu"); // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
 }
 
 // A match inside an existing markdown link — either its [label] or its (url)
