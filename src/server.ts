@@ -69,17 +69,20 @@ const SCREEN_PROMPT = `You screen internal healthcare ops messages for patient p
 
 Answer yes if the message contains a real personal human name (a first name, last name, or full name) of a patient, or of a patient's family member or caregiver — even when it appears alongside numbers, codes, facility names, or an MRN. A patient, chart, or record number by itself is not a name.
 
-Answer no for everything else, including: names of staff or clinicians (Dr Musto, Taiye), hospital, clinic, university, facility, or company names (UCSF, LabCorp, Valley Radiology), system names (Athena), product, order, result, protocol, or trial codes (TB006), patient, chart, or record numbers (#313, MRN 4471902), and any message with no personal human name.
+Answer no for everything else, including: names of staff or clinicians (Dr Musto, Taiye), hospital, clinic, university, facility, or company names (UCSF, LabCorp, Valley Radiology, the company Perry Health), system names (Athena; Mindy when it means the Mindspan task system, though "her daughter Mindy" is still a person), product, drug, order, result, protocol, or trial codes (TB006, Kisunla, Leqembi, IQLIK, Cryos), patient, chart, or record numbers (#313, MRN 4471902), and any message with no personal human name.
 
 Examples:
 "My patient, John Smith, needs a refill" -> yes
 "her husband Robert De Luca called twice" -> yes
 "the patient Mary Alvarez is at the desk" -> yes
 "#307 Robert Chen wants a callback about his results" -> yes
+"her daughter Mindy missed the visit" -> yes
 "Dr. Musto faxed the order to LabCorp" -> no
 "#313 was on the schedule with Taiye yesterday" -> no
 "a caregiver called asking to reschedule an infusion" -> no
-"#301 wants their TB006 results sent to the UCSF consulting neurologist" -> no`;
+"#301 wants their TB006 results sent to the UCSF consulting neurologist" -> no
+"check Mindy completion status at T-7" -> no
+"Mindy flagged #412 for an infusion check-in" -> no`;
 
 // Sampling per attempt of the fp8 collapse guard: two fresh rolls with the
 // production parameters, then one nudged roll to escape a stuck decoding path.
@@ -420,8 +423,14 @@ export class ChatAgent extends AIChatAgent<Env> {
           }
           if (outcome.truncated) say(`\n\n${ANSWER_CUT_SHORT_LINE}`);
         } catch (err) {
-          console.error("[cortex] answer pipeline failed", stage, err);
           const message = err instanceof Error ? err.message : String(err);
+          // Logged as text (stack or message), never the raw object: a
+          // provider error object can carry the request payload.
+          console.error(
+            "[cortex] answer pipeline failed",
+            stage,
+            err instanceof Error ? (err.stack ?? message) : message
+          );
           notice(PIPELINE_ERROR_LINES[classifyPipelineError(stage, message)]);
         } finally {
           if (textStarted) writer.write({ type: "text-end", id: textId });
