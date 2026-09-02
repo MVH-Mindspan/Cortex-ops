@@ -83,16 +83,19 @@ export function linkifySOPs(text: string, sops: SOPRef[] | null): string {
 }
 
 // The model's own citation sentence for a SOP, used as the one-line reason
-// on the result card. The citation section is searched first because the
-// incident format quotes a patient script before it; the whole answer is the
-// fallback. Best effort: no quote near the title means no reason line.
+// on the result card. When the answer has a citation section, only a title
+// mention inside it counts: the team steer near the top can name an SOP
+// ("Enrollment") a few lines above the patient script, and that quote would
+// otherwise be scraped onto the card. The whole answer is searched only when
+// the section is missing (an answer cut short). Best effort: no quote near
+// the title means no reason line.
 export function reasonFor(answer: string, sop: SOPRef): string | null {
   const clean = displayTitle(sop.title).toLowerCase();
   if (clean.length < 4) return null;
   const lower = answer.toLowerCase();
   const citations = lower.indexOf("what the sops say");
-  let idx = citations === -1 ? -1 : lower.indexOf(clean, citations);
-  if (idx === -1) idx = lower.indexOf(clean);
+  const idx =
+    citations === -1 ? lower.indexOf(clean) : lower.indexOf(clean, citations);
   if (idx === -1) return null;
   const after = answer.slice(idx, idx + 600);
   const quote = after.match(/"([^"]{10,220})"/);

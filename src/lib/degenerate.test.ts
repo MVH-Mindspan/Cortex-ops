@@ -49,3 +49,29 @@ test("does not flag short text: too little signal to judge", () => {
   assert.equal(looksDegenerate("the of a"), false);
   assert.equal(looksDegenerate(""), false);
 });
+
+// Answer shapes with the team steer (regression pins: name-dense prose sits
+// far from both collapse thresholds, so these cannot flag).
+const QUESTION_WITH_TEAM = `Who handles this: Likely the Care Support team, Patient Support (Enrollment & Member Experience) function, because the team structure puts the patient lifecycle from first referral there.
+
+Answer: Create the Salesforce lead the same day the referral arrives, per the SOP.`;
+
+const INCIDENT_WITH_TEAM = `Situation: A fax referral arrived this morning and needs a lead and a chart.
+
+Urgency: Today. A referral is waiting.
+
+Who handles this: Likely the Care Support team, Patient Support (Enrollment & Member Experience) function, because the team structure puts the patient lifecycle from first referral there.
+
+Do now
+1. Create a Salesforce lead. Expect to see the lead record.`;
+
+test("does not flag a question answer that opens with the team steer", () => {
+  assert.equal(looksDegenerate(QUESTION_WITH_TEAM), false);
+});
+
+test("does not flag the sniff window of an incident answer with the team steer", () => {
+  assert.equal(
+    looksDegenerate(INCIDENT_WITH_TEAM.slice(0, DEGEN_SNIFF_CHARS)),
+    false
+  );
+});

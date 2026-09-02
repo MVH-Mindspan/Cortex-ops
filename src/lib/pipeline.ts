@@ -10,14 +10,21 @@ export const MAX_SOPS = 5;
 // model can quote every sub-step and click path a first-timer needs.
 export const FULL_DOC_COUNT = 3;
 // Rough character budget for the SOP passages block (~8k tokens).
-export const PASSAGE_CHAR_BUDGET = 30_000;
+export const PASSAGE_CHAR_BUDGET = 27_500;
 
 // The generation model (llama-3.3-70b fp8-fast) has a 24k-token window shared
-// by the system prompt (~9k chars), the passages (≤30k chars), the history,
-// the latest message and the answer. Sizing: 9k + 30k + 20k + 8k chars ≈ 19k
-// tokens, leaving room for MAX_OUTPUT_TOKENS.
+// by the system prompt (SYSTEM_PROMPT_MAX_CHARS in prompt.ts: the answer
+// rules plus the team structure, ≤18.8k chars), the passages (≤27.5k chars),
+// the prior turns (≤12k chars), the latest message (≤8k chars) and the
+// answer. At ~3.5 chars per token that is 66.3k chars ≈ 18.9k tokens, plus
+// MAX_OUTPUT_TOKENS and a reserve for the chat template and the passage
+// labels (Notion URLs tokenize poorly): 23.9k of 24k. prompt.test.ts asserts
+// the inequality. A collapse retry re-sends the whole prompt up to 3 times.
+export const CONTEXT_WINDOW_TOKENS = 24_000;
+export const CHARS_PER_TOKEN = 3.5;
+export const WINDOW_RESERVE_TOKENS = 2_000;
 export const HISTORY_MAX_MESSAGES = 12;
-export const HISTORY_CHAR_BUDGET = 20_000;
+export const HISTORY_CHAR_BUDGET = 12_000;
 export const MAX_MESSAGE_CHARS = 8_000;
 export const MAX_OUTPUT_TOKENS = 3_000;
 

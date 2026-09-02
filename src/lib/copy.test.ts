@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   composerCounter,
   greetingForHour,
+  HINT_FIRST_ANSWER,
   messageTooLongLine,
   PIPELINE_ERROR_LINES,
   softPIIWarning,
@@ -58,4 +59,8 @@ test("every pipeline error kind has an operator-facing line", () => {
 test("the length lines carry the actual limit", () => {
   assert.match(messageTooLongLine(8000), /8,000 characters/);
   assert.equal(composerCounter(7240, 8000), "7,240 / 8,000");
+});
+
+test("the first-answer hint says the team line is a steer", () => {
+  assert.match(HINT_FIRST_ANSWER, /steer/);
 });

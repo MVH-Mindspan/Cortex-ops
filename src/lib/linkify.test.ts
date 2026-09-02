@@ -112,3 +112,31 @@ test("reasonFor falls back to the first nearby quote and to null", () => {
     null
   );
 });
+
+test("reasonFor ignores a title mention outside the citation section when one exists", () => {
+  const answer = [
+    "Situation: A fax referral arrived.",
+    "",
+    "Who handles this: Likely the Care Support team, Patient Support (Enrollment & Member Experience) function. The SOP names Enrollment.",
+    "",
+    "Tell the patient",
+    '"We have your referral and will call you within one business day."',
+    "",
+    "What the SOPs say",
+    "1. Inbound Fax Referral (https://n/fax)",
+    '   "Create a Salesforce lead immediately."'
+  ].join("\n");
+  assert.equal(reasonFor(answer, sop("📝 Enrollment", "https://n/e")), null);
+});
+
+test("links a single-word SOP title inside the team line and leaves the team name alone", () => {
+  const text =
+    "Who handles this: Likely the Care Support team, Patient Support (Enrollment & Member Experience) function.";
+  assert.equal(
+    linkifySOPs(text, [
+      sop("📝 Enrollment", "https://n/e"),
+      sop("Transition to Care Support", "https://n/t")
+    ]),
+    "Who handles this: Likely the Care Support team, Patient Support ([Enrollment](https://n/e) & Member Experience) function."
+  );
+});

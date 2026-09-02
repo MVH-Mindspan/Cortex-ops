@@ -278,3 +278,17 @@ test("isTruncated falls back to the missing closing section when usage is absent
   );
   assert.equal(isTruncated(undefined, "", MAX_OUTPUT_TOKENS), false);
 });
+
+test("trimHistory keeps at least two prior exchanges of realistic size by default", () => {
+  const turns: Turn[] = [];
+  for (let i = 0; i < 6; i++) {
+    turns.push(
+      { role: "user", content: "y".repeat(400) },
+      { role: "assistant", content: "x".repeat(3_500) }
+    );
+  }
+  turns.push({ role: "user", content: "latest" });
+  const out = trimHistory(turns);
+  assert.ok(out.length >= 5, String(out.length));
+  assert.equal(out.at(-1)?.content, "latest");
+});

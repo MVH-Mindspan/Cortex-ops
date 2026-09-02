@@ -59,7 +59,7 @@ export const BLOCKED_GUIDANCE =
 export const HINT_FIRST_PIN =
   "Pinned — it'll stay in your sidebar on this device.";
 export const HINT_FIRST_ANSWER =
-  "Every step above comes from the SOPs — the links open the source in Notion.";
+  "Steps come from the SOPs — the links open the source in Notion. Team names are a steer from the team structure, not an SOP instruction.";
 
 // Gratitude intercept: a bare "thanks" would otherwise burn a full pipeline
 // run and come back with the no-match line.
