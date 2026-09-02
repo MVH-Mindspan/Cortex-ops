@@ -136,6 +136,14 @@ export function composerCounter(count: number, max: number): string {
   return `${count.toLocaleString("en-US")} / ${max.toLocaleString("en-US")}`;
 }
 
+// Sidebar label for a recent situation: the first non-empty line, so a
+// message that leads with a headline (deep links do) is titled by it. Typed
+// messages get the same rule; entries already stored keep their old title.
+export function recentTitle(text: string, max = 48): string {
+  const line = text.split(/\r?\n/).find((l) => l.trim().length > 0);
+  return (line ?? text).trim().slice(0, max);
+}
+
 // --- Composer and sidebar copy ---
 
 export const PHI_FOOTER =

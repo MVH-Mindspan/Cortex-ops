@@ -78,7 +78,13 @@ changes after that are flagged.
   Git integration); other branches get preview URLs on push. CI runs
   `npm run check` and `npm run build` on every pull request.
 - The live URL sits behind Cloudflare Access (Zero Trust dashboard, free
-  under 50 users); keep it there before sharing beyond the admin.
+  under 50 users); keep it there before sharing beyond the admin. Preview
+  hostnames from Workers Builds are challenged too (checked 2026-09-02).
+- Other Mindspan apps can open Cortex with a situation prefilled and sent
+  once (`docs/deeplink.md`). A deep link's query string is stripped from
+  the address bar on load and never reaches Worker code or Workers Logs;
+  the text itself then follows the ordinary message path, exactly as if
+  it had been typed.
 - The monthly answer budget is `MONTHLY_MESSAGE_BUDGET` in `wrangler.jsonc`;
   the dollar cap is the AI Gateway spend limit (dashboard).
 - The answer format and grounding rules live in `SYSTEM_PROMPT` in

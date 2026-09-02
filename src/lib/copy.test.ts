@@ -6,6 +6,7 @@ import {
   HINT_FIRST_ANSWER,
   messageTooLongLine,
   PIPELINE_ERROR_LINES,
+  recentTitle,
   softPIIWarning,
   THANKS_RE
 } from "./copy.ts";
@@ -63,4 +64,18 @@ test("the length lines carry the actual limit", () => {
 
 test("the first-answer hint says the team line is a steer", () => {
   assert.match(HINT_FIRST_ANSWER, /steer/);
+});
+
+test("a recents title is the first non-empty line, up to 48 characters", () => {
+  assert.equal(recentTitle("\n\n  Real title\nbody"), "Real title");
+  assert.equal(recentTitle("Short\nlonger second line"), "Short");
+  assert.equal(recentTitle("First line\r\nSecond"), "First line");
+  assert.equal(
+    recentTitle(
+      "Caregiver Required: confirm caregiver attendance for a Cognitive Assessment (99483) visit in 7 days.\nMore."
+    ),
+    "Caregiver Required: confirm caregiver attendance"
+  );
+  assert.equal(recentTitle("one line only"), "one line only");
+  assert.equal(recentTitle("   "), "");
 });

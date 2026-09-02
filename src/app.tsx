@@ -18,6 +18,11 @@ import { normalizeAnswerMarkdown } from "@/lib/markdown";
 import { displayTitle, linkifySOPs, reasonFor } from "@/lib/linkify";
 import { MAX_MESSAGE_CHARS, type SOPRef } from "@/lib/pipeline";
 import {
+  hasDeepLinkParams,
+  parseDeepLink,
+  type DeepLink
+} from "@/lib/deeplink";
+import {
   BLOCKED_GUIDANCE,
   COMPOSER_PLACEHOLDER,
   COMPOSER_PLACEHOLDER_FOLLOW_UP,
@@ -41,6 +46,7 @@ import {
   REACH_OUT_FOOTER_COPIED,
   REACH_OUT_REASONS,
   REACH_OUT_STARTERS,
+  recentTitle,
   RETRIEVAL_LINES,
   RETRIEVAL_LONG_WAIT,
   SCREENING_LINE,
@@ -364,6 +370,34 @@ type LibrarySOP = {
 // again on replay. A render-time uuid would mint a new room (and a new fetch)
 // every replay, looping forever. One id per page load, stable across replays.
 const initialThreadId = crypto.randomUUID();
+
+// Deep link from another Mindspan app (docs/deeplink.md). Read and stripped
+// from the URL once, at module scope, for the same reason as initialThreadId:
+// render and state initializers can be replayed. Stripping here — before
+// client.tsx even calls createRoot — means reloads, bfcache restores, tab
+// duplication and the Access re-auth bounce never re-send. Consumed exactly
+// once from an effect (in Conversation), so thread switches and the stale-tab
+// remount never re-send either. The try/catch is load-bearing: client.tsx
+// installs its error overlay only after this module has evaluated, so a throw
+// here would be a blank page.
+const pendingDeepLink: DeepLink | null = (() => {
+  try {
+    if (typeof window === "undefined") return null;
+    const { search, pathname } = window.location;
+    if (!hasDeepLinkParams(search)) return null;
+    const link = parseDeepLink(search, MAX_MESSAGE_CHARS);
+    history.replaceState(null, "", pathname);
+    return link;
+  } catch {
+    return null;
+  }
+})();
+let deepLinkConsumed = false;
+function takeDeepLink(): DeepLink | null {
+  if (deepLinkConsumed) return null;
+  deepLinkConsumed = true;
+  return pendingDeepLink;
+}
 
 // Top-right control: opens a Slack DM to the Cortex admin. Link-out only —
 // nothing is sent from Cortex, so there is no PHI surface here. Built on the
@@ -722,7 +756,7 @@ function Conversation({
     );
     if (!firstUser || !answered) return;
     recordedRef.current = true;
-    onFirstMessage(threadId, textOf(firstUser).slice(0, 48));
+    onFirstMessage(threadId, recentTitle(textOf(firstUser)));
   }, [messages, threadId, onFirstMessage]);
 
   // The empty state and the conversation lay the composer out differently,
@@ -838,7 +872,10 @@ function Conversation({
   const submit = useCallback(
     async (options?: { override?: boolean }) => {
       const text = input.trim();
-      if (!text || isStreaming || screening) return;
+      // Over the cap is only reachable programmatically (a deep link); the
+      // amber counter says why nothing happens until the text is trimmed.
+      if (!text || text.length > MAX_MESSAGE_CHARS || isStreaming || screening)
+        return;
       if (THANKS_RE.test(text)) {
         setInput("");
         setThanks(true);
@@ -902,6 +939,42 @@ function Conversation({
       resizeComposer
     ]
   );
+
+  // Deep-link intent, consumed after the first committed render: by then
+  // useAgentChat has resolved and `submit` closes over the prefilled input and
+  // a live agent. The flag is burned inside `run`, so a remount while a
+  // prerender is still hidden cannot strand an ask as a draft. Exception-safe
+  // so a failure degrades to "prefilled, not sent" instead of the fatal
+  // overlay in client.tsx; a hidden prerender never spends a message.
+  useEffect(() => {
+    if (!pendingDeepLink || deepLinkConsumed) return;
+    const run = () => {
+      const link = takeDeepLink();
+      if (!link) return;
+      try {
+        resizeComposer();
+        textareaRef.current?.focus();
+        if (link.action === "ask") submit().catch(() => {});
+      } catch {
+        // leave the text in the composer
+      }
+    };
+    const doc = document as Document & { prerendering?: boolean };
+    if (!doc.prerendering) {
+      run();
+      return;
+    }
+    doc.addEventListener("prerenderingchange", run, { once: true });
+    return () => doc.removeEventListener("prerenderingchange", run);
+    // Mount-only on purpose: the first-render `submit` is the one that closes
+    // over the seeded input.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sendable: non-empty and under the cap. Over the cap is only reachable
+  // programmatically (a deep link), and the amber counter says why.
+  const sendable =
+    input.trim().length > 0 && input.trim().length <= MAX_MESSAGE_CHARS;
 
   const composer = (
     <div>
@@ -989,11 +1062,11 @@ function Conversation({
               <button
                 type="button"
                 onClick={() => void submit()}
-                disabled={!input.trim() && !screening}
+                disabled={!sendable && !screening}
                 aria-label={screening ? "Checking for patient names" : "Send"}
                 className={cn(
-                  "pressable flex h-8 w-8 items-center justify-center rounded-full",
-                  screening || input.trim()
+                  "pressable flex h-8 w-8 items-center justify-center rounded-full disabled:cursor-not-allowed",
+                  screening || sendable
                     ? "bg-brand-orange text-white"
                     : "bg-muted text-muted-foreground",
                   settled &&
@@ -1114,7 +1187,9 @@ function Conversation({
 }
 
 export default function App() {
-  const [input, setInput] = useState("");
+  // Seeded from the deep link, if any (idempotent on a Suspense replay; the
+  // link is consumed — sent or not — only by the effect in Conversation).
+  const [input, setInput] = useState<string>(() => pendingDeepLink?.text ?? "");
   const [blockedReason, setBlockedReason] = useState<string | null>(null);
   // One conversation room per situation. The Conversation subtree is keyed by
   // threadId, so switching threads remounts it: fresh socket, fresh initial
