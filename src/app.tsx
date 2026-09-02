@@ -1272,12 +1272,17 @@ export default function App() {
       {sidebarOpen && (
         <aside className="flex w-[284px] shrink-0 flex-col border-r bg-sidebar max-[900px]:fixed max-[900px]:inset-y-0 max-[900px]:left-0 max-[900px]:z-40 max-[900px]:shadow-2xl max-[900px]:animate-in max-[900px]:slide-in-from-left max-[900px]:fade-in-50 max-[900px]:duration-300 max-[900px]:ease-out-expo">
           <div className="flex items-center justify-between px-4 pt-4 pb-2">
-            <span className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={newSituation}
+              aria-label="Cortex, go to main page"
+              className="pressable flex items-center gap-2 rounded-[6px] hover:opacity-80"
+            >
               <LogoMark className="h-6 w-6 text-foreground" />
               <span className="font-serif text-[22px] text-foreground">
                 Cortex
               </span>
-            </span>
+            </button>
             <span className="flex items-center gap-1.5">
               <button
                 type="button"
