@@ -151,3 +151,25 @@ test("does not warn on staff names or clean messages", () => {
 test("the block key for the model name-screen is unchanged", () => {
   assert.equal(PII_SCREEN_REASON, "a possible patient name");
 });
+
+// --- cross-repo drift guard ---
+// The Orchestration Manager builds deep-link messages against a vendored copy
+// of these screens (docs/deeplink.md). Its worked example M001 must stay clean
+// here, and the negative control proves the screens were exercised.
+const OM_SAMPLE_M001 = [
+  "Caregiver Required: confirm caregiver attendance for a Cognitive Assessment (99483) visit in 7 days.",
+  "This task is unclaimed and I am deciding whether to pick it up. In Orchestration Manager it sits with the Member Experience team as Caregiver Liaison, on the Cognitive pathway, core protocol. It was flagged as 'Protocol step missing' by Cognitive Visit Protocol — Phase 2 Readiness Checklist. The visit is a Cognitive Assessment (99483) in 7 days. The caregiver contact status is pending. It is pending, high priority, due in 6 days.",
+  "What are the steps to complete this task, and who handles it?"
+].join("\n");
+
+test("the Orchestration Manager M001 deep-link fixture passes both screens", () => {
+  assert.deepEqual(checkPHI(OM_SAMPLE_M001), { blocked: false, reason: null });
+  assert.equal(checkPossiblePII(OM_SAMPLE_M001), null);
+});
+
+test("a named patient in the same shape still trips the soft screen", () => {
+  assert.equal(
+    checkPossiblePII("My patient Margaret Chen is asking about her visit."),
+    "a patient name"
+  );
+});
