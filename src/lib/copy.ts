@@ -129,6 +129,17 @@ export const PIPELINE_ERROR_LINES = {
     "The SOPs were found but the answer could not be written. Send the message again; if it keeps failing, tell the Cortex admin."
 } as const satisfies Record<PipelineErrorKind, string>;
 
+// Shown in place of a citation quote the model did not reproduce word for
+// word. The SOP is real and linked; only the wording is unverified, so the
+// line sends the reader to the source rather than claiming an error.
+export const CITATION_UNMATCHED_NOTE =
+  "Not found word for word in this SOP. Open it to check the wording:";
+
+// Shown when a citation names an SOP that was not among the ones retrieved
+// for this answer, so there was nothing to check it against.
+export const CITATION_UNKNOWN_SOP_NOTE =
+  "Not one of the SOPs found for this answer, so it could not be checked.";
+
 // Three garbled generations in a row (the fp8 collapse guard gave up).
 export const DEGENERATE_GIVE_UP_LINE =
   "The answer came back garbled three times in a row. Send the message again.";

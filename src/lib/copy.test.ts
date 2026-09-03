@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as copy from "./copy.ts";
 import {
+  CITATION_UNKNOWN_SOP_NOTE,
+  CITATION_UNMATCHED_NOTE,
   composerCounter,
   greetingForHour,
   HINT_FIRST_ANSWER,
@@ -61,6 +63,16 @@ test("every pipeline error kind has an operator-facing line", () => {
 test("the length lines carry the actual limit", () => {
   assert.match(messageTooLongLine(8000), /8,000 characters/);
   assert.equal(composerCounter(7240, 8000), "7,240 / 8,000");
+});
+
+test("the citation notes say what could not be checked, without blaming anyone", () => {
+  // The unmatched note introduces the model's own sentence, so it ends open.
+  assert.ok(CITATION_UNMATCHED_NOTE.endsWith(":"));
+  assert.ok(CITATION_UNKNOWN_SOP_NOTE.endsWith("."));
+  for (const line of [CITATION_UNMATCHED_NOTE, CITATION_UNKNOWN_SOP_NOTE]) {
+    assert.doesNotMatch(line, /[!\p{Extended_Pictographic}]/u, line);
+    assert.doesNotMatch(line, /\b(?:error|wrong|failed|invalid)\b/i, line);
+  }
 });
 
 test("the first-answer hint says the team line is a steer", () => {
