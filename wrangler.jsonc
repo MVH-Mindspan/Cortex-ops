@@ -29,8 +29,9 @@
     // analytics and the dollar spend limit. Empty disables gateway routing.
     "AI_GATEWAY_ID": "cortex",
     // Retrieval settings, passed to AI Search per request (they override the
-    // instance defaults). Cloudflare rewrites the query on follow-up turns
-    // only; the first message is always searched as typed.
+    // instance defaults). With rewrite on, a model rewrites the query before
+    // search on every turn, the first included (observed through the binding
+    // on 3 Sep 2026, contrary to the docs), and adds seconds of latency.
     "RETRIEVAL_QUERY_REWRITE": "on",
     // 1-50 chunks before dedupe into SOP cards; more distinct files reach
     // the ranking. The passage budget still caps what the model reads.

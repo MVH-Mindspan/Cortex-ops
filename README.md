@@ -26,12 +26,12 @@ How an answer is produced (`src/server.ts`, pure helpers in `src/lib/`):
 2. AI Search retrieves and reranks SOP passages; the top SOPs go to the model
    as full documents so every click path and field name can be quoted.
    Retrieval settings — query rewrite, result count, keyword match mode —
-   are wrangler vars passed to AI Search per request, and the first message
-   in a conversation is always searched as typed since Cloudflare rewrites
-   only follow-up turns. Chunk passages have their frontmatter stripped so
-   the model never sees a passage's link, status, or hints, and a SOP whose
-   Notion Status is Draft carries a "Draft" chip on its card, in the
-   library, and on pins.
+   are wrangler vars passed to AI Search per request. With rewrite on, a
+   model rewrites every query before search, the first message included,
+   which adds seconds and hides what was typed. Chunk passages have their
+   frontmatter stripped so the model never sees a passage's link, status, or
+   hints, and a SOP whose Notion Status is Draft carries a "Draft" chip on
+   its card, in the library, and on pins.
 3. The system prompt carries a curated team structure (`src/lib/teams.ts`,
    derived from the Notion page "Operations Teams Structure Overview"; no
    people, no channels). The model may name teams and functions from it, as a
@@ -128,8 +128,8 @@ in progress.
 - The monthly answer budget is `MONTHLY_MESSAGE_BUDGET` in `wrangler.jsonc`;
   the dollar cap is the AI Gateway spend limit (dashboard).
 - Retrieval is tuned by three `wrangler.jsonc` vars: `RETRIEVAL_QUERY_REWRITE`
-  (`on`/`off`) controls whether Cloudflare rewrites follow-up queries before
-  search; `RETRIEVAL_MAX_RESULTS` (1-50) caps how many chunks AI Search
+  (`on`/`off`) controls whether a model rewrites each query, first message
+  included, before search; `RETRIEVAL_MAX_RESULTS` (1-50) caps how many chunks AI Search
   returns before they dedupe into SOP cards; `RETRIEVAL_KEYWORD_MATCH`
   (`and`/`or`) sets hybrid search's keyword mode, and `and` needs every word
   of a sentence-length question to match a chunk.

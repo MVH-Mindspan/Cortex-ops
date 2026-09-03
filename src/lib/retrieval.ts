@@ -120,11 +120,12 @@ export type RetrievalTelemetry = {
    * score or null], best first. */
   top: [string, number, number | null][];
   rewrite: boolean;
-  /** Did AI Search run something other than the latest message? On the first
-   * turn Cloudflare searches the message as typed, so this is a canary that
-   * the documented behaviour still holds; on follow-up turns it says whether
-   * the query really was rewritten (expected with rewrite on) or the latest
-   * message was searched verbatim (expected with rewrite off). */
+  /** Did AI Search run something other than the latest message? With rewrite
+   * on this is true on every turn, the first included (observed through the
+   * binding on 3 Sep 2026: "amyloid PET order ICD-10" became a full question,
+   * contrary to the docs' claim that the first message is used as typed);
+   * with rewrite off it must be false, so a true here means the retriever
+   * never saw what was typed. */
   rewritten: boolean;
   turns: number;
   attempts: number;
