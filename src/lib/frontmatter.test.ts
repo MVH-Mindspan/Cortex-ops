@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fallbackMeta, parseSopFile, statusKind } from "./frontmatter.ts";
+import {
+  fallbackMeta,
+  loadSopMeta,
+  parseSopFile,
+  statusKind
+} from "./frontmatter.ts";
 import type { FileMeta } from "./pipeline.ts";
 
 // What the exporter writes now: status, use_when and the categories list
@@ -187,4 +192,32 @@ test("statusKind maps the labels, then falls back to the title convention", () =
   assert.equal(statusKind(null, "X (draft)"), null);
   assert.equal(statusKind(null, "X"), null);
   assert.equal(statusKind("", "X (DRAFT)"), "draft");
+});
+
+// The shared R2 read: one bad object must degrade to fallbackMeta for that key
+// alone, never fail the batch. The Worker and the eval harness both go through
+// this, so a regression here silently decouples the harness from production.
+test("loadSopMeta parses what it can and falls back per key", async () => {
+  const bucket = {
+    get(key: string) {
+      if (key === "present.md") {
+        return Promise.resolve({ text: () => Promise.resolve(NEW_FORMAT) });
+      }
+      if (key === "missing.md") return Promise.resolve(null);
+      return Promise.reject(new Error("R2 is having a day"));
+    }
+  };
+  const meta = await loadSopMeta(bucket, [
+    "present.md",
+    "missing.md",
+    "throws.md"
+  ]);
+  assert.deepEqual([...meta.keys()], ["present.md", "missing.md", "throws.md"]);
+  assert.equal(meta.get("present.md")?.status, "draft");
+  assert.match(
+    meta.get("present.md")?.title ?? "",
+    /Imaging Order Requirements/
+  );
+  assert.deepEqual(meta.get("missing.md"), fallbackMeta("missing.md"));
+  assert.deepEqual(meta.get("throws.md"), fallbackMeta("throws.md"));
 });

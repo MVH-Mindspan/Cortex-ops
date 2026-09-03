@@ -10,7 +10,11 @@
 // ignored, wrong types fall back, and YAML that will not parse degrades to
 // fallbackMeta. It never throws.
 //
-// Pure: no bindings, no I/O — the caller hands in the raw object text.
+// The parser itself is pure — the caller hands in the raw object text. The one
+// exception is loadSopMeta at the foot of the file, which reads a set of keys
+// out of a bucket and parses each one: the Worker and the eval harness must
+// resolve SOP metadata identically or the harness stops measuring the Worker,
+// so that read lives here rather than being written out twice.
 
 import matter from "gray-matter";
 // Value import between src/lib modules, so the .ts extension (see prompt.ts).
@@ -112,4 +116,28 @@ export function parseSopFile(key: string, raw: string): FileMeta {
     use_when: firstString(fm.use_when),
     text: parsed.content.trim()
   };
+}
+
+// Read frontmatter for a set of R2 keys, in parallel. A missing object, an
+// unreadable one, or a bucket that throws degrades to fallbackMeta for that
+// key alone: one bad object must never fail a whole answer. The bucket is
+// typed structurally by the one method used, so a test can pass a fake.
+export async function loadSopMeta(
+  bucket: { get(key: string): Promise<{ text(): Promise<string> } | null> },
+  keys: string[]
+): Promise<Map<string, FileMeta>> {
+  const entries = await Promise.all(
+    keys.map(async (key): Promise<[string, FileMeta]> => {
+      try {
+        const object = await bucket.get(key);
+        return [
+          key,
+          object ? parseSopFile(key, await object.text()) : fallbackMeta(key)
+        ];
+      } catch {
+        return [key, fallbackMeta(key)];
+      }
+    })
+  );
+  return new Map(entries);
 }

@@ -8,7 +8,7 @@ import {
 } from "ai";
 import { checkPHI, PII_SCREEN_REASON } from "./lib/phi";
 import { DEGEN_SNIFF_CHARS, looksDegenerate } from "./lib/degenerate";
-import { fallbackMeta, parseSopFile } from "./lib/frontmatter";
+import { loadSopMeta, parseSopFile } from "./lib/frontmatter";
 import {
   buildPassages,
   buildUserBlock,
@@ -617,32 +617,19 @@ export class ChatAgent extends AIChatAgent<Env> {
 
   // Read frontmatter from R2 for every unique source file in the chunk set.
   // AI Search does not surface frontmatter as metadata, so titles, categories,
-  // Notion links and the status come straight from the bucket objects, parsed
-  // by the one parser in lib/frontmatter.ts.
+  // Notion links and the status come straight from the bucket objects. The
+  // read itself is loadSopMeta in lib/frontmatter.ts, shared with the eval
+  // harness so the two cannot drift; this only dedupes the keys.
   private async fileMetaFor(
     chunks: SearchChunk[]
   ): Promise<Map<string, FileMeta>> {
-    const keys = [
+    return loadSopMeta(this.env.SOP_BUCKET, [
       ...new Set(
         chunks
           .map((chunk) => chunk.item?.key)
           .filter((key): key is string => Boolean(key))
       )
-    ];
-    const entries = await Promise.all(
-      keys.map(async (key): Promise<[string, FileMeta]> => {
-        try {
-          const object = await this.env.SOP_BUCKET.get(key);
-          return [
-            key,
-            object ? parseSopFile(key, await object.text()) : fallbackMeta(key)
-          ];
-        } catch {
-          return [key, fallbackMeta(key)];
-        }
-      })
-    );
-    return new Map(entries);
+    ]);
   }
 }
 
