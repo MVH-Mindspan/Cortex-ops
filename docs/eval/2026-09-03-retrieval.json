@@ -1,0 +1,4650 @@
+{
+  "date": "2026-09-03",
+  "base": "http://127.0.0.1:8790",
+  "mode": "retrieval",
+  "configs": [
+    "on/15/and",
+    "on/15/or",
+    "on/30/and",
+    "on/30/or",
+    "on/50/and",
+    "on/50/or",
+    "off/15/and",
+    "off/15/or",
+    "off/30/and",
+    "off/30/or",
+    "off/50/and",
+    "off/50/or"
+  ],
+  "halted": null,
+  "records": [
+    {
+      "config": "on/15/and",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 9616,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 9379,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "post-visit-checklist-sop.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 4586,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 6989,
+      "attempts": 1,
+      "top3": [
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md",
+        "patient-check-in-athena.md",
+        "post-visit-checklist-sop.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 4,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 9440,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": null,
+      "matched": null,
+      "files": 0,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 11840,
+      "attempts": 1,
+      "top3": [],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 0,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 9766,
+      "attempts": 1,
+      "top3": [],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 11895,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 2,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 7644,
+      "attempts": 1,
+      "top3": [
+        "dementia-memory-loss-communication-training.md",
+        "results-next-steps-requests-draft-needs-review.md",
+        "in-office-test-results-tb006-genetic-swab-draft-needs-review.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 10713,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "patient-staff-scenario-response.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 9077,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 6964,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 8294,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 7086,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 3,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 4835,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5365,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 0,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 10841,
+      "attempts": 1,
+      "top3": [],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/and",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5751,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "managing-the-clinical-inbox.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/15/and",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 15049,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 6820,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 3,
+      "rewritten": true,
+      "ms": 7881,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 6727,
+      "attempts": 1,
+      "top3": [
+        "follow-up-pre-visit-checklist-sop.md",
+        "same-day-provider-schedule-changes-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 4,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 6255,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 4996,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "post-visit-checklist-sop.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 5,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 26,
+      "rewritten": true,
+      "ms": 9541,
+      "attempts": 1,
+      "top3": [
+        "managing-the-clinical-inbox.md",
+        "chart-prep-initial-follow-up-visits.md",
+        "after-visit-checklist.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 12,
+      "rewritten": true,
+      "ms": 7285,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 2,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 5,
+      "rewritten": true,
+      "ms": 6591,
+      "attempts": 1,
+      "top3": [
+        "dementia-memory-loss-communication-training.md",
+        "results-next-steps-requests-draft-needs-review.md",
+        "in-office-test-results-tb006-genetic-swab-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5684,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "patient-staff-scenario-response.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 5096,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 7911,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 2,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 12128,
+      "attempts": 1,
+      "top3": ["enrollment.md", "digital-intake-survey-process.md"],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 5613,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 3,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 6501,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 9524,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 5816,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/15/or",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 6233,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "post-visit-checklist-sop.md",
+        "managing-the-clinical-inbox.md"
+      ],
+      "resolved": "on/15/or",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 4051,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "digital-intake-survey-process.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5669,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 8405,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 4660,
+      "attempts": 1,
+      "top3": [
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md",
+        "patient-check-in-athena.md",
+        "post-visit-checklist-sop.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 4,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 3120,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 4520,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "post-visit-checklist-sop.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 3,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5859,
+      "attempts": 1,
+      "top3": [
+        "managing-the-clinical-inbox.md",
+        "chart-prep-initial-follow-up-visits.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5867,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 2,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 4026,
+      "attempts": 1,
+      "top3": [
+        "dementia-memory-loss-communication-training.md",
+        "results-next-steps-requests-draft-needs-review.md",
+        "in-office-test-results-tb006-genetic-swab-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 8655,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "patient-staff-scenario-response.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 3606,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 3858,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5683,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 4967,
+      "attempts": 1,
+      "top3": [
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 3,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5229,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 6266,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 7042,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/and",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 7458,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "managing-the-clinical-inbox.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/30/and",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 13730,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 5,
+      "rewritten": true,
+      "ms": 8708,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 3,
+      "rewritten": true,
+      "ms": 8664,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 8771,
+      "attempts": 1,
+      "top3": [
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md",
+        "verbal-orders-medication-change-communication-draft-needs-review.md",
+        "follow-up-pre-visit-checklist-sop.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 4,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 9700,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 5254,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "post-visit-checklist-sop.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 3,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 7,
+      "rewritten": true,
+      "ms": 5511,
+      "attempts": 1,
+      "top3": [
+        "managing-the-clinical-inbox.md",
+        "chart-prep-initial-follow-up-visits.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 12,
+      "rewritten": true,
+      "ms": 8001,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 7731,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "in-office-test-results-tb006-genetic-swab-draft-needs-review.md",
+        "dementia-memory-loss-communication-training.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 3998,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "patient-staff-scenario-response.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 5944,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 12000,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 4,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 4,
+      "keywordRank": 9,
+      "rewritten": true,
+      "ms": 10370,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "follow-up-pre-visit-checklist-sop.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 5058,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 3,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 9193,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 3,
+      "rewritten": true,
+      "ms": 5538,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 3,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 5822,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/30/or",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 5544,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "post-visit-checklist-sop.md",
+        "managing-the-clinical-inbox.md"
+      ],
+      "resolved": "on/30/or",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 7780,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "digital-intake-survey-process.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 8168,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 3940,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 6009,
+      "attempts": 1,
+      "top3": [
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md",
+        "patient-check-in-athena.md",
+        "post-visit-checklist-sop.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 4,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 8942,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 3530,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "post-visit-checklist-sop.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 3,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 8329,
+      "attempts": 1,
+      "top3": [
+        "managing-the-clinical-inbox.md",
+        "chart-prep-initial-follow-up-visits.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 9100,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 2,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 7611,
+      "attempts": 1,
+      "top3": [
+        "dementia-memory-loss-communication-training.md",
+        "results-next-steps-requests-draft-needs-review.md",
+        "in-office-test-results-tb006-genetic-swab-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 7590,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "appointment-scheduling.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 7275,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 4616,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 2,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5067,
+      "attempts": 1,
+      "top3": ["enrollment.md", "digital-intake-survey-process.md"],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 10444,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 3,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 4774,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 3518,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 3,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5016,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/and",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5799,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "managing-the-clinical-inbox.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/50/and",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 7768,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 10230,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "post-visit-checklist-sop.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 3,
+      "rewritten": true,
+      "ms": 7433,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 7567,
+      "attempts": 1,
+      "top3": [
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md",
+        "verbal-orders-medication-change-communication-draft-needs-review.md",
+        "follow-up-pre-visit-checklist-sop.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 4,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 5699,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 6506,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "post-visit-checklist-sop.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 5,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 26,
+      "rewritten": true,
+      "ms": 4531,
+      "attempts": 1,
+      "top3": [
+        "managing-the-clinical-inbox.md",
+        "chart-prep-initial-follow-up-visits.md",
+        "after-visit-checklist.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 12,
+      "rewritten": true,
+      "ms": 9655,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 2,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 5,
+      "rewritten": true,
+      "ms": 5324,
+      "attempts": 1,
+      "top3": [
+        "dementia-memory-loss-communication-training.md",
+        "results-next-steps-requests-draft-needs-review.md",
+        "in-office-test-results-tb006-genetic-swab-draft-needs-review.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": true,
+      "ms": 5078,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "appointment-scheduling.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 4930,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 5436,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 12,
+      "rewritten": true,
+      "ms": 7711,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 11324,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 3,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 7385,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 3,
+      "rewritten": true,
+      "ms": 10639,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 3,
+      "keywordRank": 2,
+      "rewritten": true,
+      "ms": 4575,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "on/50/or",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": true,
+      "ms": 5572,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "post-visit-checklist-sop.md",
+        "managing-the-clinical-inbox.md"
+      ],
+      "resolved": "on/50/or",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 4204,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "digital-intake-survey-process.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3624,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "post-visit-checklist-sop.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5493,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "prior-authorizations.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 4637,
+      "attempts": 1,
+      "top3": [
+        "follow-up-pre-visit-checklist-sop.md",
+        "results-next-steps-requests-draft-needs-review.md",
+        "same-day-provider-schedule-changes-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 3,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3617,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5582,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md",
+        "managing-the-clinical-inbox.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 6544,
+      "attempts": 1,
+      "top3": [
+        "managing-the-clinical-inbox.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3352,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3346,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "callback-brokering-live-transfers-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3024,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "telehealth-visits-setup-access-no-shows-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 7985,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 2606,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3696,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5383,
+      "attempts": 1,
+      "top3": [
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5055,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 8444,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5393,
+      "attempts": 1,
+      "top3": [
+        "verbal-orders-medication-change-communication-draft-needs-review.md",
+        "long-beach.md",
+        "order-prescription-corrections-and-rx-requests-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/and",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 4559,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "new-pt-pre-visit-checklist-sop.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/15/and",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 10269,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "digital-intake-survey-process.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 4525,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "post-visit-checklist-sop.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 6986,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "prior-authorizations.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 7120,
+      "attempts": 1,
+      "top3": [
+        "follow-up-pre-visit-checklist-sop.md",
+        "results-next-steps-requests-draft-needs-review.md",
+        "same-day-provider-schedule-changes-draft-needs-review.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 3,
+      "keywordRank": 2,
+      "rewritten": false,
+      "ms": 8260,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 5,
+      "rewritten": false,
+      "ms": 4766,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md",
+        "managing-the-clinical-inbox.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 35,
+      "rewritten": false,
+      "ms": 8098,
+      "attempts": 1,
+      "top3": [
+        "managing-the-clinical-inbox.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 11,
+      "rewritten": false,
+      "ms": 5185,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 7,
+      "rewritten": false,
+      "ms": 5248,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "callback-brokering-live-transfers-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 7636,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "telehealth-visits-setup-access-no-shows-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": false,
+      "ms": 6135,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 6819,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 7,
+      "rewritten": false,
+      "ms": 4742,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 2406,
+      "attempts": 1,
+      "top3": [
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": false,
+      "ms": 3189,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 8779,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 9205,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "verbal-orders-medication-change-communication-draft-needs-review.md",
+        "long-beach.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/15/or",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 5805,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "new-pt-pre-visit-checklist-sop.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/15/or",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 6314,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "digital-intake-survey-process.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 0,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 8840,
+      "attempts": 1,
+      "top3": [],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 9491,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "prior-authorizations.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5261,
+      "attempts": 1,
+      "top3": [
+        "follow-up-pre-visit-checklist-sop.md",
+        "results-next-steps-requests-draft-needs-review.md",
+        "same-day-provider-schedule-changes-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 3,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 6536,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3838,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md",
+        "managing-the-clinical-inbox.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 9418,
+      "attempts": 1,
+      "top3": [
+        "managing-the-clinical-inbox.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 8860,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 9935,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "callback-brokering-live-transfers-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3862,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "telehealth-visits-setup-access-no-shows-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 7027,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 4972,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3964,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5484,
+      "attempts": 1,
+      "top3": [
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3307,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 6619,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5459,
+      "attempts": 1,
+      "top3": [
+        "verbal-orders-medication-change-communication-draft-needs-review.md",
+        "long-beach.md",
+        "order-prescription-corrections-and-rx-requests-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/and",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 9250,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "new-pt-pre-visit-checklist-sop.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/30/and",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 7665,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "digital-intake-survey-process.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 4367,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "post-visit-checklist-sop.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 10459,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "prior-authorizations.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 6328,
+      "attempts": 1,
+      "top3": [
+        "follow-up-pre-visit-checklist-sop.md",
+        "results-next-steps-requests-draft-needs-review.md",
+        "same-day-provider-schedule-changes-draft-needs-review.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 3,
+      "keywordRank": 2,
+      "rewritten": false,
+      "ms": 6672,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 5,
+      "rewritten": false,
+      "ms": 5721,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md",
+        "managing-the-clinical-inbox.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 10361,
+      "attempts": 1,
+      "top3": [
+        "managing-the-clinical-inbox.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 11,
+      "rewritten": false,
+      "ms": 6459,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 7,
+      "rewritten": false,
+      "ms": 8995,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "callback-brokering-live-transfers-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 4748,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "telehealth-visits-setup-access-no-shows-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": false,
+      "ms": 4858,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 5363,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 7,
+      "rewritten": false,
+      "ms": 5108,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 5886,
+      "attempts": 1,
+      "top3": [
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": false,
+      "ms": 4187,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 9268,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 6469,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "verbal-orders-medication-change-communication-draft-needs-review.md",
+        "long-beach.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/30/or",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 4465,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "new-pt-pre-visit-checklist-sop.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/30/or",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 4178,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "digital-intake-survey-process.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 4422,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "post-visit-checklist-sop.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 0,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 8617,
+      "attempts": 1,
+      "top3": [],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 10297,
+      "attempts": 1,
+      "top3": [
+        "follow-up-pre-visit-checklist-sop.md",
+        "results-next-steps-requests-draft-needs-review.md",
+        "same-day-provider-schedule-changes-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 3,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 6329,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 7081,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md",
+        "managing-the-clinical-inbox.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3239,
+      "attempts": 1,
+      "top3": [
+        "managing-the-clinical-inbox.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3472,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 8750,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "callback-brokering-live-transfers-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3948,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "telehealth-visits-setup-access-no-shows-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5827,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3402,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5164,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 2245,
+      "attempts": 1,
+      "top3": [
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 6326,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 4588,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5294,
+      "attempts": 1,
+      "top3": [
+        "verbal-orders-medication-change-communication-draft-needs-review.md",
+        "long-beach.md",
+        "order-prescription-corrections-and-rx-requests-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/and",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 4092,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "new-pt-pre-visit-checklist-sop.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/50/and",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "D1",
+      "block": "demo",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 8375,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "digital-intake-survey-process.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "A1",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 3738,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "post-visit-checklist-sop.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "A2",
+      "block": "A",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 5309,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "prior-authorizations.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "A3",
+      "block": "A",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 4638,
+      "attempts": 1,
+      "top3": [
+        "follow-up-pre-visit-checklist-sop.md",
+        "results-next-steps-requests-draft-needs-review.md",
+        "same-day-provider-schedule-changes-draft-needs-review.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "B1",
+      "block": "B",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 3,
+      "keywordRank": 2,
+      "rewritten": false,
+      "ms": 9278,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "digital-intake-survey-process.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "B2",
+      "block": "B",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 5,
+      "rewritten": false,
+      "ms": 4308,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md",
+        "managing-the-clinical-inbox.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "B3",
+      "block": "B",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 10782,
+      "attempts": 1,
+      "top3": [
+        "managing-the-clinical-inbox.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "C1",
+      "block": "C",
+      "expected": [
+        "insurance-verification-prior-authorization-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 11,
+      "rewritten": false,
+      "ms": 7859,
+      "attempts": 1,
+      "top3": [
+        "patient-check-in-athena.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "C2",
+      "block": "C",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 7,
+      "rewritten": false,
+      "ms": 11314,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "callback-brokering-live-transfers-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "C3",
+      "block": "C",
+      "expected": [],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 5050,
+      "attempts": 1,
+      "top3": [
+        "new-pt-pre-visit-checklist-sop.md",
+        "telehealth-visits-setup-access-no-shows-draft-needs-review.md",
+        "patient-records-requests-release-of-information-draft-needs-review.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "R1",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": false,
+      "ms": 3313,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "chart-prep-initial-follow-up-visits.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "R2",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 6246,
+      "attempts": 1,
+      "top3": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "R3",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 7,
+      "rewritten": false,
+      "ms": 4247,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "R4",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 2546,
+      "attempts": 1,
+      "top3": [
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "R5",
+      "block": "rerun",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": 2,
+      "matched": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 2,
+      "rewritten": false,
+      "ms": 3968,
+      "attempts": 1,
+      "top3": [
+        "insurance-verification-prior-authorization-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "D2",
+      "block": "control",
+      "expected": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+      ],
+      "rank": 1,
+      "matched": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 3090,
+      "attempts": 1,
+      "top3": [
+        "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+        "infusion-journey-patient-communication-expectations-draft-needs-review.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "T1",
+      "block": "follow-up",
+      "expected": [
+        "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+      ],
+      "rank": null,
+      "matched": null,
+      "files": 5,
+      "keywordRank": null,
+      "rewritten": false,
+      "ms": 3649,
+      "attempts": 1,
+      "top3": [
+        "enrollment.md",
+        "verbal-orders-medication-change-communication-draft-needs-review.md",
+        "long-beach.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    },
+    {
+      "config": "off/50/or",
+      "id": "T2",
+      "block": "follow-up",
+      "expected": ["results-next-steps-requests-draft-needs-review.md"],
+      "rank": 1,
+      "matched": "results-next-steps-requests-draft-needs-review.md",
+      "files": 5,
+      "keywordRank": 1,
+      "rewritten": false,
+      "ms": 6526,
+      "attempts": 1,
+      "top3": [
+        "results-next-steps-requests-draft-needs-review.md",
+        "new-pt-pre-visit-checklist-sop.md",
+        "lab-test-cost-concerns-draft-needs-review.md"
+      ],
+      "resolved": "off/50/or",
+      "error": null
+    }
+  ]
+}

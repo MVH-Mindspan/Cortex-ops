@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import * as copy from "./copy.ts";
 import {
   composerCounter,
   greetingForHour,
@@ -78,4 +79,18 @@ test("a recents title is the first non-empty line, up to 48 characters", () => {
   );
   assert.equal(recentTitle("one line only"), "one line only");
   assert.equal(recentTitle("   "), "");
+});
+
+// The voice rules in the file header, enforced over every line at once so a
+// new constant is covered the moment it is added.
+test("every string in the copy file keeps the file's voice", () => {
+  const lines = Object.entries(copy).filter(
+    ([, value]) => typeof value === "string"
+  ) as [string, string][];
+  assert.ok(lines.length > 20);
+  for (const [name, line] of lines) {
+    assert.ok(line.length > 0, name);
+    assert.doesNotMatch(line, /\p{Extended_Pictographic}/u, name);
+    assert.doesNotMatch(line, /!/, name);
+  }
 });
