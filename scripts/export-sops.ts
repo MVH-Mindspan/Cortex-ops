@@ -1,5 +1,7 @@
 // Export Notion SOPs to markdown with YAML frontmatter and sync them to R2.
 // Run: npm run export  (requires NOTION_TOKEN and NOTION_SOP_ROOT, e.g. via .env)
+// Untitled stubs and the pages scripts/export-filter.ts deny-lists are
+// skipped, and so is everything underneath an excluded page.
 // --dry-run converts every page and writes export/ but touches neither R2 nor
 // the manifest. Stale R2 objects (pages renamed, archived, emptied, deleted or
 // newly excluded in Notion) are listed on every run and deleted only with
@@ -213,6 +215,15 @@ async function main(): Promise<void> {
   // One level of child pages under each top-level page.
   let discoveryComplete = true;
   for (const page of topLevel) {
+    // Children of an excluded page are excluded with it: the routing map's
+    // sections are its children, and descending would export each of them as
+    // an untagged page in its own right.
+    const decision = exportDecision({
+      id: page.id,
+      title: titleOf(page.properties),
+      categories: categoriesOf(page.properties)
+    });
+    if (!decision.export) continue;
     try {
       for await (const block of iteratePaginatedAPI(
         notion.blocks.children.list,
