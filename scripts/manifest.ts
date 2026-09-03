@@ -66,3 +66,20 @@ export function pruneKeys(manifest: Manifest, pruned: string[]): Manifest {
     stale: manifest.stale.filter((s) => !gone.has(s.key))
   };
 }
+
+// A run is suspicious when it exported nothing or when more than a fifth of
+// the tracked corpus (the threshold never drops below five) went stale at
+// once (ceil: 76 tracked objects tolerate 16 stale, 17 trips it): Notion
+// returned an incomplete page set (integration un-shared, wrong root,
+// permission change) far more often than a fifth of the SOPs were deleted.
+// The export refuses to prune on such a run and exits non-zero so the
+// scheduled sync goes red instead of silently emptying the index. A
+// legitimate bulk deletion trips it too; the export's --force flag is the
+// documented way past it once the stale list has been read.
+export function suspiciousDrop(
+  trackedFiles: number,
+  exported: number,
+  stale: number
+): boolean {
+  return exported === 0 || stale > Math.max(5, Math.ceil(trackedFiles * 0.2));
+}
