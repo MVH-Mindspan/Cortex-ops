@@ -34,6 +34,11 @@ export const MAX_OUTPUT_TOKENS = 3_000;
 export const SCREEN_WINDOW_CHARS = 2_000;
 export const SCREEN_WINDOW_OVERLAP = 200;
 
+// The review state of a SOP, normalised from the frontmatter label (or, for
+// files exported before the status key existed, from the title suffix) in
+// frontmatter.ts — the only place that mapping happens.
+export type SopStatus = "draft" | "review" | "approved";
+
 export type SOPRef = {
   title: string;
   category: string;
@@ -43,6 +48,9 @@ export type SOPRef = {
   /** R2 object key, e.g. "appointment-scheduling.md" — lets the client
    * linkify filename mentions too. Optional: absent on older stored turns. */
   file?: string;
+  /** Drives the "Draft" chip on the card. Optional: absent on older stored
+   * turns and on SOPs with no status at all. */
+  status?: SopStatus;
 };
 
 export type SearchChunk = {
@@ -61,6 +69,11 @@ export type FileMeta = {
   category: string;
   last_edited: string | null;
   source_url: string | null;
+  /** Review state, or null when the SOP carries none. */
+  status: SopStatus | null;
+  /** The Notion "Use When (Agent Hints)" text: written by the export and
+   * indexed by AI Search; not read by the Worker yet. */
+  use_when: string | null;
   /** Frontmatter-stripped markdown body, for full-document passages. */
   text: string;
 };
@@ -128,7 +141,10 @@ export function rankSops(
         last_edited: m?.last_edited ?? null,
         source_url: m?.source_url ?? null,
         score,
-        file: key
+        file: key,
+        // Omitted rather than null when there is no status, so a stored turn
+        // written before status existed stays shape-identical.
+        ...(m?.status ? { status: m.status } : {})
       };
     });
 }

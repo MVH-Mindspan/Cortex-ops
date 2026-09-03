@@ -6,9 +6,9 @@ import {
   createUIMessageStreamResponse,
   type UIMessage
 } from "ai";
-import matter from "gray-matter";
 import { checkPHI, PII_SCREEN_REASON } from "./lib/phi";
 import { DEGEN_SNIFF_CHARS, looksDegenerate } from "./lib/degenerate";
+import { fallbackMeta, parseSopFile } from "./lib/frontmatter";
 import {
   buildPassages,
   classifyPipelineError,
@@ -24,6 +24,7 @@ import {
   type PipelineStage,
   type SearchChunk,
   type SOPRef,
+  type SopStatus,
   type Turn
 } from "./lib/pipeline";
 import {
@@ -148,6 +149,7 @@ export class ChatAgent extends AIChatAgent<Env> {
       title: string;
       category: string;
       source_url: string | null;
+      status: SopStatus | null;
       file: string;
     }[]
   > {
@@ -157,19 +159,12 @@ export class ChatAgent extends AIChatAgent<Env> {
         try {
           const object = await this.env.SOP_BUCKET.get(obj.key);
           if (!object) return null;
-          const fm = matter(await object.text()).data as Record<
-            string,
-            unknown
-          >;
+          const meta = parseSopFile(obj.key, await object.text());
           return {
-            title:
-              typeof fm.title === "string" && fm.title ? fm.title : obj.key,
-            category:
-              typeof fm.category === "string" && fm.category
-                ? fm.category
-                : "uncategorized",
-            source_url:
-              typeof fm.source_url === "string" ? fm.source_url : null,
+            title: meta.title,
+            category: meta.category,
+            source_url: meta.source_url,
+            status: meta.status,
             file: obj.key
           };
         } catch {
@@ -575,8 +570,9 @@ export class ChatAgent extends AIChatAgent<Env> {
   }
 
   // Read frontmatter from R2 for every unique source file in the chunk set.
-  // AI Search does not surface frontmatter as metadata, so titles, categories
-  // and Notion links come straight from the bucket objects.
+  // AI Search does not surface frontmatter as metadata, so titles, categories,
+  // Notion links and the status come straight from the bucket objects, parsed
+  // by the one parser in lib/frontmatter.ts.
   private async fileMetaFor(
     chunks: SearchChunk[]
   ): Promise<Map<string, FileMeta>> {
@@ -589,35 +585,14 @@ export class ChatAgent extends AIChatAgent<Env> {
     ];
     const entries = await Promise.all(
       keys.map(async (key): Promise<[string, FileMeta]> => {
-        const fallback: FileMeta = {
-          title: key,
-          category: "uncategorized",
-          last_edited: null,
-          source_url: null,
-          text: ""
-        };
         try {
           const object = await this.env.SOP_BUCKET.get(key);
-          if (!object) return [key, fallback];
-          const parsed = matter(await object.text());
-          const fm = parsed.data as Record<string, unknown>;
           return [
             key,
-            {
-              title: typeof fm.title === "string" && fm.title ? fm.title : key,
-              category:
-                typeof fm.category === "string" && fm.category
-                  ? fm.category
-                  : "uncategorized",
-              last_edited:
-                typeof fm.last_edited === "string" ? fm.last_edited : null,
-              source_url:
-                typeof fm.source_url === "string" ? fm.source_url : null,
-              text: parsed.content
-            }
+            object ? parseSopFile(key, await object.text()) : fallbackMeta(key)
           ];
         } catch {
-          return [key, fallback];
+          return [key, fallbackMeta(key)];
         }
       })
     );

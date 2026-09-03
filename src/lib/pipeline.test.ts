@@ -24,6 +24,8 @@ const meta = new Map<string, FileMeta>([
       category: "ops",
       last_edited: null,
       source_url: "https://n/a",
+      status: null,
+      use_when: null,
       text: "# Alpha\nStep one.\nStep two."
     }
   ],
@@ -34,10 +36,34 @@ const meta = new Map<string, FileMeta>([
       category: "ops",
       last_edited: null,
       source_url: null,
+      status: null,
+      use_when: null,
       text: "Beta body"
     }
   ]
 ]);
+
+// Two more SOPs, one still in draft and one approved. Kept out of `meta` on
+// purpose: the buildPassages tests below rely on c.md having no metadata.
+const metaWithDraft = new Map(meta)
+  .set("c.md", {
+    title: "Gamma SOP",
+    category: "ops",
+    last_edited: null,
+    source_url: null,
+    status: "draft",
+    use_when: "gamma question, gamma form",
+    text: "Gamma body"
+  })
+  .set("d.md", {
+    title: "Delta SOP",
+    category: "ops",
+    last_edited: null,
+    source_url: null,
+    status: "approved",
+    use_when: null,
+    text: "Delta body"
+  });
 
 const chunk = (key: string, score: number, text = "chunk"): SearchChunk => ({
   score,
@@ -85,6 +111,20 @@ test("rankSops dedupes chunks per file, keeps the best score, sorts descending",
   );
   assert.equal(ranked[0].title, "Beta SOP");
   assert.equal(ranked[1].source_url, "https://n/a");
+});
+
+test("rankSops carries the SOP status and omits the key when there is none", () => {
+  const ranked = rankSops(
+    [chunk("c.md", 0.9), chunk("d.md", 0.7), chunk("a.md", 0.5)],
+    metaWithDraft
+  );
+  assert.equal(ranked[0].file, "c.md");
+  assert.equal(ranked[0].status, "draft");
+  assert.equal(ranked[1].file, "d.md");
+  assert.equal(ranked[1].status, "approved");
+  const ref = ranked[2];
+  assert.equal(ref.file, "a.md");
+  assert.equal(Object.hasOwn(ref, "status"), false);
 });
 
 test("rankSops caps the list at MAX_SOPS", () => {
