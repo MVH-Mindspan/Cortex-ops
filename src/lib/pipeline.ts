@@ -62,7 +62,20 @@ export type SearchChunk = {
     timestamp?: number;
     metadata?: Record<string, unknown>;
   };
+  /** Per-chunk scores AI Search returns alongside the fused score (see
+   * env.d.ts AiSearchSearchResponse). */
+  scoring_details?: {
+    keyword_score?: number;
+    vector_score?: number;
+    keyword_rank?: number;
+    vector_rank?: number;
+    reranking_score?: number;
+  };
 };
+
+/** What AI_SEARCH.search() returns: the query it actually ran (rewritten on
+ * follow-up turns) and the chunks. */
+export type SearchResponse = { search_query: string; chunks: SearchChunk[] };
 
 export type FileMeta = {
   title: string;
@@ -149,6 +162,20 @@ export function rankSops(
     });
 }
 
+// AI Search indexes each object with its YAML frontmatter, so chunk 1 of a
+// file starts with the `---` block. Strip it from chunk passages: the model
+// must never see source_url (a link it could retype), status, or the agent
+// hints, none of which are SOP content. Full documents come from meta.text,
+// which gray-matter already separated. The lookahead requires `title:`
+// right after the opening `---` so a chunk that starts on a Notion divider
+// is never treated as frontmatter: every export, legacy and new, writes
+// `title:` as the first frontmatter key (matter.stringify keeps object key
+// order), and a body line never starts with `title:`.
+const FRONTMATTER_RE = /^---\r?\n(?=title:)[\s\S]*?\r?\n---(?:\r?\n|$)/;
+export function stripFrontmatter(text: string): string {
+  return text.replace(FRONTMATTER_RE, "");
+}
+
 // The labelled "SOP passages" block. The top-ranked SOPs go in as FULL
 // documents so every sub-step, click path and field name is available to
 // quote — chunks alone make thin steps. Remaining chunks follow for breadth.
@@ -181,7 +208,7 @@ export function buildPassages(
   for (const chunk of chunks) {
     const key = chunk.item?.key;
     if (key && fullDocFiles.has(key)) continue;
-    const text = (chunk.text ?? "").trim();
+    const text = stripFrontmatter((chunk.text ?? "").trim()).trim();
     if (!text) continue;
     if (used + text.length > charBudget) break;
     used += text.length;
@@ -193,6 +220,13 @@ export function buildPassages(
     );
   }
   return { passages, used };
+}
+
+// The user turn sent to the generation model: the labelled passages, then the
+// team member's message. One place, so the eval harness sends the same bytes
+// as the Worker.
+export function buildUserBlock(passages: string[], message: string): string {
+  return `SOP passages\n\n${passages.join("\n\n")}\n\nTeam member's message:\n\n${message}`;
 }
 
 // Size the conversation to the model window: drop empty and notice turns,

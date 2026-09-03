@@ -2,17 +2,20 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildPassages,
+  buildUserBlock,
   classifyPipelineError,
   isTruncated,
   MAX_OUTPUT_TOKENS,
   MAX_SOPS,
   rankSops,
   sectionOf,
+  stripFrontmatter,
   textOf,
   trimHistory,
   windows,
   type FileMeta,
   type SearchChunk,
+  type SearchResponse,
   type Turn
 } from "./pipeline.ts";
 
@@ -70,6 +73,18 @@ const chunk = (key: string, score: number, text = "chunk"): SearchChunk => ({
   text,
   item: { key }
 });
+
+// One chunk, no full documents: the single passage produced is exactly what
+// buildPassages did with that chunk's text, for the frontmatter-stripping
+// tests below.
+function onlyPassage(text: string): string {
+  const chunks = [chunk("a.md", 0.9, text)];
+  const { passages } = buildPassages(rankSops(chunks, meta), chunks, meta, {
+    fullDocCount: 0,
+    charBudget: 30_000
+  });
+  return passages[0];
+}
 
 test("textOf joins the text parts with newlines and trims", () => {
   assert.equal(
@@ -188,6 +203,67 @@ test("buildPassages stops adding passages at the character budget", () => {
   assert.deepEqual(passages, [
     "[1] Alpha SOP | Alpha chunk | https://n/a\n## Alpha chunk"
   ]);
+});
+
+test("stripFrontmatter removes a leading frontmatter block", () => {
+  assert.equal(
+    stripFrontmatter(
+      "---\ntitle: X\nsource_url: https://u\nstatus: Draft\n---\n## Heading\nbody"
+    ),
+    "## Heading\nbody"
+  );
+});
+
+test("stripFrontmatter leaves a chunk that starts on a Notion divider alone", () => {
+  const text =
+    "---\n\n## Step 3\nCall the payer.\n\n---\n\n## Step 4\nFile it.";
+  assert.equal(stripFrontmatter(text), text);
+});
+
+test("buildPassages strips a leading frontmatter block from chunk text", () => {
+  const passage = onlyPassage(
+    "---\ntitle: X\nsource_url: https://u\nstatus: Draft\n---\n## Heading\nbody"
+  );
+  assert.equal(
+    passage,
+    "[1] Alpha SOP | Heading | https://n/a\n## Heading\nbody"
+  );
+  assert.ok(!passage.includes("source_url:"));
+});
+
+test("buildPassages strips a CRLF frontmatter block from chunk text", () => {
+  assert.equal(
+    onlyPassage("---\r\ntitle: X\r\n---\r\nbody"),
+    "[1] Alpha SOP | https://n/a\nbody"
+  );
+});
+
+test("buildPassages leaves a chunk that merely contains a markdown rule untouched", () => {
+  assert.equal(
+    onlyPassage("intro\n\n---\n\nmore"),
+    "[1] Alpha SOP | https://n/a\nintro\n\n---\n\nmore"
+  );
+});
+
+test("buildUserBlock assembles the request exactly as the Worker did", () => {
+  assert.equal(
+    buildUserBlock(["[1] A | full document | u\nbody"], "msg"),
+    "SOP passages\n\n[1] A | full document | u\nbody\n\nTeam member's message:\n\nmsg"
+  );
+  assert.equal(
+    buildUserBlock(["p1", "p2"], "msg"),
+    "SOP passages\n\np1\n\np2\n\nTeam member's message:\n\nmsg"
+  );
+});
+
+test("SearchResponse types the search query and chunks, including optional per-chunk scoring_details", () => {
+  const r: SearchResponse = { search_query: "q", chunks: [] };
+  assert.equal(r.chunks.length, 0);
+  const scored: SearchResponse = {
+    search_query: "q",
+    chunks: [{ scoring_details: { reranking_score: 0.5, keyword_rank: 1 } }]
+  };
+  assert.equal(scored.chunks[0].scoring_details?.reranking_score, 0.5);
 });
 
 test("trimHistory keeps the latest turn and drops the oldest turns past the char budget", () => {

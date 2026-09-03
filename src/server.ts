@@ -11,6 +11,7 @@ import { DEGEN_SNIFF_CHARS, looksDegenerate } from "./lib/degenerate";
 import { fallbackMeta, parseSopFile } from "./lib/frontmatter";
 import {
   buildPassages,
+  buildUserBlock,
   classifyPipelineError,
   isTruncated,
   MAX_MESSAGE_CHARS,
@@ -399,7 +400,7 @@ export class ChatAgent extends AIChatAgent<Env> {
           // 4. Generation via Workers AI with the operator's answer prompt,
           // behind the collapse guard.
           stage = "generation";
-          const userBlock = `SOP passages\n\n${passages.join("\n\n")}\n\nTeam member's message:\n\n${latest?.content ?? ""}`;
+          const userBlock = buildUserBlock(passages, latest?.content ?? "");
           const genMessages: ChatTurn[] = [
             { role: "system", content: SYSTEM_PROMPT },
             ...conversation
