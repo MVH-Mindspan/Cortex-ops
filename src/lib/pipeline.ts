@@ -39,6 +39,13 @@ export const SCREEN_WINDOW_OVERLAP = 200;
 // frontmatter.ts — the only place that mapping happens.
 export type SopStatus = "draft" | "review" | "approved";
 
+// The one draft-suffix rule, e.g. "… (DRAFT — Needs Review)": the export's
+// title convention. Case-sensitive on purpose — a lowercase "(draft)" in a
+// title is prose, not a status. statusKind (frontmatter.ts) reads it as the
+// fallback when there is no status key; cardTitle (linkify.ts) strips it for
+// display. Both must agree, so the pattern lives in this import-free leaf.
+export const DRAFT_TITLE_RE = /\((?:DRAFT|Draft)\b[^)]*\)\s*$/;
+
 export type SOPRef = {
   title: string;
   category: string;

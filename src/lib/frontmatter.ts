@@ -13,20 +13,18 @@
 // Pure: no bindings, no I/O — the caller hands in the raw object text.
 
 import matter from "gray-matter";
+// Value import between src/lib modules, so the .ts extension (see prompt.ts).
+import { DRAFT_TITLE_RE } from "./pipeline.ts";
 import type { FileMeta, SopStatus } from "./pipeline";
 
 // Notion writes non-breaking spaces into page titles. They look like spaces
 // but break title matching in the client, so normalise them on the way in.
 const NBSP_RE = /\u00a0/g;
 
-// 22 already-exported files carry the status only as a title suffix, e.g.
-// "… (DRAFT — Needs Review)". Case-sensitive on purpose: that is the title
-// convention, and a lowercase "(draft)" in a title is prose, not a status.
-const TITLE_DRAFT_RE = /\((?:DRAFT|Draft)\b[^)]*\)\s*$/;
-
-// The one status normaliser. The frontmatter label wins; the title suffix is
-// the fallback that gives the already-exported files a badge before the next
-// export writes a status key.
+// The one status normaliser. The frontmatter label wins; the title suffix
+// (DRAFT_TITLE_RE in pipeline.ts, which the client also strips for display)
+// is the fallback that gives the 22 already-exported files a badge before
+// the next export writes a status key.
 //
 // The order is deliberate. Draft is tested first so an ambiguous label
 // ("Draft — Needs Review") is never upgraded to something safer-sounding;
@@ -40,7 +38,7 @@ export function statusKind(
   if (/draft/i.test(label)) return "draft";
   if (/review/i.test(label)) return "review";
   if (/approved/i.test(label)) return "approved";
-  return TITLE_DRAFT_RE.test(title) ? "draft" : null;
+  return DRAFT_TITLE_RE.test(title) ? "draft" : null;
 }
 
 // What a caller gets when the object is missing, unreadable or unparsable:
