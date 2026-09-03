@@ -7,8 +7,10 @@ import {
   type UIMessage
 } from "ai";
 import { checkPHI, PII_SCREEN_REASON } from "./lib/phi";
+import { markCited, repairCitations, type RepairResult } from "./lib/citations";
 import { DEGEN_SNIFF_CHARS, looksDegenerate } from "./lib/degenerate";
 import { loadSopMeta, parseSopFile } from "./lib/frontmatter";
+import { TailHold } from "./lib/tail";
 import {
   buildPassages,
   buildUserBlock,
@@ -336,12 +338,30 @@ export class ChatAgent extends AIChatAgent<Env> {
           writer.write({ type: "text-delta", id: textId, delta });
         };
         // Operator notices are tagged so they are never replayed as history.
+        // Bound to the raw `say`: a notice is never part of the answer, so it
+        // must never go through the citation holder.
         const notice = (line: string) => {
           writer.write({
             type: "message-metadata",
             messageMetadata: { notice: true }
           });
           say(line);
+        };
+        // Holds back the "What the SOPs say" items so they can be rebuilt
+        // from retrieval; everything above them streams with zero lag.
+        const hold = new TailHold(
+          say,
+          () => options?.abortSignal?.aborted === true
+        );
+        let tailFlushed = false;
+        // Error and cleanup paths: hand the reader the held text raw rather
+        // than dropping it. Idempotent, so the finally block is safe after
+        // the answer path has already ended the hold.
+        const flushRaw = () => {
+          if (tailFlushed) return;
+          tailFlushed = true;
+          const raw = hold.end();
+          if (raw) say(raw);
         };
         let stage: PipelineStage = "budget";
         try {
@@ -392,8 +412,11 @@ export class ChatAgent extends AIChatAgent<Env> {
           writer.write({ type: "data-sops", id: "sops", data: ranked });
 
           // 3. The labelled "SOP passages" block: top SOPs as full documents,
-          // then remaining chunks for breadth (see buildPassages).
-          const { passages } = buildPassages(ranked, chunks, meta);
+          // then remaining chunks for breadth (see buildPassages). The
+          // entries carry the same labels as structure, so a "[3]" in the
+          // model's citation resolves back to the file it came from.
+          const { passages, entries } = buildPassages(ranked, chunks, meta);
+          const labels = entries.map((e) => ({ label: e.label, file: e.file }));
 
           // 4. Generation via Workers AI with the operator's answer prompt,
           // behind the collapse guard.
@@ -408,12 +431,49 @@ export class ChatAgent extends AIChatAgent<Env> {
           ];
           const outcome = await this.generate(
             genMessages,
-            say,
+            hold,
             options?.abortSignal
           );
           if (outcome === "degenerate") {
             notice(DEGENERATE_GIVE_UP_LINE);
             return;
+          }
+          // 5. The citation section, rebuilt from the SOP text that was
+          // actually retrieved. A stop keeps the model's own words: the
+          // reader already has half of them.
+          const tail = hold.end();
+          tailFlushed = true;
+          if (tail !== null) {
+            if (outcome.aborted) {
+              if (tail) say(tail);
+            } else {
+              let repaired: RepairResult | undefined;
+              try {
+                repaired = repairCitations(tail, {
+                  labels,
+                  sops: ranked,
+                  meta
+                });
+              } catch (err) {
+                // Constant messages only: never log model text.
+                console.error(
+                  `[cortex] citation repair failed: ${err instanceof Error ? err.name : "Error"}`
+                );
+              }
+              const text = repaired?.text ?? tail;
+              if (text) say(text);
+              if (repaired) {
+                const s = repaired.stats;
+                console.log(
+                  `[cortex] citations items=${s.items} matched=${s.matched} unmatched=${s.unmatched} unknown=${s.unknown} droppedQuestion=${repaired.droppedQuestion}`
+                );
+                writer.write({
+                  type: "data-sops",
+                  id: "sops",
+                  data: markCited(ranked, repaired.cited)
+                });
+              }
+            }
           }
           if (outcome.truncated) say(`\n\n${ANSWER_CUT_SHORT_LINE}`);
         } catch (err) {
@@ -425,8 +485,11 @@ export class ChatAgent extends AIChatAgent<Env> {
             stage,
             err instanceof Error ? (err.stack ?? message) : message
           );
+          // Before the notice, so held answer text keeps its place above it.
+          flushRaw();
           notice(PIPELINE_ERROR_LINES[classifyPipelineError(stage, message)]);
         } finally {
+          flushRaw();
           if (textStarted) writer.write({ type: "text-end", id: textId });
         }
       }
@@ -482,15 +545,18 @@ export class ChatAgent extends AIChatAgent<Env> {
     }
   }
 
-  // Streams one answer into `say`, re-rolling when the opening characters
+  // Streams one answer into `sink`, re-rolling when the opening characters
   // read as the fp8 collapse. Returns "degenerate" once every attempt has
-  // collapsed; otherwise whether the answer was stopped or cut off.
+  // collapsed; otherwise whether the answer was stopped or cut off. The sink
+  // is reset at the top of every attempt so a re-roll starts from an empty
+  // holder rather than one carrying the abandoned attempt's tail.
   private async generate(
     messages: ChatTurn[],
-    say: (delta: string) => void,
+    sink: TailHold,
     abortSignal?: AbortSignal
   ): Promise<"degenerate" | { aborted: boolean; truncated: boolean }> {
     for (const [attempt, params] of GENERATION_PARAMS.entries()) {
+      sink.reset();
       const sse = (await this.env.AI.run(
         GENERATION_MODEL,
         {
@@ -501,7 +567,7 @@ export class ChatAgent extends AIChatAgent<Env> {
         },
         gatewayOptions(this.env, "generation")
       )) as ReadableStream<Uint8Array>;
-      const result = await this.consume(sse, say, abortSignal);
+      const result = await this.consume(sse, (d) => sink.push(d), abortSignal);
       if (result.kind === "degenerate") {
         console.warn(
           `[cortex] degenerate generation on attempt ${attempt + 1}/${GENERATION_PARAMS.length}, regenerating`

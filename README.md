@@ -44,6 +44,11 @@ How an answer is produced (`src/server.ts`, pure helpers in `src/lib/`):
    stopword soup, so the first 240 characters are held back and the answer
    is regenerated (up to three tries) if they read as garbled. An answer cut
    off at the output limit says so.
+6. The "What the SOPs say" block is rebuilt by the Worker from retrieval:
+   each citation is matched to the SOP's own text, the whole list item is
+   quoted, the section label and Notion link come from the bucket, and a
+   follow-up question that asks for an identifier is dropped. Cards for
+   cited SOPs carry a Cited chip.
 
 Conversations purge after 7 idle days.
 

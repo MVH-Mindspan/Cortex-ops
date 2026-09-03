@@ -649,13 +649,18 @@ test("T18 a rendered quote is short enough for the card one-liner unless it was 
     `1. [5] Synthetic Length Fixture "${LONG_SENTENCE.slice(0, 120)}"`,
     context()
   );
-  assert.equal(
-    reasonFor(
-      `What the SOPs say\n${capped.text}`,
-      sop(SYNTHETIC, "Synthetic Length Fixture", null, 0.4)
-    ),
-    null
+  // reasonFor is now only the fallback for turns stored before SOPRef.quote
+  // existed; its cap (450) exceeds QUOTE_MAX_CHARS, so a capped quote still
+  // comes back, ellipsis and all.
+  const cappedReason = reasonFor(
+    `What the SOPs say\n${capped.text}`,
+    sop(SYNTHETIC, "Synthetic Length Fixture", null, 0.4)
   );
+  assert.ok(
+    cappedReason && cappedReason.length <= QUOTE_MAX_CHARS,
+    String(cappedReason)
+  );
+  assert.ok((cappedReason as string).endsWith("…"));
 });
 
 test("T19 the repair is deterministic and touches nothing it was given", () => {

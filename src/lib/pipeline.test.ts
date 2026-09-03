@@ -171,7 +171,7 @@ test("buildPassages: top files as full documents, then remaining chunks, continu
     chunk("c.md", 0.1, "## Gamma\nOrphan chunk")
   ];
   const ranked = rankSops(chunks, meta);
-  const { passages, used } = buildPassages(ranked, chunks, meta, {
+  const { passages, used, entries } = buildPassages(ranked, chunks, meta, {
     fullDocCount: 1,
     charBudget: 30_000
   });
@@ -191,6 +191,54 @@ test("buildPassages: top files as full documents, then remaining chunks, continu
       "Beta chunk text".length +
       "## Gamma\nOrphan chunk".length
   );
+  // The entries are the same passages as structure: labels 1..n in the same
+  // order, the source key, the kind, and the body after the label line.
+  assert.deepEqual(entries, [
+    {
+      label: 1,
+      file: "a.md",
+      title: "Alpha SOP",
+      kind: "full",
+      text: "# Alpha\nStep one.\nStep two.",
+      draft: false
+    },
+    {
+      label: 2,
+      file: "b.md",
+      title: "Beta SOP",
+      kind: "chunk",
+      text: "Beta chunk text",
+      draft: false
+    },
+    {
+      label: 3,
+      file: "c.md",
+      title: "Untitled SOP",
+      kind: "chunk",
+      text: "## Gamma\nOrphan chunk",
+      draft: false
+    }
+  ]);
+  for (const [i, entry] of entries.entries()) {
+    const passage = passages[i];
+    assert.equal(entry.text, passage.slice(passage.indexOf("\n") + 1));
+  }
+  // A chunk whose file is a draft carries the flag.
+  const drafted = buildPassages(
+    rankSops(chunks, metaWithDraft),
+    chunks,
+    metaWithDraft,
+    { fullDocCount: 1, charBudget: 30_000 }
+  ).entries;
+  assert.deepEqual(
+    drafted.map((e) => [e.file, e.draft]),
+    [
+      ["a.md", false],
+      ["b.md", false],
+      ["c.md", true]
+    ]
+  );
+  assert.equal(drafted[2].title, "Gamma SOP");
 });
 
 test("buildPassages never repeats a full-document file as a chunk", () => {

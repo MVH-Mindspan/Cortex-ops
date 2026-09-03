@@ -54,6 +54,7 @@ import {
   SCREENING_LINE,
   softPIIWarning,
   SOP_CARDS_HEADING,
+  SOP_CITED_BADGE,
   THANKS_LINE,
   THANKS_RE
 } from "@/lib/copy";
@@ -135,6 +136,17 @@ function DraftChip() {
       className="shrink-0 rounded-[4px] border px-1.5 py-0.5 text-[12px] leading-none text-muted-foreground"
     >
       {DRAFT_BADGE}
+    </span>
+  );
+}
+
+// Shown on a card the answer actually quoted (set by the citation repair, so
+// it means "checked against this SOP's own text", not merely "retrieved").
+// Blue, the link colour: this card carries the sentence the answer rests on.
+function CitedChip() {
+  return (
+    <span className="shrink-0 rounded-[4px] border px-1.5 py-0.5 text-[12px] leading-none text-brand-blue">
+      {SOP_CITED_BADGE}
     </span>
   );
 }
@@ -262,7 +274,9 @@ function SOPCards({
       </p>
       <div className="flex flex-col gap-2">
         {sops.map((sop, rank) => {
-          const reason = reasonFor(answer, sop);
+          // The verified quote from the citation repair; reasonFor is the
+          // fallback for turns stored before SOPRef.quote existed.
+          const reason = sop.quote ?? reasonFor(answer, sop);
           const isPinned = pinned.has(pinKey(sop));
           return (
             <Card
@@ -290,6 +304,7 @@ function SOPCards({
                       {titleFor(sop)}
                     </span>
                     {sop.status === "draft" && <DraftChip />}
+                    {sop.cited && <CitedChip />}
                   </div>
                   {reason && (
                     <p className="mt-0.5 truncate text-[13px] text-muted-foreground">

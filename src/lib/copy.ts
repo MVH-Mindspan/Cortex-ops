@@ -89,6 +89,10 @@ export const SOP_CARDS_HEADING = "Relevant SOPs";
 export const DRAFT_BADGE = "Draft";
 export const DRAFT_BADGE_TITLE = "Not yet reviewed.";
 
+// Chip on a card whose SOP the answer actually cited, set by the citation
+// repair. States what happened, not how well it went.
+export const SOP_CITED_BADGE = "Cited";
+
 // Reach-out starter messages, copied to the clipboard on selection because
 // Slack deep links can't pre-fill DM text. Keyed by reason label; reasons
 // without a starter leave the clipboard alone.
@@ -144,9 +148,11 @@ export const CITATION_UNKNOWN_SOP_NOTE =
 export const DEGENERATE_GIVE_UP_LINE =
   "The answer came back garbled three times in a row. Send the message again.";
 
-// Appended when the model hit its output limit before the citation sections.
+// Appended when the model hit its output limit. It no longer names the
+// citations as the place the cut fell: the Worker rebuilds that section from
+// retrieval, so a truncated answer can now end with the citations intact.
 export const ANSWER_CUT_SHORT_LINE =
-  "This answer ran long and was cut short before the SOP citations. Ask about one part of the situation at a time to get the rest.";
+  "This answer ran long and was cut short. Ask about one part of the situation at a time to get the rest.";
 
 // Message length cap (shared by the composer counter and the server refusal).
 export function messageTooLongLine(max: number): string {

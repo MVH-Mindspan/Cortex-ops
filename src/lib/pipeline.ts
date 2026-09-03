@@ -58,6 +58,13 @@ export type SOPRef = {
   /** Drives the "Draft" chip on the card. Optional: absent on older stored
    * turns and on SOPs with no status at all. */
   status?: SopStatus;
+  /** Set by the citation repair (citations.ts markCited): the answer cited
+   * this SOP. Optional: absent on older stored turns, like `file`. */
+  cited?: boolean;
+  /** Set by the citation repair: the first quote verified against this SOP's
+   * own text, used as the card's one-line reason. Optional: absent on older
+   * stored turns, like `file`. */
+  quote?: string | null;
 };
 
 export type SearchChunk = {
@@ -191,21 +198,36 @@ export function stripFrontmatter(text: string): string {
   return text.replace(FRONTMATTER_RE, "");
 }
 
+/** One passage as structure rather than prose: the label the model was shown,
+ * the file it came from (null when the chunk had no source key), and the body
+ * without its label line. citations.ts resolves a model's "[3]" back to a file
+ * through these. */
+export type PassageEntry = {
+  label: number;
+  file: string | null;
+  title: string;
+  kind: "full" | "chunk";
+  text: string;
+  draft: boolean;
+};
+
 // The labelled "SOP passages" block. The top-ranked SOPs go in as FULL
 // documents so every sub-step, click path and field name is available to
 // quote — chunks alone make thin steps. Remaining chunks follow for breadth.
-// Titles and Notion links only, never filenames.
+// Titles and Notion links only, never filenames. `entries` is the same list
+// as structure, for the citation repair.
 export function buildPassages(
   ranked: SOPRef[],
   chunks: SearchChunk[],
   meta: Map<string, FileMeta>,
   opts: { fullDocCount?: number; charBudget?: number } = {}
-): { passages: string[]; used: number } {
+): { passages: string[]; used: number; entries: PassageEntry[] } {
   const fullDocCount = opts.fullDocCount ?? FULL_DOC_COUNT;
   const charBudget = opts.charBudget ?? PASSAGE_CHAR_BUDGET;
   let used = 0;
   let label = 0;
   const passages: string[] = [];
+  const entries: PassageEntry[] = [];
   const fullDocFiles = new Set<string>();
   for (const sop of ranked.slice(0, fullDocCount)) {
     if (!sop.file) continue;
@@ -219,6 +241,14 @@ export function buildPassages(
     passages.push(
       `[${label}] ${m.title} | full document | ${m.source_url ?? "no link"}\n${body}`
     );
+    entries.push({
+      label,
+      file: sop.file,
+      title: m.title,
+      kind: "full",
+      text: body,
+      draft: m.status === "draft"
+    });
   }
   for (const chunk of chunks) {
     const key = chunk.item?.key;
@@ -233,8 +263,16 @@ export function buildPassages(
     passages.push(
       `[${label}] ${m?.title ?? "Untitled SOP"}${section ? ` | ${section}` : ""} | ${m?.source_url ?? "no link"}\n${text}`
     );
+    entries.push({
+      label,
+      file: key ?? null,
+      title: m?.title ?? "Untitled SOP",
+      kind: "chunk",
+      text,
+      draft: m?.status === "draft"
+    });
   }
-  return { passages, used };
+  return { passages, used, entries };
 }
 
 // The user turn sent to the generation model: the labelled passages, then the
