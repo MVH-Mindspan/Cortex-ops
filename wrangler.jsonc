@@ -5,7 +5,9 @@
   "compatibility_date": "2026-06-11",
   "compatibility_flags": ["nodejs_compat"],
   // Workers Logs (free tier). Nothing Cortex logs contains message text:
-  // schedule ids, purge counts, message ids, and provider error objects only.
+  // schedule ids, purge counts, message ids, provider error objects, and
+  // retrieval telemetry (SOP keys, scores, counts, config, latency — never
+  // query or chunk text).
   "observability": { "enabled": true },
   "ai": { "binding": "AI", "remote": true },
   "ai_search_namespaces": [
@@ -25,7 +27,19 @@
     "MONTHLY_MESSAGE_BUDGET": "2500",
     // AI Gateway that Workers AI calls are routed through for cost/usage
     // analytics and the dollar spend limit. Empty disables gateway routing.
-    "AI_GATEWAY_ID": "cortex"
+    "AI_GATEWAY_ID": "cortex",
+    // Retrieval settings, passed to AI Search per request (they override the
+    // instance defaults). Cloudflare rewrites the query on follow-up turns
+    // only; the first message is always searched as typed.
+    "RETRIEVAL_QUERY_REWRITE": "on",
+    // 1-50 chunks before dedupe into SOP cards; more distinct files reach
+    // the ranking. The passage budget still caps what the model reads.
+    "RETRIEVAL_MAX_RESULTS": "15",
+    // "and" needs every word of a sentence-length question to match one
+    // chunk, so in practice the keyword half returns nothing and hybrid
+    // search silently degrades to vector-only in our probes; "or" lets
+    // tokens like G31.84, VRI, ICD-10 hit the keyword index.
+    "RETRIEVAL_KEYWORD_MATCH": "and"
   },
   "durable_objects": {
     "bindings": [

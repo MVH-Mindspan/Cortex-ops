@@ -137,11 +137,11 @@ export function sectionOf(chunkText: string): string | null {
   return heading ? heading[1].trim() : null;
 }
 
-// Dedupe chunks to files, keep each file's best score, cap at MAX_SOPS.
-export function rankSops(
-  chunks: SearchChunk[],
-  meta: Map<string, FileMeta>
-): SOPRef[] {
+// Dedupe chunks to files, keeping each file's best score. Shared by the SOP
+// cards and the retrieval log line in retrieval.ts, so the SOPs named in the
+// logs can never drift from the ones the reader was shown. Chunks with no
+// source key are skipped: there is nothing to attribute them to.
+export function bestScoreByFile(chunks: SearchChunk[]): Map<string, number> {
   const bestByKey = new Map<string, number>();
   for (const chunk of chunks) {
     const key = chunk.item?.key;
@@ -150,7 +150,15 @@ export function rankSops(
     const prev = bestByKey.get(key);
     if (prev === undefined || score > prev) bestByKey.set(key, score);
   }
-  return [...bestByKey.entries()]
+  return bestByKey;
+}
+
+// The ranked cards: best score first, capped at MAX_SOPS.
+export function rankSops(
+  chunks: SearchChunk[],
+  meta: Map<string, FileMeta>
+): SOPRef[] {
+  return [...bestScoreByFile(chunks).entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, MAX_SOPS)
     .map(([key, score]) => {

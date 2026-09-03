@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  bestScoreByFile,
   buildPassages,
   buildUserBlock,
   classifyPipelineError,
@@ -85,6 +86,22 @@ function onlyPassage(text: string): string {
   });
   return passages[0];
 }
+
+test("bestScoreByFile keeps each file's best score and skips keyless chunks", () => {
+  const chunks = [
+    chunk("a.md", 0.2),
+    chunk("b.md", 0.9),
+    chunk("a.md", 0.7),
+    { score: 0.99, text: "no source key" }
+  ];
+  assert.deepEqual(
+    [...bestScoreByFile(chunks).entries()],
+    [
+      ["a.md", 0.7],
+      ["b.md", 0.9]
+    ]
+  );
+});
 
 test("textOf joins the text parts with newlines and trims", () => {
   assert.equal(
