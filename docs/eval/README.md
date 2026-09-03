@@ -136,3 +136,7 @@ Reports live beside this file as `<date>-retrieval.md` with a `<date>-retrieval.
 sidecar holding the raw per-question records. The runner formats both with
 oxfmt so `npm run check` stays green. Record the report path in the commit
 message of any change to the retrieval defaults.
+
+## Outcomes
+
+- **3 Sep 2026** (`2026-09-03-retrieval.md`, first run after the corpus refresh that indexed the agent hints): `on/30/and` adopted. All 16 expected SOPs in the top 3 with no misses, every rank-1 under `on/15/and` still rank 1, R3 at rank 2 and R4 at rank 1. Keyword mode `or` demoted R3 (weak keyword candidates crowd the reranker) and rewrite off lost the follow-up case T1 (with rewrite off only the latest message is searched), so both stay as they were.

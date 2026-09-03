@@ -34,8 +34,13 @@
     // on 3 Sep 2026, contrary to the docs), and adds seconds of latency.
     "RETRIEVAL_QUERY_REWRITE": "on",
     // 1-50 chunks before dedupe into SOP cards; more distinct files reach
-    // the ranking. The passage budget still caps what the model reads.
-    "RETRIEVAL_MAX_RESULTS": "15",
+    // the ranking. The passage budget still caps what the model reads. 30
+    // chosen by the 3 Sep 2026 matrix (docs/eval/2026-09-03-retrieval.md):
+    // every expected SOP in the top 3, no misses; 15 missed three. Keyword
+    // mode "or" was not adopted: it admits weak keyword candidates and
+    // demoted the headline case; rewrite stays on because follow-up turns
+    // lose the thread without it.
+    "RETRIEVAL_MAX_RESULTS": "30",
     // "and" needs every word of a sentence-length question to match one
     // chunk, so in practice the keyword half returns nothing and hybrid
     // search silently degrades to vector-only in our probes; "or" lets
