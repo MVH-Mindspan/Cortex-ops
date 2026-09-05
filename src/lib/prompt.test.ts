@@ -107,6 +107,27 @@ test("the example shows the section between Urgency and Do now", () => {
   );
 });
 
+test("the citation spec asks for a labelled, unbroken quote and no link", () => {
+  // The Worker rebuilds the section from retrieval (lib/citations.ts): the
+  // model supplies the pointer and the wording, Cortex supplies the link and
+  // the section name.
+  const spec = section("### Incident format", "### Question format");
+  assert.match(spec, /copied word for word and unbroken/);
+  assert.match(spec, /No link and no section name/);
+});
+
+test("the example's citation line is a passage label and a title, with no link", () => {
+  const example = section("### Example");
+  assert.doesNotMatch(example, /https?:\/\//);
+  const citations = example.slice(example.indexOf("\nWhat the SOPs say\n"));
+  assert.ok(
+    citations.startsWith(
+      "\nWhat the SOPs say\n1. [1] Patient Check-In, Athena\n"
+    ),
+    citations.slice(0, 120)
+  );
+});
+
 test("states rule 12 and one reader-facing name for the structure", () => {
   assert.match(
     SYSTEM_PROMPT,

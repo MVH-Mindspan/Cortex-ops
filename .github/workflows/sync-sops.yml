@@ -1,0 +1,91 @@
+# Logs and step summaries are PUBLIC (public repo). Print titles and keys
+# only; never upload export/ as an artifact or print file bodies.
+name: Sync SOPs
+on:
+  schedule:
+    # 03:07 UTC: clear of the AI Search auto-sync slots (02:36/08:37/14:37/20:36 UTC)
+    # so the explicit reindex is clear of a half-written bucket even if GitHub delays the run by a while; off the hour on purpose.
+    - cron: "7 3 * * *"
+  workflow_dispatch:
+    inputs:
+      prune:
+        description: "Delete the stale R2 objects listed in the last run's summary. Read it first."
+        type: boolean
+        default: false
+concurrency:
+  group: sync-sops
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Only main may sync
+        if: github.ref != 'refs/heads/main'
+        run: echo "Sync SOPs runs only from main" >&2; exit 1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Export Notion to R2
+        id: export
+        continue-on-error: true
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_SOP_ROOT: ${{ secrets.NOTION_SOP_ROOT }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+          PRUNE: ${{ inputs.prune }}
+        run: |
+          set --
+          if [ "$PRUNE" = "true" ]; then set -- --prune; fi
+          npm run export -- "$@"
+      - name: Summary
+        if: ${{ !cancelled() && hashFiles('scripts/sops-manifest.json') != '' }}
+        run: |
+          jq -r '"Files: \(.files|length)  Stale: \(.stale|length)", (.stale[] | "- \(.key) (since \(.since))")' scripts/sops-manifest.json >> "$GITHUB_STEP_SUMMARY"
+          old=$(jq -r --arg cutoff "$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%S)" '[.stale[] | select(.since < $cutoff)] | length' scripts/sops-manifest.json)
+          if [ "$old" -gt 0 ]; then echo "::warning::$old stale object(s) older than 7 days; dispatch with prune=true after reading the list."; fi
+      - name: Commit the manifest when it changed
+        if: ${{ !cancelled() && steps.export.outcome != 'skipped' && github.ref == 'refs/heads/main' && hashFiles('scripts/sops-manifest.json') != '' }}
+        run: |
+          git add -N scripts/sops-manifest.json
+          # -I matches whole lines, so this relies on the export writing the manifest
+          # pretty-printed (JSON.stringify(manifest, null, 2)): one field per line. If
+          # the manifest were ever minified, "last_edited" would share a line with
+          # "key" and this guard would silently swallow real changes. Ignoring
+          # exported_at and last_edited also means git answers "when did membership
+          # last change", not "when did the sync last run"; the step summary is
+          # the run record.
+          if [ -z "$(git diff -I '"exported_at":' -I '"last_edited":' -- scripts/sops-manifest.json)" ]; then
+            echo "Manifest unchanged; nothing to commit." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scripts/sops-manifest.json
+          git commit -m 'Sync the SOP manifest from the scheduled export'
+          git pull --rebase origin main || { echo "::warning::push race; the next run will recommit"; exit 0; }
+          git push origin HEAD:main || { echo "::warning::push to main rejected (lost race, or contents:write not granted); the next run will recommit"; exit 0; }
+      - name: Reindex AI Search
+        # A partial export still uploaded objects, so reindex even when the export step failed.
+        if: ${{ !cancelled() && steps.export.outcome != 'skipped' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          for attempt in 1 2; do
+            if out=$(npx wrangler ai-search jobs create cortex --json); then
+              echo "AI Search indexing job: $(printf '%s' "$out" | jq -r '.id // "unknown"')" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+            [ "$attempt" = 2 ] || sleep 90
+          done
+          echo "::warning::Could not create an indexing job; the next auto-sync will pick the objects up."
+      - name: Fail if the export reported failures
+        if: ${{ !cancelled() && steps.export.outcome == 'failure' }}
+        run: echo "The export reported failed pages or a suspicious drop; see the Export step." >&2; exit 1

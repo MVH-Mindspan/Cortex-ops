@@ -1,0 +1,22 @@
+{
+  // Throwaway local Worker for the retrieval eval. Never `wrangler deploy` this
+  // file: it has no auth beyond the localhost check in worker.ts and shares the
+  // production AI Search instance, bucket, and neuron budget.
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "cortex-eval",
+  "main": "./worker.ts",
+  "account_id": "9c97eaabd9ef084abee97c3793285e76",
+  "compatibility_date": "2026-06-11",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  "ai": { "binding": "AI", "remote": true },
+  "ai_search_namespaces": [
+    { "binding": "AI_SEARCH", "namespace": "default", "remote": true }
+  ],
+  "r2_buckets": [
+    { "binding": "SOP_BUCKET", "bucket_name": "cortex-sops", "remote": true }
+  ],
+  "vars": { "AI_GATEWAY_ID": "cortex" }
+}

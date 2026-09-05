@@ -80,6 +80,19 @@ export const LIBRARY_LOADING = "Fetching the full SOP list";
 export const LIBRARY_ERROR =
   "Couldn't load the SOP index. Open the library again to retry — if it keeps failing, tell the Cortex admin.";
 
+// Heading above the SOP result cards under an answer.
+export const SOP_CARDS_HEADING = "Relevant SOPs";
+
+// Chip on an SOP whose frontmatter status is "draft" (cards, library rows,
+// pinned rows). The tooltip states a fact and stops there: whether staff
+// should follow a draft is an open policy question, not ours to answer.
+export const DRAFT_BADGE = "Draft";
+export const DRAFT_BADGE_TITLE = "Not yet reviewed.";
+
+// Chip on a card whose SOP the answer actually cited, set by the citation
+// repair. States what happened, not how well it went.
+export const SOP_CITED_BADGE = "Cited";
+
 // Reach-out starter messages, copied to the clipboard on selection because
 // Slack deep links can't pre-fill DM text. Keyed by reason label; reasons
 // without a starter leave the clipboard alone.
@@ -120,13 +133,26 @@ export const PIPELINE_ERROR_LINES = {
     "The SOPs were found but the answer could not be written. Send the message again; if it keeps failing, tell the Cortex admin."
 } as const satisfies Record<PipelineErrorKind, string>;
 
+// Shown in place of a citation quote the model did not reproduce word for
+// word. The SOP is real and linked; only the wording is unverified, so the
+// line sends the reader to the source rather than claiming an error.
+export const CITATION_UNMATCHED_NOTE =
+  "Not found word for word in this SOP. Open it to check the wording:";
+
+// Shown when a citation names an SOP that was not among the ones retrieved
+// for this answer, so there was nothing to check it against.
+export const CITATION_UNKNOWN_SOP_NOTE =
+  "Not one of the SOPs found for this answer, so it could not be checked.";
+
 // Three garbled generations in a row (the fp8 collapse guard gave up).
 export const DEGENERATE_GIVE_UP_LINE =
   "The answer came back garbled three times in a row. Send the message again.";
 
-// Appended when the model hit its output limit before the citation sections.
+// Appended when the model hit its output limit. It no longer names the
+// citations as the place the cut fell: the Worker rebuilds that section from
+// retrieval, so a truncated answer can now end with the citations intact.
 export const ANSWER_CUT_SHORT_LINE =
-  "This answer ran long and was cut short before the SOP citations. Ask about one part of the situation at a time to get the rest.";
+  "This answer ran long and was cut short. Ask about one part of the situation at a time to get the rest.";
 
 // Message length cap (shared by the composer counter and the server refusal).
 export function messageTooLongLine(max: number): string {

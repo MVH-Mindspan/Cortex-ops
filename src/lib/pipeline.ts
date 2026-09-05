@@ -34,6 +34,18 @@ export const MAX_OUTPUT_TOKENS = 3_000;
 export const SCREEN_WINDOW_CHARS = 2_000;
 export const SCREEN_WINDOW_OVERLAP = 200;
 
+// The review state of a SOP, normalised from the frontmatter label (or, for
+// files exported before the status key existed, from the title suffix) in
+// frontmatter.ts — the only place that mapping happens.
+export type SopStatus = "draft" | "review" | "approved";
+
+// The one draft-suffix rule, e.g. "… (DRAFT — Needs Review)": the export's
+// title convention. Case-sensitive on purpose — a lowercase "(draft)" in a
+// title is prose, not a status. statusKind (frontmatter.ts) reads it as the
+// fallback when there is no status key; cardTitle (linkify.ts) strips it for
+// display. Both must agree, so the pattern lives in this import-free leaf.
+export const DRAFT_TITLE_RE = /\((?:DRAFT|Draft)\b[^)]*\)\s*$/;
+
 export type SOPRef = {
   title: string;
   category: string;
@@ -43,6 +55,16 @@ export type SOPRef = {
   /** R2 object key, e.g. "appointment-scheduling.md" — lets the client
    * linkify filename mentions too. Optional: absent on older stored turns. */
   file?: string;
+  /** Drives the "Draft" chip on the card. Optional: absent on older stored
+   * turns and on SOPs with no status at all. */
+  status?: SopStatus;
+  /** Set by the citation repair (citations.ts markCited): the answer cited
+   * this SOP. Optional: absent on older stored turns, like `file`. */
+  cited?: boolean;
+  /** Set by the citation repair: the first quote verified against this SOP's
+   * own text, used as the card's one-line reason. Optional: absent on older
+   * stored turns, like `file`. */
+  quote?: string | null;
 };
 
 export type SearchChunk = {
@@ -54,13 +76,31 @@ export type SearchChunk = {
     timestamp?: number;
     metadata?: Record<string, unknown>;
   };
+  /** Per-chunk scores AI Search returns alongside the fused score (see
+   * env.d.ts AiSearchSearchResponse). */
+  scoring_details?: {
+    keyword_score?: number;
+    vector_score?: number;
+    keyword_rank?: number;
+    vector_rank?: number;
+    reranking_score?: number;
+  };
 };
+
+/** What AI_SEARCH.search() returns: the query it actually ran (rewritten on
+ * follow-up turns) and the chunks. */
+export type SearchResponse = { search_query: string; chunks: SearchChunk[] };
 
 export type FileMeta = {
   title: string;
   category: string;
   last_edited: string | null;
   source_url: string | null;
+  /** Review state, or null when the SOP carries none. */
+  status: SopStatus | null;
+  /** The Notion "Use When (Agent Hints)" text: written by the export and
+   * indexed by AI Search; not read by the Worker yet. */
+  use_when: string | null;
   /** Frontmatter-stripped markdown body, for full-document passages. */
   text: string;
 };
@@ -104,11 +144,11 @@ export function sectionOf(chunkText: string): string | null {
   return heading ? heading[1].trim() : null;
 }
 
-// Dedupe chunks to files, keep each file's best score, cap at MAX_SOPS.
-export function rankSops(
-  chunks: SearchChunk[],
-  meta: Map<string, FileMeta>
-): SOPRef[] {
+// Dedupe chunks to files, keeping each file's best score. Shared by the SOP
+// cards and the retrieval log line in retrieval.ts, so the SOPs named in the
+// logs can never drift from the ones the reader was shown. Chunks with no
+// source key are skipped: there is nothing to attribute them to.
+export function bestScoreByFile(chunks: SearchChunk[]): Map<string, number> {
   const bestByKey = new Map<string, number>();
   for (const chunk of chunks) {
     const key = chunk.item?.key;
@@ -117,7 +157,15 @@ export function rankSops(
     const prev = bestByKey.get(key);
     if (prev === undefined || score > prev) bestByKey.set(key, score);
   }
-  return [...bestByKey.entries()]
+  return bestByKey;
+}
+
+// The ranked cards: best score first, capped at MAX_SOPS.
+export function rankSops(
+  chunks: SearchChunk[],
+  meta: Map<string, FileMeta>
+): SOPRef[] {
+  return [...bestScoreByFile(chunks).entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, MAX_SOPS)
     .map(([key, score]) => {
@@ -128,26 +176,58 @@ export function rankSops(
         last_edited: m?.last_edited ?? null,
         source_url: m?.source_url ?? null,
         score,
-        file: key
+        file: key,
+        // Omitted rather than null when there is no status, so a stored turn
+        // written before status existed stays shape-identical.
+        ...(m?.status ? { status: m.status } : {})
       };
     });
 }
 
+// AI Search indexes each object with its YAML frontmatter, so chunk 1 of a
+// file starts with the `---` block. Strip it from chunk passages: the model
+// must never see source_url (a link it could retype), status, or the agent
+// hints, none of which are SOP content. Full documents come from meta.text,
+// which gray-matter already separated. The lookahead requires `title:`
+// right after the opening `---` so a chunk that starts on a Notion divider
+// is never treated as frontmatter: every export, legacy and new, writes
+// `title:` as the first frontmatter key (matter.stringify keeps object key
+// order), and a body line never starts with `title:`.
+const FRONTMATTER_RE = /^---\r?\n(?=title:)[\s\S]*?\r?\n---(?:\r?\n|$)/;
+export function stripFrontmatter(text: string): string {
+  return text.replace(FRONTMATTER_RE, "");
+}
+
+/** One passage as structure rather than prose: the label the model was shown,
+ * the file it came from (null when the chunk had no source key), and the body
+ * without its label line. citations.ts resolves a model's "[3]" back to a file
+ * through these. */
+export type PassageEntry = {
+  label: number;
+  file: string | null;
+  title: string;
+  kind: "full" | "chunk";
+  text: string;
+  draft: boolean;
+};
+
 // The labelled "SOP passages" block. The top-ranked SOPs go in as FULL
 // documents so every sub-step, click path and field name is available to
 // quote — chunks alone make thin steps. Remaining chunks follow for breadth.
-// Titles and Notion links only, never filenames.
+// Titles and Notion links only, never filenames. `entries` is the same list
+// as structure, for the citation repair.
 export function buildPassages(
   ranked: SOPRef[],
   chunks: SearchChunk[],
   meta: Map<string, FileMeta>,
   opts: { fullDocCount?: number; charBudget?: number } = {}
-): { passages: string[]; used: number } {
+): { passages: string[]; used: number; entries: PassageEntry[] } {
   const fullDocCount = opts.fullDocCount ?? FULL_DOC_COUNT;
   const charBudget = opts.charBudget ?? PASSAGE_CHAR_BUDGET;
   let used = 0;
   let label = 0;
   const passages: string[] = [];
+  const entries: PassageEntry[] = [];
   const fullDocFiles = new Set<string>();
   for (const sop of ranked.slice(0, fullDocCount)) {
     if (!sop.file) continue;
@@ -161,11 +241,19 @@ export function buildPassages(
     passages.push(
       `[${label}] ${m.title} | full document | ${m.source_url ?? "no link"}\n${body}`
     );
+    entries.push({
+      label,
+      file: sop.file,
+      title: m.title,
+      kind: "full",
+      text: body,
+      draft: m.status === "draft"
+    });
   }
   for (const chunk of chunks) {
     const key = chunk.item?.key;
     if (key && fullDocFiles.has(key)) continue;
-    const text = (chunk.text ?? "").trim();
+    const text = stripFrontmatter((chunk.text ?? "").trim()).trim();
     if (!text) continue;
     if (used + text.length > charBudget) break;
     used += text.length;
@@ -175,8 +263,23 @@ export function buildPassages(
     passages.push(
       `[${label}] ${m?.title ?? "Untitled SOP"}${section ? ` | ${section}` : ""} | ${m?.source_url ?? "no link"}\n${text}`
     );
+    entries.push({
+      label,
+      file: key ?? null,
+      title: m?.title ?? "Untitled SOP",
+      kind: "chunk",
+      text,
+      draft: m?.status === "draft"
+    });
   }
-  return { passages, used };
+  return { passages, used, entries };
+}
+
+// The user turn sent to the generation model: the labelled passages, then the
+// team member's message. One place, so the eval harness sends the same bytes
+// as the Worker.
+export function buildUserBlock(passages: string[], message: string): string {
+  return `SOP passages\n\n${passages.join("\n\n")}\n\nTeam member's message:\n\n${message}`;
 }
 
 // Size the conversation to the model window: drop empty and notice turns,

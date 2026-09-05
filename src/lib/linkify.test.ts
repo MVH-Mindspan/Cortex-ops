@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { displayTitle, linkifySOPs, reasonFor } from "./linkify.ts";
+import { cardTitle, displayTitle, linkifySOPs, reasonFor } from "./linkify.ts";
 import type { SOPRef } from "./pipeline.ts";
 
 const sop = (
@@ -19,6 +19,28 @@ const sop = (
 test("displayTitle strips a leading emoji", () => {
   assert.equal(displayTitle("📋 Patient Check-In"), "Patient Check-In");
   assert.equal(displayTitle("Plain"), "Plain");
+});
+
+test("cardTitle drops a trailing draft parenthetical", () => {
+  assert.equal(
+    cardTitle(
+      "🧠 Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review)"
+    ),
+    "Imaging Order Requirements — Amyloid PET & MRI Checklist"
+  );
+  assert.equal(cardTitle("X (Draft)"), "X");
+});
+
+test("cardTitle leaves a title without a trailing draft marker alone", () => {
+  const guide =
+    "Patient Imaging Results Access Guide – Valley Radiology & San Jose PET";
+  assert.equal(cardTitle(guide), guide);
+  const mid = "Patient Support (Enrollment & Member Experience) Guide";
+  assert.equal(cardTitle(mid), mid);
+  assert.equal(cardTitle("A (Draft) B"), "A (Draft) B");
+  // Case-sensitive: a lowercase "(draft)" is prose, not the status suffix.
+  assert.equal(cardTitle("Notes (draft)"), "Notes (draft)");
+  assert.equal(cardTitle("📋 Patient Check-In"), "Patient Check-In");
 });
 
 test("links a title mention to its Notion page", () => {
@@ -96,6 +118,44 @@ What the SOPs say
   assert.equal(
     reasonFor(answer, sop("Patient Check-In, Athena", "https://n/ci")),
     "If the appointment is imminent and you cannot wait, select Add Primary Insurance."
+  );
+});
+
+test("reasonFor returns a whole rendered list item, not just a short clause", () => {
+  // A repaired citation quotes the SOP's whole list item (capped at 420
+  // chars). This one is 299 — past the 220 the old cap allowed.
+  const quote =
+    "Attach the most recent chart notes and the prior brain imaging reports to the order before it is sent, because the facility rejects any order that is missing either of them, and the prescriber selects the clinically correct ICD-10 code; ops never adds or changes codes on an order it did not create.";
+  assert.equal(quote.length, 299);
+  const answer = [
+    "What the SOPs say",
+    "1. Imaging Order Requirements, Amyloid PET orders",
+    `   "${quote}"`
+  ].join("\n");
+  assert.equal(
+    reasonFor(answer, sop("Imaging Order Requirements", null)),
+    quote
+  );
+});
+
+test("links the short title of a draft-suffixed SOP, and the full title whole", () => {
+  const imaging = sop(
+    "🧠 Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review)",
+    "https://n/imaging"
+  );
+  assert.equal(
+    linkifySOPs(
+      "Per Imaging Order Requirements — Amyloid PET & MRI Checklist, attach the prior MRI report.",
+      [imaging]
+    ),
+    "Per [Imaging Order Requirements — Amyloid PET & MRI Checklist](https://n/imaging), attach the prior MRI report."
+  );
+  assert.equal(
+    linkifySOPs(
+      "Per Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review), attach it.",
+      [imaging]
+    ),
+    "Per [Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review)](https://n/imaging), attach it."
   );
 });
 

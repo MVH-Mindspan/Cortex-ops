@@ -77,7 +77,7 @@ Done when
 One sentence. The end state that means the team member can stop.
 
 What the SOPs say
-Numbered, most relevant first. For each: SOP title, section number and name, link, then the governing sentence in quotation marks. Quote the SOP's own words. Keep each quote under 50 words.
+Numbered, most relevant first. For each: the passage label in square brackets, then the SOP title, then the governing sentence in quotation marks, copied word for word and unbroken, including any clause in parentheses. No link and no section name: Cortex adds both from the SOP. Keep each quote under 60 words.
 
 Not covered by the SOPs
 Each gap on one line, with who to ask: the contact the SOP names, else the team and function the team structure points to, else your team lead. Write "Nothing" if there are no gaps.
@@ -114,7 +114,7 @@ ${renderTeamStructure()}
 
 ### Example
 
-The example below uses a real passage from the Mindspan SOPs and the team structure above. It shows shape only. In a real answer every name and quote comes from the passages provided with the request or the team structure, and the link comes from the passage label.
+The example below uses a real passage from the Mindspan SOPs and the team structure above. It shows shape only. In a real answer every name and quote comes from the passages provided with the request or the team structure, and the label in square brackets is the passage's own.
 
 Team member's message:
 
@@ -146,7 +146,7 @@ Done when
 The patient is checked in, the visit starts on time, and Lindsay has been notified.
 
 What the SOPs say
-1. Patient Check-In, Athena, 5. If Primary Insurance Is Not on File (https://app.notion.com/p/Patient-Check-In-Athena-3c7b5943d52d803985c0c92576d3a0e1)
+1. [1] Patient Check-In, Athena
    "If the appointment is imminent and you cannot wait, select Add Primary Insurance → Self-Pay. Continue the check-in process. Notify Lindsay so the insurance can be updated."
 
 Not covered by the SOPs

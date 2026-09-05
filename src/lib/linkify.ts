@@ -2,6 +2,8 @@
 // retrieved SOP list as the source of truth, and pull each card's one-line
 // reason out of the citation section. Pure module (types only from pipeline).
 
+// Value import between src/lib modules, so the .ts extension (see prompt.ts).
+import { DRAFT_TITLE_RE } from "./pipeline.ts";
 import type { SOPRef } from "./pipeline";
 
 export function escapeRegExp(value: string): string {
@@ -11,6 +13,14 @@ export function escapeRegExp(value: string): string {
 // Strip a leading emoji from Notion titles for display (no emojis in the UI).
 export function displayTitle(title: string): string {
   return title.replace(/^[^\p{L}\p{N}]+/u, "").trim() || title;
+}
+
+// Same as displayTitle, minus the draft suffix that statusKind reads as the
+// status (DRAFT_TITLE_RE). Used only where a Draft chip is rendered, so the
+// word appears once; linkifySOPs/compileLinkers/reasonFor keep matching on
+// the raw title, which is what the model writes in the answer.
+export function cardTitle(title: string): string {
+  return displayTitle(title).replace(DRAFT_TITLE_RE, "").trim();
 }
 
 type Linker = { pattern: RegExp; url: string; label?: string; clean: string };
@@ -29,6 +39,14 @@ export function compileLinkers(sops: SOPRef[]): Linker[] {
       const title = sop.title.replace(/^[^\p{L}\p{N}]+/u, "").trim();
       const candidates: Omit<Linker, "pattern">[] = [];
       if (title.length >= 4) candidates.push({ url, clean: title });
+      // The model writes the title the way a reader says it, without the
+      // export's "(DRAFT — Needs Review)" suffix, so the short form is a
+      // mention too. Longest-first ordering below keeps the full title
+      // winning wherever both could match, so the two never nest.
+      const short = cardTitle(sop.title);
+      if (short.length >= 4 && short !== title) {
+        candidates.push({ url, clean: short });
+      }
       if (sop.file && sop.file.length >= 4) {
         candidates.push({ url, clean: sop.file, label: title || sop.file });
       }
@@ -82,9 +100,11 @@ export function linkifySOPs(text: string, sops: SOPRef[] | null): string {
   return out;
 }
 
-// The model's own citation sentence for a SOP, used as the one-line reason
-// on the result card. When the answer has a citation section, only a title
-// mention inside it counts: the team steer near the top can name an SOP
+// The model's own citation sentence for a SOP, scraped out of the answer.
+// Now the FALLBACK for the card's one-line reason: the citation repair puts
+// the verified quote on SOPRef.quote, and this only runs for turns stored
+// before that field existed. When the answer has a citation section, only a
+// title mention inside it counts: the team steer near the top can name an SOP
 // ("Enrollment") a few lines above the patient script, and that quote would
 // otherwise be scraped onto the card. The whole answer is searched only when
 // the section is missing (an answer cut short). Best effort: no quote near
@@ -98,6 +118,9 @@ export function reasonFor(answer: string, sop: SOPRef): string | null {
     citations === -1 ? lower.indexOf(clean) : lower.indexOf(clean, citations);
   if (idx === -1) return null;
   const after = answer.slice(idx, idx + 600);
-  const quote = after.match(/"([^"]{10,220})"/);
+  // Up to 450: a rendered quote is a whole list item, capped at
+  // QUOTE_MAX_CHARS (420) by the repair, plus room for the ellipsis and the
+  // punctuation around it.
+  const quote = after.match(/"([^"]{10,450})"/);
   return quote ? quote[1] : null;
 }

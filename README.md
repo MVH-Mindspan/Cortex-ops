@@ -25,6 +25,13 @@ How an answer is produced (`src/server.ts`, pure helpers in `src/lib/`):
    in overlapping windows. Messages are capped at 8,000 characters.
 2. AI Search retrieves and reranks SOP passages; the top SOPs go to the model
    as full documents so every click path and field name can be quoted.
+   Retrieval settings — query rewrite, result count, keyword match mode —
+   are wrangler vars passed to AI Search per request. With rewrite on, a
+   model rewrites every query before search, the first message included,
+   which adds seconds and hides what was typed. Chunk passages have their
+   frontmatter stripped so the model never sees a passage's link, status, or
+   hints, and a SOP whose Notion Status is Draft carries a "Draft" chip on
+   its card, in the library, and on pins.
 3. The system prompt carries a curated team structure (`src/lib/teams.ts`,
    derived from the Notion page "Operations Teams Structure Overview"; no
    people, no channels). The model may name teams and functions from it, as a
@@ -37,40 +44,78 @@ How an answer is produced (`src/server.ts`, pure helpers in `src/lib/`):
    stopword soup, so the first 240 characters are held back and the answer
    is regenerated (up to three tries) if they read as garbled. An answer cut
    off at the output limit says so.
+6. The "What the SOPs say" block is rebuilt by the Worker from retrieval:
+   each citation is matched to the SOP's own text, the whole list item is
+   quoted, the section label and Notion link come from the bucket, and a
+   follow-up question that asks for an identifier is dropped. Cards for
+   cited SOPs carry a Cited chip.
 
 Conversations purge after 7 idle days.
 
 ## Commands
 
 ```bash
-npm run dev      # local dev (requires wrangler auth for remote bindings)
-npm run export   # sync SOPs: Notion -> markdown -> R2 (needs NOTION_TOKEN and NOTION_SOP_ROOT in .env)
-npm run deploy   # build and deploy the Worker
-npm run check    # format check, lint, typecheck, unit tests
-npm test         # unit tests only (node --test over src/lib and scripts)
+npm run dev                        # local dev (requires wrangler auth for remote bindings)
+npm run export                     # sync SOPs: Notion -> markdown -> R2 (needs NOTION_TOKEN and NOTION_SOP_ROOT in .env)
+npm run export -- --dry-run        # convert and write export/ only; touches neither R2 nor the manifest
+npm run export -- --prune          # also delete the R2 objects the export lists as stale
+npm run export -- --prune --force  # prune even when the run looks suspicious (read the stale list first)
+npm run deploy                     # build and deploy the Worker
+npm run check                      # format check, lint, typecheck, unit tests
+npm test                           # unit tests only (node --test over src/lib and scripts)
 ```
 
 Node 24 or newer is required (native TypeScript type stripping runs the
 export script and the tests).
 
-After an export, trigger a reindex so new content is searchable:
+## Export
 
-```bash
-npx wrangler ai-search jobs create cortex
-```
+`npm run export` writes each page under `NOTION_SOP_ROOT` to markdown and
+syncs it to R2. Every file's frontmatter carries `title`, `source_url`,
+`category` (the primary tag), `categories`, `status` (Notion's Status
+select, or empty), `use_when` (the "Use When (Agent Hints)" text — indexed
+by AI Search but never shown to the model), and `last_edited`; `owner` is
+included only when Notion has one set.
 
-The export keeps a manifest of what is in the bucket at
-`scripts/sops-manifest.json`; commit it with each export. Pages renamed,
-archived, emptied, or deleted in Notion leave stale objects in R2 that keep
-being retrieved and cited. Each run lists them at the end, and
+Three kinds of row are skipped: untitled template stubs, the non-procedure
+pages deny-listed by id in `scripts/export-filter.ts`, and the children of
+any skipped page. A page missing the SOP or Reference tag still exports,
+but the run warns about it.
 
-```bash
-npm run export -- --prune
-```
+The export writes a manifest of what it put in R2 to
+`scripts/sops-manifest.json` (commit it with each export). It records
+stale keys — pages renamed, archived, emptied, or newly excluded in
+Notion — together with the id of the page that produced them. A run that
+exports nothing, or where more than a fifth of the tracked corpus goes
+stale without this run having seen the source page, refuses to prune and
+exits non-zero. After a genuine bulk deletion, read the stale list and
+re-run with `--force` to prune anyway.
 
-deletes them (then reindex). Objects from exports made before the manifest
-existed are not tracked: the first run records what it exports, and only
-changes after that are flagged.
+## Sync
+
+`.github/workflows/sync-sops.yml` runs the export daily at 03:07 UTC, and
+on manual dispatch (Actions → Sync SOPs → Run workflow); it syncs only from
+`main`. The workflow reindexes AI Search itself and, when the exported file
+list changed, commits the manifest back as `github-actions[bot]`. Pruning
+is dispatch-only (`prune=true`); the run summary lists any stale keys and
+warns when one is older than 7 days. Notion edits still in progress ship at
+03:07 UTC the same as finished ones — a Draft status shows a chip on the
+card rather than being filtered out.
+
+The workflow needs four repository secrets that do not exist yet:
+`NOTION_TOKEN` (an internal integration secret with Read content access,
+connected to the database), `NOTION_SOP_ROOT` (store as the dashed
+lowercase UUID), `CLOUDFLARE_API_TOKEN` (account-scoped: Workers R2
+Storage Edit + AI Search Edit), and `CLOUDFLARE_ACCOUNT_ID`.
+
+Logs and step summaries are public: only titles and object keys are
+printed, never page bodies. A manifest commit triggers a Workers Builds
+redeploy; exclude `scripts/sops-manifest.json` from the build watch paths
+if that redeploy isn't wanted.
+
+Manual `npm run export` followed by `npx wrangler ai-search jobs create
+cortex` remains the break-glass path — don't run it while a workflow run is
+in progress.
 
 ## Notes for operators
 
@@ -87,6 +132,14 @@ changes after that are flagged.
   it had been typed.
 - The monthly answer budget is `MONTHLY_MESSAGE_BUDGET` in `wrangler.jsonc`;
   the dollar cap is the AI Gateway spend limit (dashboard).
+- Retrieval is tuned by three `wrangler.jsonc` vars: `RETRIEVAL_QUERY_REWRITE`
+  (`on`/`off`) controls whether a model rewrites each query, first message
+  included, before search; `RETRIEVAL_MAX_RESULTS` (1-50) caps how many chunks AI Search
+  returns before they dedupe into SOP cards; `RETRIEVAL_KEYWORD_MATCH`
+  (`and`/`or`) sets hybrid search's keyword mode, and `and` needs every word
+  of a sentence-length question to match a chunk.
+- `docs/eval/README.md` documents the retrieval eval harness and the
+  decision rule for flipping the vars above.
 - The answer format and grounding rules live in `SYSTEM_PROMPT` in
   `src/lib/prompt.ts`; the team structure it embeds lives in
   `src/lib/teams.ts`. Edit the structure by hand when the Notion page changes
@@ -95,4 +148,6 @@ changes after that are flagged.
   `src/lib/pipeline.ts`. Every user-facing string, including the lines the
   Worker streams on errors, lives in `src/lib/copy.ts`.
 - Workers Logs are enabled (`observability` in `wrangler.jsonc`); nothing
-  Cortex logs contains message text.
+  Cortex logs contains message text. Every search writes one line tagged
+  `[cortex] retrieval` with the SOP keys returned, their scores, counts,
+  the active retrieval config, and latency — never the query or chunk text.

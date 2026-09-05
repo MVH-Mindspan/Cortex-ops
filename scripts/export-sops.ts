@@ -1,7 +1,14 @@
 // Export Notion SOPs to markdown with YAML frontmatter and sync them to R2.
 // Run: npm run export  (requires NOTION_TOKEN and NOTION_SOP_ROOT, e.g. via .env)
-// Stale R2 objects (pages renamed, archived, emptied or deleted in Notion) are
-// listed on every run and deleted only with: npm run export -- --prune
+// Untitled stubs and the pages scripts/export-filter.ts deny-lists are
+// skipped, and so is everything underneath an excluded page.
+// --dry-run converts every page and writes export/ but touches neither R2 nor
+// the manifest. Stale R2 objects (pages renamed, archived, emptied, deleted or
+// newly excluded in Notion) are listed on every run and deleted only with
+// --prune; --force overrides the guard that refuses to prune a run whose page
+// set looks incomplete. A scheduled GitHub Actions workflow runs this and its
+// logs are public: only page titles and object keys are printed, page bodies
+// never are, and Notion ids inside error text are redacted.
 //
 // Runs on Node 24 native type stripping: erasable TS syntax only.
 
@@ -21,8 +28,18 @@ import {
 import type { PageObjectResponse } from "@notionhq/client";
 import matter from "gray-matter";
 import { NotionToMarkdown } from "notion-to-md";
-import { pruneKeys, reconcileManifest } from "./manifest.ts";
+import { exportDecision } from "./export-filter.ts";
+import { unexplainedStale } from "./export-run.ts";
+import { pruneKeys, reconcileManifest, suspiciousDrop } from "./manifest.ts";
 import type { Manifest, ManifestFile } from "./manifest.ts";
+import {
+  categoriesOf,
+  ownerOf,
+  primaryCategory,
+  statusOf,
+  titleOf,
+  useWhenOf
+} from "./notion-props.ts";
 import { slugify, uniqueSlug } from "./slug.ts";
 
 const BUCKET = "cortex-sops";
@@ -35,7 +52,7 @@ const MANIFEST_PATH = fileURLToPath(
 
 type Row = {
   page: string;
-  status: "exported" | "skipped" | "failed";
+  outcome: "exported" | "skipped" | "failed";
   detail: string;
 };
 
@@ -50,19 +67,49 @@ function requireEnv(name: string): string {
   return value;
 }
 
-function parseArgs(argv: string[]): { prune: boolean } {
-  const unknown = argv.filter((arg) => arg !== "--prune");
+function parseArgs(argv: string[]): {
+  prune: boolean;
+  dryRun: boolean;
+  force: boolean;
+} {
+  const known = ["--prune", "--dry-run", "--force"];
+  const unknown = argv.filter((arg) => !known.includes(arg));
   if (unknown.length > 0) {
     console.error(
-      `Unknown argument(s): ${unknown.join(" ")}. Usage: npm run export [-- --prune]`
+      `Unknown argument(s): ${unknown.join(" ")}. Usage: npm run export [-- --dry-run | --prune [--force]]`
     );
     process.exit(1);
   }
-  return { prune: argv.includes("--prune") };
+  const prune = argv.includes("--prune");
+  const dryRun = argv.includes("--dry-run");
+  const force = argv.includes("--force");
+  if (dryRun && prune) {
+    console.error(
+      "--dry-run cannot be combined with --prune: a dry run never deletes anything."
+    );
+    process.exit(1);
+  }
+  if (force && !prune) {
+    console.error(
+      "--force only means anything with --prune: it overrides the guard that blocks a prune."
+    );
+    process.exit(1);
+  }
+  return { prune, dryRun, force };
 }
 
 function messageOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+// Notion quotes the id of the page or block that failed in its error text.
+// This runs in a workflow whose logs are public, so ids are stripped before
+// any error reaches them (dashed and undashed, both forms Notion returns).
+function redactIds(message: string): string {
+  return message.replace(
+    /[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+    "<id>"
+  );
 }
 
 function isErrno(err: unknown, code: string): boolean {
@@ -80,42 +127,47 @@ async function readManifest(): Promise<Manifest | null> {
   return JSON.parse(raw) as Manifest;
 }
 
-function titleOf(page: PageObjectResponse): string {
-  for (const prop of Object.values(page.properties)) {
-    if (prop.type === "title") {
-      const text = prop.title
-        .map((t) => t.plain_text)
-        .join("")
-        .trim();
-      if (text) return text;
-    }
-  }
-  return "Untitled";
-}
-
-function categoryOf(page: PageObjectResponse): string {
-  const prop = page.properties["Category"];
-  return prop?.type === "select"
-    ? (prop.select?.name ?? "uncategorized")
-    : "uncategorized";
-}
-
-function ownerOf(page: PageObjectResponse): string {
-  const prop = page.properties["Owner"];
-  if (prop?.type !== "people") return "";
-  return prop.people
-    .map((u) => ("name" in u && u.name ? u.name : ""))
-    .filter(Boolean)
-    .join(", ");
-}
-
 async function main(): Promise<void> {
-  const { prune } = parseArgs(process.argv.slice(2));
+  const { prune, dryRun, force } = parseArgs(process.argv.slice(2));
   const token = requireEnv("NOTION_TOKEN");
   const rootRaw = requireEnv("NOTION_SOP_ROOT");
   const rootId = extractNotionId(rootRaw) ?? rootRaw;
   // Read up front so an unreadable manifest fails before any Notion call.
   const previous = await readManifest();
+  const previousFiles = previous?.files ?? [];
+
+  // Every change this script makes to the bucket goes through these two, so
+  // --dry-run bypasses R2 by returning here rather than by threading a flag
+  // through the export and prune loops.
+  // --remote is required: without it wrangler writes to the local Miniflare
+  // simulation and exits 0 with nothing in the real bucket.
+  function put(key: string, filePath: string): void {
+    if (dryRun) return;
+    execFileSync(
+      "npx",
+      [
+        "wrangler",
+        "r2",
+        "object",
+        "put",
+        `${BUCKET}/${key}`,
+        "--file",
+        filePath,
+        "--content-type",
+        "text/markdown; charset=utf-8",
+        "--remote"
+      ],
+      { stdio: ["ignore", "ignore", "pipe"] }
+    );
+  }
+  function remove(key: string): void {
+    if (dryRun) return;
+    execFileSync(
+      "npx",
+      ["wrangler", "r2", "object", "delete", `${BUCKET}/${key}`, "--remote"],
+      { stdio: ["ignore", "ignore", "pipe"] }
+    );
+  }
 
   const notion = new Client({ auth: token });
   const n2m = new NotionToMarkdown({
@@ -153,7 +205,7 @@ async function main(): Promise<void> {
     }
   }
   console.log(
-    `Root ${rootId} is a ${rootKind}; found ${topLevel.length} top-level page(s).`
+    `Root is a ${rootKind}; found ${topLevel.length} top-level page(s).`
   );
 
   const rows: Row[] = [];
@@ -163,6 +215,15 @@ async function main(): Promise<void> {
   // One level of child pages under each top-level page.
   let discoveryComplete = true;
   for (const page of topLevel) {
+    // Children of an excluded page are excluded with it: the routing map's
+    // sections are its children, and descending would export each of them as
+    // an untagged page in its own right.
+    const decision = exportDecision({
+      id: page.id,
+      title: titleOf(page.properties),
+      categories: categoriesOf(page.properties)
+    });
+    if (!decision.export) continue;
     try {
       for await (const block of iteratePaginatedAPI(
         notion.blocks.children.list,
@@ -182,9 +243,9 @@ async function main(): Promise<void> {
     } catch (err) {
       discoveryComplete = false;
       rows.push({
-        page: titleOf(page),
-        status: "failed",
-        detail: `listing child pages: ${messageOf(err)}`
+        page: titleOf(page.properties),
+        outcome: "failed",
+        detail: `listing child pages: ${redactIds(messageOf(err)).slice(0, 120)}`
       });
     }
   }
@@ -203,15 +264,26 @@ async function main(): Promise<void> {
   // Serialized on purpose: Notion allows ~3 requests/second and notion-to-md
   // issues one children.list call per nested block.
   for (const page of ordered) {
-    const title = titleOf(page);
+    const title = titleOf(page.properties);
     if (page.in_trash || page.archived) {
       rows.push({
         page: title,
-        status: "skipped",
+        outcome: "skipped",
         detail: "archived or in trash"
       });
       continue;
     }
+    const categories = categoriesOf(page.properties);
+    const decision = exportDecision({ id: page.id, title, categories });
+    if (!decision.export) {
+      rows.push({
+        page: title,
+        outcome: "skipped",
+        detail: `excluded: ${decision.reason}`
+      });
+      continue;
+    }
+    const useWhen = useWhenOf(page.properties);
     // Key before conversion, so a page that fails to convert still has one.
     const key = `${uniqueSlug(slugify(title), page.id, usedSlugs)}.md`;
     try {
@@ -220,12 +292,13 @@ async function main(): Promise<void> {
       if (!markdown.trim()) {
         rows.push({
           page: title,
-          status: "skipped",
+          outcome: "skipped",
           detail: "page has no convertible content"
         });
         continue;
       }
 
+      const owner = ownerOf(page.properties);
       // Object form on purpose: string input would be re-parsed as frontmatter,
       // and a Notion divider renders as a leading "---" which would corrupt it.
       const body = matter.stringify(
@@ -233,33 +306,20 @@ async function main(): Promise<void> {
         {
           title,
           source_url: page.url,
-          category: categoryOf(page),
-          owner: ownerOf(page),
+          category: primaryCategory(categories),
+          categories,
+          status: statusOf(page.properties), // "" when unset; never invent Approved
+          use_when: useWhen,
+          // The SOP database has no Owner property, so an empty owner is
+          // omitted rather than written as an empty string.
+          ...(owner ? { owner } : {}),
           last_edited: page.last_edited_time
         }
       );
 
       const filePath = path.join(EXPORT_DIR, key);
       await writeFile(filePath, body, "utf8");
-
-      // --remote is required: without it wrangler writes to the local Miniflare
-      // simulation and exits 0 with nothing in the real bucket.
-      execFileSync(
-        "npx",
-        [
-          "wrangler",
-          "r2",
-          "object",
-          "put",
-          `${BUCKET}/${key}`,
-          "--file",
-          filePath,
-          "--content-type",
-          "text/markdown; charset=utf-8",
-          "--remote"
-        ],
-        { stdio: ["ignore", "ignore", "pipe"] }
-      );
+      put(key, filePath);
 
       exportedFiles.push({
         key,
@@ -267,19 +327,26 @@ async function main(): Promise<void> {
         notion_id: page.id,
         last_edited: page.last_edited_time
       });
-      rows.push({ page: title, status: "exported", detail: key });
-      console.log(`exported ${key}`);
+      let detail = key;
+      if (decision.warning) detail += ` (warning: ${decision.warning})`;
+      // A hint naming a Slack channel or a person is a steer, not a procedure:
+      // worth a look on the next pass, but not worth dropping the page over.
+      if (/#[a-z][a-z0-9_-]{2,}|@[a-z]/i.test(useWhen)) {
+        detail += " (hint names a channel or person)";
+      }
+      rows.push({ page: title, outcome: "exported", detail });
+      console.log(`${dryRun ? "would upload" : "exported"} ${key}`);
     } catch (err) {
       // The page's old object stays in R2 and must not be pruned: under this
       // key, or under its previous key if the page was renamed as well.
       failedKeys.add(key);
-      for (const f of previous?.files ?? []) {
+      for (const f of previousFiles) {
         if (f.notion_id === page.id) failedKeys.add(f.key);
       }
       rows.push({
         page: title,
-        status: "failed",
-        detail: messageOf(err).slice(0, 120)
+        outcome: "failed",
+        detail: redactIds(messageOf(err)).slice(0, 120)
       });
     }
   }
@@ -288,15 +355,15 @@ async function main(): Promise<void> {
     // Some child pages could not be listed, so this run's page set is
     // incomplete: keep every previously exported object rather than flagging
     // the unlisted children as stale and deleting them on --prune.
-    for (const f of previous?.files ?? []) failedKeys.add(f.key);
+    for (const f of previousFiles) failedKeys.add(f.key);
     console.log(
       "Child page listing failed for at least one page; keeping all previously exported objects instead of marking any stale."
     );
   }
 
-  const exported = rows.filter((r) => r.status === "exported").length;
-  const skipped = rows.filter((r) => r.status === "skipped").length;
-  const failed = rows.filter((r) => r.status === "failed").length;
+  const exported = rows.filter((r) => r.outcome === "exported").length;
+  const skipped = rows.filter((r) => r.outcome === "skipped").length;
+  const failed = rows.filter((r) => r.outcome === "failed").length;
   console.table(rows);
 
   const now = new Date().toISOString();
@@ -308,47 +375,75 @@ async function main(): Promise<void> {
   );
   let manifest = next;
   const pruned: string[] = [];
+
+  // Count only the stale keys this run cannot explain. Every page this run
+  // listed counts as seen, exported or skipped: a page the run saw but chose
+  // to skip is an explained absence; a page that vanished from Notion, or a
+  // key whose entry carries no id, is not.
+  const seenIds = new Set(pages.keys());
+  const unexplained = unexplainedStale(next.stale, seenIds);
+  const unexplainedSet = new Set(unexplained);
+  const suspicious = suspiciousDrop(
+    previousFiles.length,
+    exportedFiles.length,
+    unexplained.length
+  );
+  const blocked = suspicious && !force;
+
   if (stale.length > 0) {
     console.log(
       `${stale.length} stale object(s) in R2: no longer produced by this export (page renamed, archived, emptied or deleted in Notion) but still indexed and citable until deleted.`
     );
-    for (const key of stale) console.log(`  ${key}`);
-    if (prune) {
-      for (const key of stale) {
-        try {
-          execFileSync(
-            "npx",
-            [
-              "wrangler",
-              "r2",
-              "object",
-              "delete",
-              `${BUCKET}/${key}`,
-              "--remote"
-            ],
-            { stdio: ["ignore", "ignore", "pipe"] }
-          );
-          pruned.push(key);
-          console.log(`deleted ${key}`);
-        } catch (err) {
-          console.error(
-            `failed to delete ${key} (still listed as stale): ${messageOf(err).slice(0, 200)}`
-          );
-          process.exitCode = 1;
-        }
-      }
-      manifest = pruneKeys(next, pruned);
+    for (const key of stale) {
+      const note = unexplainedSet.has(key)
+        ? "  (unexplained: page not seen this run)"
+        : "";
+      console.log(`  ${key}${note}`);
     }
   }
-  // Always written, so the next run knows what this one left in R2.
-  await writeFile(
-    MANIFEST_PATH,
-    `${JSON.stringify(manifest, null, 2)}\n`,
-    "utf8"
-  );
-  console.log(
-    `Wrote ${path.relative(process.cwd(), MANIFEST_PATH)}; commit it with this export.`
-  );
+  if (blocked) {
+    // A run that exported nothing has no stale arithmetic worth reciting.
+    const headline =
+      exportedFiles.length === 0
+        ? `Suspicious drop: the export produced no files (tracked ${previousFiles.length}).`
+        : `Suspicious drop: ${unexplained.length} of ${stale.length} stale object(s) cannot be explained by pages this run saw (tracked ${previousFiles.length}, exported ${exportedFiles.length}).`;
+    console.error(
+      `${headline} This usually means Notion returned an incomplete page set. ${dryRun ? "Nothing was uploaded and the manifest was not written (dry run)" : "The uploads above happened and the manifest was written"}; only pruning is withheld. If the pages really are gone, read the list above and run npm run export -- --prune --force locally.`
+    );
+    process.exitCode = 1;
+  } else if (suspicious) {
+    console.warn(
+      `Suspicious drop overridden with --force: pruning ${stale.length} object(s), ${unexplained.length} unexplained.`
+    );
+  }
+
+  if (prune && !blocked) {
+    for (const key of stale) {
+      try {
+        remove(key);
+        pruned.push(key);
+        console.log(`${dryRun ? "would delete" : "deleted"} ${key}`);
+      } catch (err) {
+        console.error(
+          `failed to delete ${key} (still listed as stale): ${redactIds(messageOf(err)).slice(0, 200)}`
+        );
+        process.exitCode = 1;
+      }
+    }
+    manifest = pruneKeys(next, pruned);
+  }
+
+  if (!dryRun) {
+    // Always written, so the next run knows what this one left in R2.
+    await writeFile(
+      MANIFEST_PATH,
+      `${JSON.stringify(manifest, null, 2)}\n`,
+      "utf8"
+    );
+    console.log(
+      `Wrote ${path.relative(process.cwd(), MANIFEST_PATH)}; commit it with this export.`
+    );
+  }
 
   console.log(`Exported ${exported}, skipped ${skipped}, failed ${failed}.`);
   if (prune) {
@@ -357,16 +452,17 @@ async function main(): Promise<void> {
     );
   } else {
     console.log(
-      `Stale objects still in R2: ${stale.length}${stale.length > 0 ? " (dry run: run with --prune to delete them)" : ""}.`
+      `Stale objects still in R2: ${stale.length}${stale.length > 0 ? " (run with --prune to delete them)" : ""}.`
     );
   }
   console.log(
     "R2 is not the index: run `npx wrangler ai-search jobs create cortex` to reindex."
   );
+  if (dryRun) console.log("Dry run: nothing uploaded, manifest untouched.");
   if (failed > 0) process.exitCode = 1;
 }
 
 main().catch((err) => {
-  console.error(messageOf(err));
+  console.error(redactIds(messageOf(err)).slice(0, 300));
   process.exit(1);
 });

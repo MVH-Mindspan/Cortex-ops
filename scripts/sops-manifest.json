@@ -1,0 +1,396 @@
+{
+  "exported_at": "2026-09-03T04:03:34.539Z",
+  "files": [
+    {
+      "key": "active-numbers-in-regal-as-of-6-25-26.md",
+      "title": "📞 Active Numbers in Regal (as of 6.25.26)",
+      "notion_id": "38ab5943-d52d-80cc-a380-e259f3814009",
+      "last_edited": "2026-06-25T17:51:00.000Z"
+    },
+    {
+      "key": "after-visit-checklist.md",
+      "title": "📝 After Visit Checklist",
+      "notion_id": "335b5943-d52d-80e1-8d48-fc1a51767079",
+      "last_edited": "2026-08-31T22:58:00.000Z"
+    },
+    {
+      "key": "appointment-scheduling.md",
+      "title": "Appointment Scheduling",
+      "notion_id": "344b5943-d52d-80f4-833f-c5dd3d4fd7bf",
+      "last_edited": "2026-08-31T22:58:00.000Z"
+    },
+    {
+      "key": "athena-patient-registration-checklist.md",
+      "title": "Athena Patient Registration Checklist",
+      "notion_id": "342b5943-d52d-817e-ab93-c5f0eb95c135",
+      "last_edited": "2026-04-14T21:38:00.000Z"
+    },
+    {
+      "key": "before-visit-checklist.md",
+      "title": "📝 Before Visit Checklist",
+      "notion_id": "335b5943-d52d-8008-9ae4-fca1c9705b78",
+      "last_edited": "2026-08-31T22:58:00.000Z"
+    },
+    {
+      "key": "blocked-escalate-subtask-sop.md",
+      "title": "Blocked/Escalate/Subtask SOP",
+      "notion_id": "3c0b5943-d52d-80de-a7ad-f6fe60b98301",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "callback-brokering-live-transfers-draft-needs-review.md",
+      "title": "📞 Callback Brokering & Live Transfers (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-81a0-bdd3-f47375794320",
+      "last_edited": "2026-09-01T02:24:00.000Z"
+    },
+    {
+      "key": "care-navigation-tools.md",
+      "title": "Care Navigation Tools",
+      "notion_id": "390b5943-d52d-81c5-9f97-c4dbbce9bcba",
+      "last_edited": "2026-09-02T18:30:00.000Z"
+    },
+    {
+      "key": "caremore-call-guide.md",
+      "title": "Caremore Call Guide",
+      "notion_id": "33db5943-d52d-80bf-a836-d620775debfd",
+      "last_edited": "2026-04-09T16:11:00.000Z"
+    },
+    {
+      "key": "chart-prep-initial-follow-up-visits.md",
+      "title": "📋 Chart Prep — Initial & Follow-Up Visits",
+      "notion_id": "344b5943-d52d-8157-bc76-d44367c1b9ba",
+      "last_edited": "2026-08-31T22:58:00.000Z"
+    },
+    {
+      "key": "clinic-environment-standards.md",
+      "title": "📝 Clinic Environment & Standards",
+      "notion_id": "3adb5943-d52d-8122-a881-e0eff5ee22b0",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "clinic-opening-closing-procedures.md",
+      "title": "📝 Clinic Opening & Closing Procedures",
+      "notion_id": "3adb5943-d52d-814c-8ff3-cf287e215334",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "clinic-phone-fax-address.md",
+      "title": "Clinic Phone, Fax, Address",
+      "notion_id": "343b5943-d52d-80de-bd46-c763c7ff06d5",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "clinic-roles-responsibilities.md",
+      "title": "📝 Clinic Roles & Responsibilities",
+      "notion_id": "3adb5943-d52d-81ea-ad95-f288269a5b8b",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "clinical-escalation-process.md",
+      "title": "Clinical Escalation Process",
+      "notion_id": "3a3b5943-d52d-80e8-b005-c1730dcf97ab",
+      "last_edited": "2026-08-31T22:58:00.000Z"
+    },
+    {
+      "key": "cognitive-account-closure.md",
+      "title": "⛔️ Cognitive Account Closure",
+      "notion_id": "348b5943-d52d-808d-bb9d-f05131b86587",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "creyos-testing-workflows.md",
+      "title": "Creyos Testing Workflows",
+      "notion_id": "398b5943-d52d-81f1-974e-d187148eb26c",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "dementia-memory-loss-communication-training.md",
+      "title": "🎓 Dementia & Memory Loss Communication Training",
+      "notion_id": "3adb5943-d52d-819e-9065-c620bf662eb3",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "digital-intake-survey-process.md",
+      "title": "📋 Digital Intake Survey Process",
+      "notion_id": "3b4b5943-d52d-8114-8a4f-ce53d69e33de",
+      "last_edited": "2026-08-31T22:58:00.000Z"
+    },
+    {
+      "key": "enrollment.md",
+      "title": "📝 Enrollment",
+      "notion_id": "335b5943-d52d-8057-a0c7-fdf12b014c13",
+      "last_edited": "2026-08-31T22:58:00.000Z"
+    },
+    {
+      "key": "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md",
+      "title": "🏥 External Facility & Provider Calls — Records, Re-Faxes, Code Fixes (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-8142-892b-e80df91d00c3",
+      "last_edited": "2026-09-01T02:24:00.000Z"
+    },
+    {
+      "key": "first-visit-scheduling.md",
+      "title": "📝 First Visit Scheduling",
+      "notion_id": "335b5943-d52d-8037-8a77-df19be245f1c",
+      "last_edited": "2026-08-31T22:58:00.000Z"
+    },
+    {
+      "key": "follow-up-pre-visit-checklist-sop.md",
+      "title": "Follow-Up Pre-Visit Checklist SOP",
+      "notion_id": "3cfb5943-d52d-8107-8701-d0408a5c4681",
+      "last_edited": "2026-09-02T19:17:00.000Z"
+    },
+    {
+      "key": "follow-up-scheduling-rules-draft-needs-review.md",
+      "title": "🗓️ Follow-Up Scheduling Rules (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-8148-b5ad-c801d4a699f2",
+      "last_edited": "2026-08-31T23:17:00.000Z"
+    },
+    {
+      "key": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "title": "🧠 Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-81a1-9494-e5a6545f2a20",
+      "last_edited": "2026-08-31T23:18:00.000Z"
+    },
+    {
+      "key": "in-office-test-results-tb006-genetic-swab-draft-needs-review.md",
+      "title": "🧬 In-Office Test Results — TB006 Genetic Swab (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-8175-ac14-fdc6f0cec9bc",
+      "last_edited": "2026-08-31T23:18:00.000Z"
+    },
+    {
+      "key": "inbound-fax-referral-document-handling-draft-needs-review.md",
+      "title": "📠 Inbound Fax Referral & Document Handling (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-81d9-8d2b-e2a73d0abb47",
+      "last_edited": "2026-08-31T23:16:00.000Z"
+    },
+    {
+      "key": "inbound-patient-family-concerns-triage-resolution-draft-needs-review.md",
+      "title": "💬 Inbound Patient & Family Concerns — Triage & Resolution (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-81bd-863a-d762d356f9ab",
+      "last_edited": "2026-09-01T02:23:00.000Z"
+    },
+    {
+      "key": "incident-report-template.md",
+      "title": "🧾 Incident Report Template",
+      "notion_id": "3adb5943-d52d-8160-824c-c86ead40a2c8",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "infusion-journey-patient-communication-expectations-draft-needs-review.md",
+      "title": "💚 Infusion Journey — Patient Communication & Expectations (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-8126-855b-e07627e0e69c",
+      "last_edited": "2026-08-31T23:18:00.000Z"
+    },
+    {
+      "key": "infusion-referral-sop.md",
+      "title": "Infusion Referral SOP",
+      "notion_id": "353b5943-d52d-81f1-af17-debd6e76b7ef",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "insurance-verification-prior-authorization-draft-needs-review.md",
+      "title": "🛡️ Insurance Verification & Prior Authorization (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-81d4-8ecb-e16b2000c326",
+      "last_edited": "2026-08-31T23:17:00.000Z"
+    },
+    {
+      "key": "lab-test-cost-concerns-draft-needs-review.md",
+      "title": "💵 Lab & Test Cost Concerns (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-81a9-94f5-d78778e67193",
+      "last_edited": "2026-09-01T02:24:00.000Z"
+    },
+    {
+      "key": "long-beach.md",
+      "title": "Long Beach •",
+      "notion_id": "3cdb5943-d52d-81d5-a100-da003f66dd48",
+      "last_edited": "2026-09-02T20:36:00.000Z"
+    },
+    {
+      "key": "managing-appointment-ticklers.md",
+      "title": "Managing Appointment Ticklers",
+      "notion_id": "372b5943-d52d-807a-b074-e59e278d7644",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "managing-the-clinical-inbox.md",
+      "title": "📋 Managing the Clinical Inbox",
+      "notion_id": "3acb5943-d52d-81e3-b911-d16e0c32aad9",
+      "last_edited": "2026-09-01T20:09:00.000Z"
+    },
+    {
+      "key": "mindspan-patient-portal.md",
+      "title": "Mindspan Patient Portal",
+      "notion_id": "3acb5943-d52d-8017-b0ff-f290f0564494",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "misfiled-record-correction-draft-needs-review.md",
+      "title": "🗂️ Misfiled Record Correction (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-8119-b367-ecf2366a7a44",
+      "last_edited": "2026-09-01T02:24:00.000Z"
+    },
+    {
+      "key": "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md",
+      "title": "🧭 Misrouted & Missing Orders — Cross-System Reconciliation (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-81af-adb3-fc3c6448a68a",
+      "last_edited": "2026-08-31T23:16:00.000Z"
+    },
+    {
+      "key": "new-clinic-setup-embed.md",
+      "title": "📝 New Clinic Setup (Embed)",
+      "notion_id": "335b5943-d52d-80f2-b61b-ecb64c47d0f8",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "new-health-system-setup.md",
+      "title": "📝 New Health System Setup",
+      "notion_id": "335b5943-d52d-8081-85b4-cc9cef69e24a",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "new-medication-new-prescription-requests-triage-draft-needs-review.md",
+      "title": "🆕 New Medication & New Prescription Requests — Triage (DRAFT — Needs Review)",
+      "notion_id": "3ceb5943-d52d-81f3-ba3d-d624e18147d6",
+      "last_edited": "2026-09-01T02:23:00.000Z"
+    },
+    {
+      "key": "new-provider-setup.md",
+      "title": "📝 New Provider Setup",
+      "notion_id": "335b5943-d52d-801e-b5aa-c1b42d7443bd",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "new-pt-pre-visit-checklist-sop.md",
+      "title": "New PT Pre-Visit Checklist SOP",
+      "notion_id": "3c0b5943-d52d-8033-9c06-f2dd8f953c32",
+      "last_edited": "2026-09-01T15:29:00.000Z"
+    },
+    {
+      "key": "order-prescription-corrections-and-rx-requests-draft-needs-review.md",
+      "title": "💊 Order & Prescription Corrections and Rx Requests (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-81ca-b82e-f80830c6691f",
+      "last_edited": "2026-09-01T02:20:00.000Z"
+    },
+    {
+      "key": "orders-labs-referrals.md",
+      "title": "🧪 Orders, Labs & Referrals",
+      "notion_id": "344b5943-d52d-81f7-b623-d7050189313e",
+      "last_edited": "2026-08-31T22:58:00.000Z"
+    },
+    {
+      "key": "patient-check-in-athena.md",
+      "title": "Patient Check-In, Athena",
+      "notion_id": "3c7b5943-d52d-8039-85c0-c92576d3a0e1",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "patient-check-out-athena.md",
+      "title": "Patient Check-Out, Athena",
+      "notion_id": "3c7b5943-d52d-800d-a70e-d8e4e664237a",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "patient-facing-tech-failures-screening-codes-blank-pages-portal-access-draft-nee.md",
+      "title": "📱 Patient-Facing Tech Failures — Screening Codes, Blank Pages, Portal Access (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-8192-9941-fa8f19da9725",
+      "last_edited": "2026-09-01T02:24:00.000Z"
+    },
+    {
+      "key": "patient-imaging-results-access-guide-valley-radiology-san-jose-pet.md",
+      "title": "🔎 Patient Imaging Results Access Guide – Valley Radiology & San Jose PET",
+      "notion_id": "34bb5943-d52d-80c5-a33e-f1da9d8f5f98",
+      "last_edited": "2026-08-31T22:58:00.000Z"
+    },
+    {
+      "key": "patient-records-requests-release-of-information-draft-needs-review.md",
+      "title": "📂 Patient Records Requests — Release of Information (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-81cd-9ece-e8c4b9bb4427",
+      "last_edited": "2026-09-01T02:23:00.000Z"
+    },
+    {
+      "key": "patient-staff-scenario-response.md",
+      "title": "📝 Patient & Staff Scenario Response",
+      "notion_id": "3adb5943-d52d-81d7-9fe7-df55efb46202",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "post-visit-checklist-sop.md",
+      "title": "Post-Visit Checklist SOP",
+      "notion_id": "3c1b5943-d52d-80a0-b30d-dfe9f2e75bed",
+      "last_edited": "2026-09-01T17:56:00.000Z"
+    },
+    {
+      "key": "preferred-lab-imaging-pharmacy-capture-draft-needs-review.md",
+      "title": "📌 Preferred Lab, Imaging & Pharmacy Capture (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-8161-a91d-d4b8e45df0b4",
+      "last_edited": "2026-08-31T23:09:00.000Z"
+    },
+    {
+      "key": "prior-authorizations.md",
+      "title": "Prior Authorizations",
+      "notion_id": "3cab5943-d52d-81fa-8c12-f095d7b8710d",
+      "last_edited": "2026-08-31T22:58:00.000Z"
+    },
+    {
+      "key": "provider-onboarding-tracker.md",
+      "title": "📋 Provider Onboarding Tracker",
+      "notion_id": "33eb5943-d52d-8160-9d61-f527c1c0d499",
+      "last_edited": "2026-06-30T17:56:00.000Z"
+    },
+    {
+      "key": "referral-acceptance-criteria-draft-needs-review.md",
+      "title": "🤝 Referral Acceptance Criteria (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-8115-b4dd-ecb55db598de",
+      "last_edited": "2026-08-31T23:18:00.000Z"
+    },
+    {
+      "key": "referring-providers.md",
+      "title": "Referring Providers",
+      "notion_id": "3cab5943-d52d-8169-ae06-e4450fb41b5e",
+      "last_edited": "2026-08-28T23:34:00.000Z"
+    },
+    {
+      "key": "results-next-steps-requests-draft-needs-review.md",
+      "title": "📊 Results & Next-Steps Requests (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-8189-bde6-c232816f049f",
+      "last_edited": "2026-08-31T23:17:00.000Z"
+    },
+    {
+      "key": "same-day-provider-schedule-changes-draft-needs-review.md",
+      "title": "⚡ Same-Day Provider Schedule Changes (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-816b-8cf3-fcd824aa0879",
+      "last_edited": "2026-08-31T23:17:00.000Z"
+    },
+    {
+      "key": "suspected-abuse-neglect-reporting.md",
+      "title": "📝 Suspected Abuse & Neglect Reporting",
+      "notion_id": "3adb5943-d52d-8155-a1ff-fc04f041aae4",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "telehealth-visits-setup-access-no-shows-draft-needs-review.md",
+      "title": "💻 Telehealth Visits — Setup, Access & No-Shows (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-81be-a8c0-deddb4823436",
+      "last_edited": "2026-08-31T23:17:00.000Z"
+    },
+    {
+      "key": "transition-to-care-support.md",
+      "title": "📝 Transition to Care Support",
+      "notion_id": "335b5943-d52d-8045-b7d3-dc166f6f96fe",
+      "last_edited": "2026-08-31T22:59:00.000Z"
+    },
+    {
+      "key": "verbal-orders-medication-change-communication-draft-needs-review.md",
+      "title": "📭 Verbal Orders & Medication-Change Communication (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-8197-8383-fbb1b7f34d69",
+      "last_edited": "2026-09-01T02:24:00.000Z"
+    },
+    {
+      "key": "where-to-log-it-athena-documentation-reference-draft-needs-review.md",
+      "title": "📓 Where to Log It — Athena Documentation Reference (DRAFT — Needs Review)",
+      "notion_id": "3cdb5943-d52d-8196-a811-f0abfc1f2d2e",
+      "last_edited": "2026-09-01T02:24:00.000Z"
+    }
+  ],
+  "stale": []
+}
