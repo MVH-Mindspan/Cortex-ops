@@ -28,13 +28,21 @@
 
 // The confirmed heading: "what the sops say" at a line start, optionally as a
 // setext-free ATX heading and/or bolded, terminated by the ":" of the question
-// format or by the end of the line. Neither regex carries /g or /y, so both are
+// format or by the end of the line, LF or CRLF. The "\r" of a CRLF terminator
+// is part of the match, so it travels with the emitted heading line rather than
+// leaking into the held tail. Neither regex carries /g or /y, so both are
 // stateless and safe to share across instances.
 export const CITATION_TRIGGER_RE =
-  /^[ \t]*(?:#{1,6}[ \t]+)?(?:\*\*|__)?[ \t]*what the sops say(?:[ \t]*(?:\*\*|__))?[ \t]*(?::|\n)/im;
+  /^[ \t]*(?:#{1,6}[ \t]+)?(?:\*\*|__)?[ \t]*what the sops say(?:[ \t]*(?:\*\*|__))?[ \t]*(?::|\r?\n)/im;
 
 // The same heading sitting at the very end of the buffer with no terminator
 // yet — the shape end() sees when the stream stops right after the heading.
+// Needs no CRLF-specific update: this regex only requires optional trailing
+// spaces/colon before end of input, and a lone trailing "\r" already satisfies
+// it, verified with /.../im.test("what the sops say\r") === true — JS `$`
+// under /m matches immediately before ANY line terminator, not only "\n", so a
+// stream that stops between the "\r" and "\n" of a CRLF terminator still reads
+// as a bare heading.
 export const CITATION_TRIGGER_AT_END_RE =
   /^[ \t]*(?:#{1,6}[ \t]+)?(?:\*\*|__)?[ \t]*what the sops say(?:[ \t]*(?:\*\*|__))?[ \t]*:?[ \t]*$/im;
 
@@ -51,7 +59,11 @@ const MAX_TRIGGER_LINE = 32;
 // because a partial line may hold half-typed markup: holding one delta too long
 // costs nothing, releasing one delta too early loses the trigger.
 const LEADING_MARKUP_RE = /^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*?|__?)?[ \t]*/;
-const TRAILING_MARKUP_RE = /^[ \t]*(?:\*\*?|__?)?[ \t]*$/;
+// Trailing "\r?" for the same reason CITATION_TRIGGER_RE accepts "\r?\n": a
+// delta boundary can land right after the "\r" of an incoming CRLF terminator,
+// and that lone "\r" must not read as disqualifying content — it is still a
+// live prefix of the terminator, one "\n" away from confirming the heading.
+const TRAILING_MARKUP_RE = /^[ \t]*(?:\*\*?|__?)?[ \t]*\r?$/;
 
 // True when `line` (a partial line, never containing a newline) could still
 // grow into the heading, so it must not be emitted yet.
@@ -113,7 +125,11 @@ export class TailHold {
   // (possibly "") when a heading was confirmed, "" when the stream ended on a
   // bare heading, and null when this answer had no citation heading at all —
   // null meaning "nothing was withheld, leave the text as the model wrote it".
-  // Call once per attempt; reset() starts the next one.
+  // Meant to be called once per attempt: after a confirmed heading, a second
+  // call returns "" (held is already drained), and it does not itself start a
+  // fresh attempt — a later push() just resumes accumulating into the held
+  // tail, exactly as if end() had never been called. reset() is what actually
+  // starts the next attempt.
   end(): string | null {
     if (this.passthrough) return null;
     if (this.heading) {
@@ -137,7 +153,6 @@ export class TailHold {
     const buffered = this.pending + this.held;
     this.pending = "";
     this.held = "";
-    this.heading = false;
     this.emitText(buffered);
   }
 
@@ -156,12 +171,27 @@ export class TailHold {
     if (offset >= 0) {
       const match = CITATION_TRIGGER_RE.exec(this.pending.slice(offset));
       if (match) {
-        // The match consumes the terminating ":" or "\n", so the heading line
-        // goes out whole and the tail is whatever follows it, verbatim. With
-        // the colon form that means the tail keeps the rest of the line —
-        // including the newline when the colon ends it — so a consumer of the
-        // tail must trim rather than assume it opens on a fresh line.
-        const cut = offset + match.index + match[0].length;
+        // The match consumes the terminating ":" or "\n" (or "\r\n"), so the
+        // heading line goes out whole and the tail is whatever follows it,
+        // verbatim. With the colon form that means the tail keeps the rest of
+        // the line — including the newline when the colon ends it — so a
+        // consumer of the tail must trim rather than assume it opens on a
+        // fresh line.
+        let cut = offset + match.index + match[0].length;
+        // A bold question heading closes AFTER its colon. Wait for those
+        // two characters, including when each arrives in a separate delta,
+        // and emit them with the heading rather than with the citation items.
+        const heading = match[0];
+        const opener = /^[ \t]*(?:#{1,6}[ \t]+)?(\*\*|__)/.exec(heading)?.[1];
+        if (
+          opener &&
+          heading.endsWith(":") &&
+          !heading.slice(heading.indexOf(opener) + 2).includes(opener)
+        ) {
+          const suffix = this.pending.slice(cut, cut + 2);
+          if (suffix.length < 2 && opener.startsWith(suffix)) return;
+          if (suffix === opener) cut += 2;
+        }
         const headingLine = this.pending.slice(0, cut);
         this.held = this.pending.slice(cut);
         this.pending = "";
@@ -198,6 +228,15 @@ export class TailHold {
   }
 
   private emitText(text: string): void {
+    // Guards two things: it skips a spurious empty callback, and — the less
+    // obvious job — it leaves atLineStart untouched. scan()'s live-prefix
+    // branch calls this with "" when the whole of `pending` is itself the
+    // candidate line and there is no newline ahead of it to flush; without
+    // this guard that call would fall through to `"".endsWith("\n")` and
+    // wrongly clear a true atLineStart, after which searchOffset() would stop
+    // treating the held prefix as sitting at a line start and the heading
+    // could no longer be confirmed. A reviewer mutation that dropped this
+    // guard reproduced exactly that failure.
     if (!text) return;
     this.emit(text);
     this.atLineStart = text.endsWith("\n");

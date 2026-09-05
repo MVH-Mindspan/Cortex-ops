@@ -710,6 +710,93 @@ test("T20 a tail with no items is handed back as it came", () => {
   assert.match(gapsInsideAnItem.text, /Not covered by the SOPs/);
 });
 
+test("T21 an orphan emphasis run at the tail start does not defeat the item scan", () => {
+  // What the streaming holder hands over for the bold-colon heading form: it
+  // emits "**What the SOPs say:" and the tail opens on the other half of the
+  // run. Left in place, that "**" hides the item number from the scan and the
+  // whole tail comes back unrepaired.
+  for (const run of ["**", "__"]) {
+    const out = repairCitations(
+      `${run} 1. [1] Imaging Order Requirements "Exact study name: 'PET CT amyloid brain scan'"`,
+      context()
+    );
+    assert.equal(out.stats.items, 1, run);
+    assert.equal(out.stats.matched, 1, run);
+    assert.equal(out.cited[0].file, IMAGING, run);
+    const lines = linesOf(out.text);
+    assert.match(lines[0], /^1\. \[Imaging Order Requirements/, run);
+    assert.equal(
+      lines[1],
+      `   "Exact study name: 'PET CT amyloid brain scan' — facilities reject 'PET brain' as insufficient."`,
+      run
+    );
+  }
+
+  // A run that opens the next section is not an orphan: it is the section the
+  // repair must never eat, so the tail comes back exactly as it arrived.
+  const gaps = "**Not covered by the SOPs:** Nothing about sedation.";
+  assert.equal(repairCitations(gaps, context()).text, gaps);
+});
+
+test("T22 a URL the model typed survives neither an unknown SOP nor the preamble", () => {
+  // Nothing resolves, so the model's own line is what renders — and it must
+  // not carry the link it invented.
+  const unknown = repairCitations(
+    '1. "Per https://evil.example/x you should do the thing here now"',
+    context()
+  );
+  assert.equal(unknown.stats.unknown, 1);
+  assert.doesNotMatch(unknown.text, /https?:/);
+  assert.doesNotMatch(unknown.text, /evil\.example/);
+  assert.match(unknown.text, /you should do the thing here now/);
+  assert.equal(linesOf(unknown.text)[1], `   ${CITATION_UNKNOWN_SOP_NOTE}`);
+
+  // The text above the first item is re-emitted as it stands, so it gets the
+  // same strip.
+  const preamble = repairCitations(
+    `See https://evil.example/y for more.\n1. [1] Imaging Order Requirements "Exact study name: 'PET CT amyloid brain scan'"`,
+    context()
+  );
+  assert.doesNotMatch(preamble.text, /evil\.example/);
+  assert.doesNotMatch(preamble.text, /See {2}for more/);
+  assert.match(preamble.text, /^See for more\./);
+  assert.equal(preamble.stats.matched, 1);
+});
+
+test("T23 a run of unmatched brackets is linear, not quadratic", () => {
+  // The brackets sit inside an item so they actually reach the link regex:
+  // a tail with no item number is handed straight back and never scanned.
+  const tail = `1. Imaging Order Requirements ${"[".repeat(20_000)}`;
+  const ctx = context();
+  const started = performance.now();
+  const out = repairCitations(tail, ctx);
+  const elapsed = performance.now() - started;
+  assert.equal(out.stats.items, 1);
+  // Unbounded, the label class rescanned to the end of the string from every
+  // one of the 20,000 brackets: seconds, not milliseconds.
+  assert.ok(elapsed < 50, `${elapsed.toFixed(1)}ms`);
+});
+
+test("T24 a repair that would lose the gaps section claims nothing it did", () => {
+  // The model glued its gaps line onto the end of the last item, where the
+  // section split cannot see it: rebuilding the items would drop it, so the
+  // raw tail comes back — and with it no citations and no counts, since none
+  // of that work is on the page the reader gets.
+  const tail = [
+    `1. [1] Imaging Order Requirements "Exact study name: 'PET CT amyloid brain scan'"`,
+    '2. [4] External Facility "Ops staff never change clinical or billing codes on their own." Not covered by the SOPs: Nothing.'
+  ].join("\n");
+  const out = repairCitations(tail, context());
+  assert.equal(out.text, tail);
+  assert.deepEqual(out.cited, []);
+  assert.deepEqual(out.stats, {
+    items: 0,
+    matched: 0,
+    unmatched: 0,
+    unknown: 0
+  });
+});
+
 test("normalisation strips markers, tables, links, bold and emoji without touching the words", () => {
   assert.equal(
     displayLine(

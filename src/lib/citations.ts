@@ -7,6 +7,19 @@
 // sentence — and everything rendered (link, section, quote) comes from the
 // file the passage was built from. Pure module: no bindings, no I/O, and no
 // dynamic regex (every pattern is a literal, so there is no ReDoS surface).
+//
+// The rules, in the order they run:
+// 1. Parse — the held tail becomes a heading, a preamble and numbered items;
+//    a heading half-eaten by the stream leaves an orphan "**" that is dropped.
+// 2. Resolve — label and title say which file, but a quote found word for word
+//    outranks both, and fuzzy matching only runs inside an already-known file.
+// 3. Expand — a hit gives up its whole source line, or the sentences it covers
+//    when that line is a banner, a table row or longer than QUOTE_MAX_CHARS.
+// 4. Render — link, section and quote come from the file; the model's own
+//    words appear only as unverified prose, never inside quotation marks.
+// 5. Invariants — no URL the model typed survives anywhere, the gaps section
+//    always does, and a repair that would lose it hands back the raw tail with
+//    nothing cited and the stats zeroed.
 
 import type { FileMeta, SOPRef } from "./pipeline";
 import { CITATION_UNKNOWN_SOP_NOTE, CITATION_UNMATCHED_NOTE } from "./copy.ts";
@@ -61,7 +74,12 @@ const LINE_MARKER =
   /^\s*(?:>\s*)?(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+|#{1,6}\s+)/;
 const TABLE_ROW = /^[ \t]*\|.*\|[ \t]*$/;
 const TABLE_SEPARATOR_CELL = /^:?-+:?$/;
-const MD_LINK = /\[([^\]]*)\]\([^)\s]*\)/g;
+// The label class is bounded, newline-free and holds no "[" of its own: an
+// unmatched bracket must not send the scan to the end of the string, which is
+// what made a run of "[" quadratic. No real link label is 200 characters long,
+// and a label containing "[" never matched here anyway — excluding it only
+// lets the scan find the real link that follows.
+const MD_LINK = /\[([^[\]\n]{0,200})\]\([^)\s]*\)/g;
 const DETAILS_TAG = /<\/?(?:details|summary)>/g;
 const BOLD = /\*\*|__/g;
 // An alternation, never a character class: a class of astral emoji and the
@@ -443,6 +461,11 @@ const SECTION_END =
   /^[ \t]*(?:#{1,6}[ \t]+)?(?:\*\*|__)?[ \t]*(?:Not covered by the SOPs|One question)\b/im;
 const INLINE_SECTION_END =
   /\s(?=(?:\*\*|__)?(?:Not covered by the SOPs|One question)\b)/i;
+// The streaming trigger ends the heading on the ":" of the question format
+// ("**What the SOPs say:"), so the tail it hands over opens on the orphan half
+// of the emphasis run: "** 1. [1] ...". Left in place that run defeats the
+// item scan and the whole tail comes back unrepaired.
+const ORPHAN_EMPHASIS = /^[ \t]*(?:\*\*|__)[ \t]*/;
 const ITEM_START = /^\s*\d+[.)]\s+/;
 const LEADING_ITEM_NUMBER = /^\s*\d{1,2}[.)]\s*/;
 const FIRST_ITEM_NUMBER = /^[ \t]*(\d{1,2})[.)][ \t]+/;
@@ -542,6 +565,17 @@ function splitInlineItems(body: string): string[] {
   );
 }
 
+// Whatever the model wrote above the first item is re-emitted as it stands,
+// so it gets the same URL strip an item head gets: an invented link must not
+// survive anywhere in the rebuilt block.
+function cleanPreamble(raw: string): string {
+  return raw
+    .replace(URL, "")
+    .replace(SPACES, " ")
+    .replace(/[ \t]+$/gm, "")
+    .trim();
+}
+
 function splitBlockItems(body: string): { preamble: string; items: string[] } {
   const preamble: string[] = [];
   const items: string[] = [];
@@ -557,7 +591,7 @@ function splitBlockItems(body: string): { preamble: string; items: string[] } {
     else preamble.push(line);
   }
   if (current) items.push(current.join("\n"));
-  return { preamble: preamble.join("\n"), items };
+  return { preamble: cleanPreamble(preamble.join("\n")), items };
 }
 
 type SplitTail = {
@@ -591,6 +625,11 @@ function splitTail(tail: string): SplitTail {
       body = body.slice(0, inlineEnd.index);
     }
   }
+  // Only ever the item region: a run that opens the next section
+  // ("**Not covered by the SOPs:**") was claimed by the split above and is
+  // sitting in `rest`, untouched. The caller keeps the original tail for the
+  // "unchanged" fallbacks, so nothing here can eat text the reader saw.
+  if (!headingMatch) body = body.replace(ORPHAN_EMPHASIS, "");
   const flat = body.trim();
   if (flat && !flat.includes("\n")) {
     return {
@@ -831,7 +870,9 @@ function renderItem(
 } {
   const meta = resolution.file ? ctx.meta.get(resolution.file) : undefined;
   if (!resolution.file || !meta) {
-    const head = item.head || item.text.replace(LEADING_ITEM_NUMBER, "");
+    // cleanHead, not a bare number strip: this line is the model's own words
+    // and may carry the link it invented for an SOP nobody retrieved.
+    const head = item.head || cleanHead(item.text);
     return {
       text: `${n}. ${head}`.trimEnd() + `\n   ${CITATION_UNKNOWN_SOP_NOTE}`,
       cited: null,
@@ -906,7 +947,10 @@ export function repairCitations(
   const text = rest.trim() ? `${body}\n\n${rest.trim()}` : body;
 
   // Safety valves: a repair that loses the gaps section is worse than no
-  // repair at all, so hand back the model's own tail instead.
+  // repair at all, so hand back the model's own tail instead — with nothing
+  // cited and the stats zeroed, since none of that work is on the page the
+  // reader gets. Stale counts here would tell telemetry a repair happened and
+  // light up cards for citations nobody can see.
   if (
     /not covered by the sops/i.test(tail) &&
     !/not covered by the sops/i.test(text)
@@ -914,9 +958,9 @@ export function repairCitations(
     const question = dropIdentityQuestion(tail);
     return {
       text: question.text,
-      cited,
+      cited: [],
       droppedQuestion: question.dropped,
-      stats
+      stats: { items: 0, matched: 0, unmatched: 0, unknown: 0 }
     };
   }
   const question = dropIdentityQuestion(text);

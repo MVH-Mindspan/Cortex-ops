@@ -26,6 +26,24 @@ test("holds the items when the heading is split across deltas", () => {
   assert.ok(!emitted.includes(""));
 });
 
+// A partial line that keeps looking exactly like a growing heading prefix must
+// still not be held forever: MAX_TRIGGER_LINE (32) caps it so a pathological
+// run of characters that never resolves into "\n" or ":" still reaches the
+// reader, and `pending` never grows past the cap.
+test("releases a line once it exceeds MAX_TRIGGER_LINE, without growing pending further", () => {
+  const { hold, seen } = harness();
+  hold.push("What the SOPs sa");
+  // 16 chars, still short of the 17-character heading word: a genuine live
+  // prefix, held rather than emitted.
+  assert.equal(seen(), "");
+  const filler = "x".repeat(44); // "y"-free: never completes "...say"
+  hold.push(filler);
+  // 16 + 44 = 60 chars, past MAX_TRIGGER_LINE: flushed whole, in this same
+  // push, well before end() is ever called.
+  assert.equal(seen(), "What the SOPs sa" + filler);
+  assert.equal(hold.end(), null);
+});
+
 // T22: every heading spelling the prompt can produce triggers at a line start.
 test("triggers on the ### heading form", () => {
   const { hold, seen } = harness();
@@ -39,6 +57,36 @@ test("triggers on the bold heading form", () => {
   hold.push("Answer: Yes.\n\n**What the SOPs say**\n1. [1] A\n");
   assert.equal(seen(), "Answer: Yes.\n\n**What the SOPs say**\n");
   assert.equal(hold.end(), "1. [1] A\n");
+});
+
+test("triggers on the __ bold heading form", () => {
+  const { hold, seen } = harness();
+  hold.push("Answer: Yes.\n\n__What the SOPs say__\n1. [1] A\n");
+  assert.equal(seen(), "Answer: Yes.\n\n__What the SOPs say__\n");
+  assert.equal(hold.end(), "1. [1] A\n");
+});
+
+// CRLF hardening: a heading terminated by "\r\n" must trigger exactly like the
+// "\n" form, for every possible delta boundary — including the one that lands
+// between the "\r" and the "\n", which is the split that exercises the
+// TRAILING_MARKUP_RE fix (a lone trailing "\r" must still read as a live
+// prefix, not disqualifying content).
+test("triggers on a CRLF-terminated heading for every 2-way split", () => {
+  const input = "Answer: Yes.\r\n\r\n### What the SOPs say\r\n1. [1] A\r\n";
+  for (let i = 0; i <= input.length; i++) {
+    const { hold, seen } = harness();
+    const a = input.slice(0, i);
+    const b = input.slice(i);
+    if (a) hold.push(a);
+    if (b) hold.push(b);
+    const tail = hold.end();
+    assert.ok(
+      seen().endsWith("say\r\n"),
+      `split ${i}: emitted was ${JSON.stringify(seen())}`
+    );
+    assert.equal(tail, "1. [1] A\r\n", `split ${i}`);
+    assert.equal(seen() + tail, input, `split ${i} lost text`);
+  }
 });
 
 // Convention pinned here: the colon form emits the heading through the ":" and
@@ -104,6 +152,28 @@ test("splits a body, heading and items delivered in one push", () => {
   assert.equal(hold.end(), "1. [1] A\n2. [2] B\n");
 });
 
+// A second confirmed heading is just more held text: once `heading` is true,
+// push() no longer re-scans, so a later occurrence of the trigger phrase
+// inside the tail is never treated specially.
+test("holds a second heading occurrence inside the tail verbatim", () => {
+  const { hold, seen } = harness();
+  hold.push(
+    "Answer: Yes.\n\nWhat the SOPs say\n1. [1] A\nWhat the SOPs say again\n"
+  );
+  assert.equal(seen(), "Answer: Yes.\n\nWhat the SOPs say\n");
+  assert.equal(hold.end(), "1. [1] A\nWhat the SOPs say again\n");
+});
+
+// end() is meant to be called once per attempt; calling it again after a
+// confirmed heading finds `held` already drained and reports "" rather than
+// re-returning the tail or throwing.
+test("a second end() call returns an empty string", () => {
+  const { hold } = harness();
+  hold.push("Answer: Yes.\n\nWhat the SOPs say\n1. [1] A\n");
+  assert.equal(hold.end(), "1. [1] A\n");
+  assert.equal(hold.end(), "");
+});
+
 test("emits a bare trailing heading at end() and reports an empty tail", () => {
   const { hold, seen } = harness();
   hold.push("Answer: Yes.\n\nWhat the SOPs say");
@@ -150,6 +220,16 @@ test("release() gives back a partial heading that never confirmed", () => {
   assert.equal(hold.end(), null);
 });
 
+test("release() is idempotent", () => {
+  const { emitted, hold, seen } = harness();
+  hold.push("Answer: X.\n\nWhat the SO");
+  hold.release();
+  const afterFirstRelease = seen();
+  hold.release();
+  assert.equal(seen(), afterFirstRelease);
+  assert.ok(!emitted.includes(""));
+});
+
 test("reset() starts the next attempt clean", () => {
   let aborted = true;
   const { emitted, hold } = harness(() => aborted);
@@ -163,26 +243,6 @@ test("reset() starts the next attempt clean", () => {
   assert.equal(hold.end(), "1. [1] A\n");
   assert.ok(!emitted.includes(""));
 });
-
-// Deterministic 32-bit LCG. The split points must be reproducible, so the
-// property test never touches Math.random.
-function makeRandom(seed: number): () => number {
-  let state = seed >>> 0;
-  return () => {
-    state = (state * 1664525 + 1013904223) >>> 0;
-    return state / 0x1_0000_0000;
-  };
-}
-
-function splitInto(text: string, random: () => number): string[] {
-  const parts: string[] = [];
-  for (let index = 0; index < text.length; ) {
-    const size = 1 + Math.floor(random() * 40);
-    parts.push(text.slice(index, index + size));
-    index += size;
-  }
-  return parts;
-}
 
 const ANSWER = `Answer: Use Clinic Missed when the patient arrives after the grace period.
 
@@ -199,22 +259,23 @@ Did the patient call ahead?
 
 const FIRST_ITEM = "1. Missed Visits, 2. Statuses (https://app.notion.com/p/x)";
 
-test("is lossless and holds the items back for every split point", () => {
-  const random = makeRandom(0x5eed);
-  for (let run = 0; run < 20; run++) {
+// Exhaustive replacement for the old 20-run LCG property test: every possible
+// 2-way split of ANSWER, not a random sample of multi-way splits. Losslessness
+// and "the first item never leaks before end()" must hold at every boundary.
+test("is lossless and holds the first item back for every 2-way split of ANSWER", () => {
+  for (let i = 0; i <= ANSWER.length; i++) {
     const { emitted, hold, seen } = harness();
-    hold.reset();
-    for (const delta of splitInto(ANSWER, random)) {
-      hold.push(delta);
-      // The whole point: the first citation item never reaches the reader
-      // while the stream is open, no matter where the deltas fall.
-      assert.ok(!seen().includes(FIRST_ITEM), `run ${run} leaked the item`);
-    }
+    const a = ANSWER.slice(0, i);
+    const b = ANSWER.slice(i);
+    if (a) hold.push(a);
+    assert.ok(!seen().includes(FIRST_ITEM), `split ${i} leaked the item early`);
+    if (b) hold.push(b);
+    assert.ok(!seen().includes(FIRST_ITEM), `split ${i} leaked the item`);
     // end() flushes into the emit callback, so the invariant reads the
     // collected stream after it, not before.
     const tail = hold.end();
-    assert.equal(seen() + (tail ?? ""), ANSWER, `run ${run} lost text`);
-    assert.equal(tail, ANSWER.slice(ANSWER.indexOf(FIRST_ITEM)), `run ${run}`);
-    assert.ok(!emitted.includes(""), `run ${run} emitted an empty delta`);
+    assert.equal(seen() + (tail ?? ""), ANSWER, `split ${i} lost text`);
+    assert.equal(tail, ANSWER.slice(ANSWER.indexOf(FIRST_ITEM)), `split ${i}`);
+    assert.ok(!emitted.includes(""), `split ${i} emitted an empty delta`);
   }
 });
