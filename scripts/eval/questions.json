@@ -1,0 +1,182 @@
+[
+  {
+    "id": "D1",
+    "block": "demo",
+    "prompt": "VRI called regarding #323 who is scheduled for a PET CT amyloid brain scan on September 15th. She requested that the order be corrected to specify 'PET CT amyloid brain scan' as 'PET brain' is insufficient. She also needs a Medicare-covered ICD-10 code added to the order (provided options: G31.84, R41.3, G30.0, G30.1, G30.9), as well as the most recent chart notes and prior imaging reports regarding the brain.",
+    "expected": [
+      "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+    ],
+    "notes": "the tester's demo scenario: one long multi-part request that names the codes, the vendor and the modality"
+  },
+  {
+    "id": "A1",
+    "block": "A",
+    "prompt": "A patient's amyloid PET was scheduled but the imaging centre says the order is incomplete. They didn't say what's missing. What do I check?",
+    "expected": [
+      "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+    ],
+    "notes": "the symptom, not the cause: no code, no field name, nothing to match on but the modality"
+  },
+  {
+    "id": "A2",
+    "block": "A",
+    "prompt": "What do I need in place before an amyloid PET order will be accepted by Medicare?",
+    "expected": [
+      "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+    ],
+    "notes": "the checklist asked for directly, in the SOP's own vocabulary"
+  },
+  {
+    "id": "A3",
+    "block": "A",
+    "prompt": "A caregiver called asking why their mother's scan was cancelled. I can't see a reason in Athena. What now?",
+    "expected": [],
+    "notes": "no SOP covers cancellations; the tester's run retrieved Misrouted & Missing Orders"
+  },
+  {
+    "id": "B1",
+    "block": "B",
+    "prompt": "Vendor needs an ICD-10 on a PET order today. Which code do I put on it?",
+    "expected": [
+      "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+    ],
+    "notes": "either SOP is a correct source; both carry the ops-never-picks-the-code rule"
+  },
+  {
+    "id": "B2",
+    "block": "B",
+    "prompt": "A patient wants their imaging results explained. They're asking me directly on the phone. What do I tell them?",
+    "expected": ["results-next-steps-requests-draft-needs-review.md"],
+    "notes": "scope-of-practice question with no imaging keywords beyond the word imaging"
+  },
+  {
+    "id": "B3",
+    "block": "B",
+    "prompt": "The referring doctor is out until next week and the scan is Thursday. Can I go ahead and submit the order?",
+    "expected": [
+      "insurance-verification-prior-authorization-draft-needs-review.md"
+    ],
+    "notes": "pressure to skip a prerequisite; the SOP that says no is the auth one"
+  },
+  {
+    "id": "C1",
+    "block": "C",
+    "prompt": "Patient needs an amyloid PET before their appointment on Friday. Insurance hasn't been checked yet. Can I get it booked in time?",
+    "expected": [
+      "insurance-verification-prior-authorization-draft-needs-review.md"
+    ],
+    "notes": "two topics in one question: imaging and prior auth"
+  },
+  {
+    "id": "C2",
+    "block": "C",
+    "prompt": "Patient's daughter keeps calling about her mother's MRI report. She's upset and says she just wants to know if it's bad news. She's already been told the provider will call. What do I say to her now?",
+    "expected": ["results-next-steps-requests-draft-needs-review.md"],
+    "notes": "already rank <=3 under the current config; excluded from the F2 decision rule (its failure was F1)"
+  },
+  {
+    "id": "C3",
+    "block": "C",
+    "prompt": "A caregiver wants to change which family member gets appointment reminders for their mother. How do I set that up?",
+    "expected": [],
+    "notes": "no SOP covers patient-facing reminder recipients"
+  },
+  {
+    "id": "R1",
+    "block": "rerun",
+    "prompt": "Which ICD-10 goes on an amyloid PET order?",
+    "expected": [
+      "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+    ],
+    "notes": "the shortest possible form of the headline question"
+  },
+  {
+    "id": "R2",
+    "block": "rerun",
+    "prompt": "VRI is on the phone waiting and the order has no ICD-10. I need to fix this now.",
+    "expected": [
+      "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+    ],
+    "notes": "same question under time pressure; VRI and ICD-10 are the only keyword-index tokens"
+  },
+  {
+    "id": "R3",
+    "block": "rerun",
+    "prompt": "The prescriber is unreachable and VRI needs a code today. Options are G31.84, R41.3, G30.0, G30.1, G30.9. Which one?",
+    "expected": [
+      "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+    ],
+    "notes": "the headline miss: under keyword mode and, the checklist is absent"
+  },
+  {
+    "id": "R4",
+    "block": "rerun",
+    "prompt": "Order rejected for missing diagnosis code. What do I add?",
+    "expected": [
+      "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+      "external-facility-provider-calls-records-re-faxes-code-fixes-draft-needs-review.md"
+    ],
+    "notes": "ranked 5th (chunk only) in the tester's run"
+  },
+  {
+    "id": "R5",
+    "block": "rerun",
+    "prompt": "Amyloid PET order is missing its diagnosis code. Walk me through fixing it.",
+    "expected": [
+      "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+    ],
+    "notes": "the same fix asked for as a procedure rather than as a fact"
+  },
+  {
+    "id": "D2",
+    "block": "control",
+    "prompt": "Patient gets very anxious in scanners and the family is asking for something to calm her before the MRI. What do I put on the order?",
+    "expected": [
+      "new-medication-new-prescription-requests-triage-draft-needs-review.md"
+    ],
+    "notes": "control: an imaging-flavoured question whose answer is a medication SOP, so a config that simply pulls the imaging checklist toward everything shows up as a regression here; this SOP entered the corpus in the 3 Sep 2026 refresh"
+  },
+  {
+    "id": "T1",
+    "block": "follow-up",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Which ICD-10 goes on an amyloid PET order?"
+      },
+      {
+        "role": "assistant",
+        "content": "The prescriber selects the clinically correct Medicare-covered ICD-10 code. Ops never adds or changes codes; route to the provider."
+      },
+      {
+        "role": "user",
+        "content": "And if the prescriber is unreachable today?"
+      }
+    ],
+    "expected": [
+      "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md"
+    ],
+    "notes": "measures query rewrite, which only applies to follow-up turns"
+  },
+  {
+    "id": "T2",
+    "block": "follow-up",
+    "messages": [
+      {
+        "role": "user",
+        "content": "A patient wants their imaging results explained. They're asking me directly on the phone. What do I tell them?"
+      },
+      {
+        "role": "assistant",
+        "content": "Tell the patient the result has arrived and the provider will review it. Never interpret an unreviewed result."
+      },
+      {
+        "role": "user",
+        "content": "What if it has not been reviewed yet?"
+      }
+    ],
+    "expected": ["results-next-steps-requests-draft-needs-review.md"],
+    "notes": "measures query rewrite, which only applies to follow-up turns"
+  }
+]

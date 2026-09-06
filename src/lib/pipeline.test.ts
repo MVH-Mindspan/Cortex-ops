@@ -1,18 +1,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  bestScoreByFile,
   buildPassages,
+  buildUserBlock,
   classifyPipelineError,
   isTruncated,
   MAX_OUTPUT_TOKENS,
   MAX_SOPS,
   rankSops,
   sectionOf,
+  stripFrontmatter,
   textOf,
   trimHistory,
   windows,
   type FileMeta,
   type SearchChunk,
+  type SearchResponse,
   type Turn
 } from "./pipeline.ts";
 
@@ -24,6 +28,8 @@ const meta = new Map<string, FileMeta>([
       category: "ops",
       last_edited: null,
       source_url: "https://n/a",
+      status: null,
+      use_when: null,
       text: "# Alpha\nStep one.\nStep two."
     }
   ],
@@ -34,15 +40,67 @@ const meta = new Map<string, FileMeta>([
       category: "ops",
       last_edited: null,
       source_url: null,
+      status: null,
+      use_when: null,
       text: "Beta body"
     }
   ]
 ]);
 
+// Two more SOPs, one still in draft and one approved. Kept out of `meta` on
+// purpose: the buildPassages tests below rely on c.md having no metadata.
+const metaWithDraft = new Map(meta)
+  .set("c.md", {
+    title: "Gamma SOP",
+    category: "ops",
+    last_edited: null,
+    source_url: null,
+    status: "draft",
+    use_when: "gamma question, gamma form",
+    text: "Gamma body"
+  })
+  .set("d.md", {
+    title: "Delta SOP",
+    category: "ops",
+    last_edited: null,
+    source_url: null,
+    status: "approved",
+    use_when: null,
+    text: "Delta body"
+  });
+
 const chunk = (key: string, score: number, text = "chunk"): SearchChunk => ({
   score,
   text,
   item: { key }
+});
+
+// One chunk, no full documents: the single passage produced is exactly what
+// buildPassages did with that chunk's text, for the frontmatter-stripping
+// tests below.
+function onlyPassage(text: string): string {
+  const chunks = [chunk("a.md", 0.9, text)];
+  const { passages } = buildPassages(rankSops(chunks, meta), chunks, meta, {
+    fullDocCount: 0,
+    charBudget: 30_000
+  });
+  return passages[0];
+}
+
+test("bestScoreByFile keeps each file's best score and skips keyless chunks", () => {
+  const chunks = [
+    chunk("a.md", 0.2),
+    chunk("b.md", 0.9),
+    chunk("a.md", 0.7),
+    { score: 0.99, text: "no source key" }
+  ];
+  assert.deepEqual(
+    [...bestScoreByFile(chunks).entries()],
+    [
+      ["a.md", 0.7],
+      ["b.md", 0.9]
+    ]
+  );
 });
 
 test("textOf joins the text parts with newlines and trims", () => {
@@ -85,6 +143,20 @@ test("rankSops dedupes chunks per file, keeps the best score, sorts descending",
   );
   assert.equal(ranked[0].title, "Beta SOP");
   assert.equal(ranked[1].source_url, "https://n/a");
+});
+
+test("rankSops carries the SOP status and omits the key when there is none", () => {
+  const ranked = rankSops(
+    [chunk("c.md", 0.9), chunk("d.md", 0.7), chunk("a.md", 0.5)],
+    metaWithDraft
+  );
+  assert.equal(ranked[0].file, "c.md");
+  assert.equal(ranked[0].status, "draft");
+  assert.equal(ranked[1].file, "d.md");
+  assert.equal(ranked[1].status, "approved");
+  const ref = ranked[2];
+  assert.equal(ref.file, "a.md");
+  assert.equal(Object.hasOwn(ref, "status"), false);
 });
 
 test("rankSops caps the list at MAX_SOPS", () => {
@@ -148,6 +220,67 @@ test("buildPassages stops adding passages at the character budget", () => {
   assert.deepEqual(passages, [
     "[1] Alpha SOP | Alpha chunk | https://n/a\n## Alpha chunk"
   ]);
+});
+
+test("stripFrontmatter removes a leading frontmatter block", () => {
+  assert.equal(
+    stripFrontmatter(
+      "---\ntitle: X\nsource_url: https://u\nstatus: Draft\n---\n## Heading\nbody"
+    ),
+    "## Heading\nbody"
+  );
+});
+
+test("stripFrontmatter leaves a chunk that starts on a Notion divider alone", () => {
+  const text =
+    "---\n\n## Step 3\nCall the payer.\n\n---\n\n## Step 4\nFile it.";
+  assert.equal(stripFrontmatter(text), text);
+});
+
+test("buildPassages strips a leading frontmatter block from chunk text", () => {
+  const passage = onlyPassage(
+    "---\ntitle: X\nsource_url: https://u\nstatus: Draft\n---\n## Heading\nbody"
+  );
+  assert.equal(
+    passage,
+    "[1] Alpha SOP | Heading | https://n/a\n## Heading\nbody"
+  );
+  assert.ok(!passage.includes("source_url:"));
+});
+
+test("buildPassages strips a CRLF frontmatter block from chunk text", () => {
+  assert.equal(
+    onlyPassage("---\r\ntitle: X\r\n---\r\nbody"),
+    "[1] Alpha SOP | https://n/a\nbody"
+  );
+});
+
+test("buildPassages leaves a chunk that merely contains a markdown rule untouched", () => {
+  assert.equal(
+    onlyPassage("intro\n\n---\n\nmore"),
+    "[1] Alpha SOP | https://n/a\nintro\n\n---\n\nmore"
+  );
+});
+
+test("buildUserBlock assembles the request exactly as the Worker did", () => {
+  assert.equal(
+    buildUserBlock(["[1] A | full document | u\nbody"], "msg"),
+    "SOP passages\n\n[1] A | full document | u\nbody\n\nTeam member's message:\n\nmsg"
+  );
+  assert.equal(
+    buildUserBlock(["p1", "p2"], "msg"),
+    "SOP passages\n\np1\n\np2\n\nTeam member's message:\n\nmsg"
+  );
+});
+
+test("SearchResponse types the search query and chunks, including optional per-chunk scoring_details", () => {
+  const r: SearchResponse = { search_query: "q", chunks: [] };
+  assert.equal(r.chunks.length, 0);
+  const scored: SearchResponse = {
+    search_query: "q",
+    chunks: [{ scoring_details: { reranking_score: 0.5, keyword_rank: 1 } }]
+  };
+  assert.equal(scored.chunks[0].scoring_details?.reranking_score, 0.5);
 });
 
 test("trimHistory keeps the latest turn and drops the oldest turns past the char budget", () => {

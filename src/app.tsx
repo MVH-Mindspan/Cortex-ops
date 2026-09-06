@@ -15,8 +15,8 @@ import { DropdownMenu } from "radix-ui";
 import { Streamdown } from "streamdown";
 import { checkPHI, checkPossiblePII, PII_SCREEN_REASON } from "@/lib/phi";
 import { normalizeAnswerMarkdown } from "@/lib/markdown";
-import { displayTitle, linkifySOPs, reasonFor } from "@/lib/linkify";
-import { MAX_MESSAGE_CHARS, type SOPRef } from "@/lib/pipeline";
+import { cardTitle, displayTitle, linkifySOPs, reasonFor } from "@/lib/linkify";
+import { MAX_MESSAGE_CHARS, type SOPRef, type SopStatus } from "@/lib/pipeline";
 import {
   hasDeepLinkParams,
   parseDeepLink,
@@ -30,6 +30,8 @@ import {
   COPY_ANSWER,
   COPY_DONE,
   COPY_FAILED,
+  DRAFT_BADGE,
+  DRAFT_BADGE_TITLE,
   EMPTY_PINS,
   EMPTY_RECENTS,
   greetingForHour,
@@ -51,6 +53,7 @@ import {
   RETRIEVAL_LONG_WAIT,
   SCREENING_LINE,
   softPIIWarning,
+  SOP_CARDS_HEADING,
   THANKS_LINE,
   THANKS_RE
 } from "@/lib/copy";
@@ -117,6 +120,31 @@ function textOf(message: CortexMessage): string {
 function isRenderable(message: CortexMessage): boolean {
   if (message.role === "user") return textOf(message).trim().length > 0;
   return sopsOf(message) !== null || textOf(message).trim().length > 0;
+}
+
+// Shown on an SOP whose frontmatter status is "draft", beside the title on
+// cards, library rows and pinned rows. Deliberately muted — amber is the PII
+// and budget warnings' colour, and a draft is not a warning. `shrink-0` keeps
+// the chip whole wherever it lands: on a card the title truncates beside it,
+// and on a pinned or library row the title is flex-1, so the chip sits at the
+// right edge next to the pin button.
+function DraftChip() {
+  return (
+    <span
+      title={DRAFT_BADGE_TITLE}
+      className="shrink-0 rounded-[4px] border px-1.5 py-0.5 text-[12px] leading-none text-muted-foreground"
+    >
+      {DRAFT_BADGE}
+    </span>
+  );
+}
+
+// A draft SOP wears the word twice otherwise: once in the chip, once in the
+// title suffix the chip is derived from.
+function titleFor(sop: { title: string; status?: SopStatus | null }): string {
+  return sop.status === "draft"
+    ? cardTitle(sop.title)
+    : displayTitle(sop.title);
 }
 
 // Pin toggle with a small "stamp" on pin (scale/rotate decelerating to rest).
@@ -230,7 +258,7 @@ function SOPCards({
           fresh && "animate-in fade-in duration-300"
         )}
       >
-        Relevant SOPs
+        {SOP_CARDS_HEADING}
       </p>
       <div className="flex flex-col gap-2">
         {sops.map((sop, rank) => {
@@ -238,7 +266,9 @@ function SOPCards({
           const isPinned = pinned.has(pinKey(sop));
           return (
             <Card
-              key={sop.title + String(sop.score)}
+              // Keyed by file so a mid-answer re-emit of the cards updates
+              // them in place instead of replaying the entrance animation.
+              key={sop.file ?? sop.title + String(sop.score)}
               className={cn(
                 "flex-row items-center justify-between gap-3 rounded-[12px] px-4 py-3",
                 fresh &&
@@ -255,10 +285,11 @@ function SOPCards({
                   {rank + 1}
                 </span>
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate text-sm font-medium">
-                      {displayTitle(sop.title)}
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 truncate text-sm font-medium">
+                      {titleFor(sop)}
                     </span>
+                    {sop.status === "draft" && <DraftChip />}
                   </div>
                   {reason && (
                     <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
@@ -294,7 +325,8 @@ function SOPCards({
                     onTogglePin({
                       title: sop.title,
                       source_url: sop.source_url,
-                      file: sop.file
+                      file: sop.file,
+                      status: sop.status ?? null
                     });
                   }}
                 />
@@ -333,7 +365,13 @@ function saveRecents(recents: RecentSituation[]): void {
   }
 }
 
-type PinnedSOP = { title: string; source_url: string | null; file?: string };
+type PinnedSOP = {
+  title: string;
+  source_url: string | null;
+  file?: string;
+  // Absent on pins stored before draft status existed.
+  status?: SopStatus | null;
+};
 const PINS_KEY = "cortex-pins";
 
 function pinKey(pin: { title: string; file?: string }): string {
@@ -363,6 +401,9 @@ type LibrarySOP = {
   category: string;
   source_url: string | null;
   file: string;
+  // Required because listSOPs returns it on every row. A client newer than
+  // the deployed Worker sees undefined here, which just means no chip.
+  status: SopStatus | null;
 };
 
 // Module scope on purpose: useAgentChat suspends on its initial fetch, and a
@@ -1308,7 +1349,12 @@ export default function App() {
         ? pins.filter((p) => pinKey(p) !== key)
         : [
             ...pins,
-            { title: sop.title, source_url: sop.source_url, file: sop.file }
+            {
+              title: sop.title,
+              source_url: sop.source_url,
+              file: sop.file,
+              status: sop.status ?? null
+            }
           ];
       savePins(next);
       setPins(next);
@@ -1459,13 +1505,14 @@ export default function App() {
                             rel="noreferrer"
                             className="min-w-0 flex-1 truncate text-[15px] text-foreground/85"
                           >
-                            {displayTitle(pin.title)}
+                            {titleFor(pin)}
                           </a>
                         ) : (
                           <span className="min-w-0 flex-1 truncate text-[15px] text-foreground/85">
-                            {displayTitle(pin.title)}
+                            {titleFor(pin)}
                           </span>
                         )}
+                        {pin.status === "draft" && <DraftChip />}
                         <button
                           type="button"
                           onClick={() => togglePin(pin)}
@@ -1600,13 +1647,14 @@ export default function App() {
                                   rel="noreferrer"
                                   className="min-w-0 flex-1 truncate text-sm text-foreground hover:text-brand-blue"
                                 >
-                                  {displayTitle(sop.title)}
+                                  {titleFor(sop)}
                                 </a>
                               ) : (
                                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                                  {displayTitle(sop.title)}
+                                  {titleFor(sop)}
                                 </span>
                               )}
+                              {sop.status === "draft" && <DraftChip />}
                               <PinButton
                                 isPinned={pinnedKeys.has(pinKey(sop))}
                                 onToggle={() => togglePin(sop)}

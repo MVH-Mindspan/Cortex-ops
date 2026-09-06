@@ -15,6 +15,8 @@
   "scripts": {
     "dev": "vite dev",
     "export": "node --env-file-if-exists=.env scripts/export-sops.ts",
+    "eval:dev": "wrangler dev -c scripts/eval/wrangler.jsonc --port 8790",
+    "eval": "node scripts/eval/run.ts",
     "build": "vite build",
     "deploy": "vite build && wrangler deploy",
     "types": "wrangler types env.d.ts",

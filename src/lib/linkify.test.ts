@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { displayTitle, linkifySOPs, reasonFor } from "./linkify.ts";
+import { cardTitle, displayTitle, linkifySOPs, reasonFor } from "./linkify.ts";
 import type { SOPRef } from "./pipeline.ts";
 
 const sop = (
@@ -19,6 +19,28 @@ const sop = (
 test("displayTitle strips a leading emoji", () => {
   assert.equal(displayTitle("📋 Patient Check-In"), "Patient Check-In");
   assert.equal(displayTitle("Plain"), "Plain");
+});
+
+test("cardTitle drops a trailing draft parenthetical", () => {
+  assert.equal(
+    cardTitle(
+      "🧠 Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review)"
+    ),
+    "Imaging Order Requirements — Amyloid PET & MRI Checklist"
+  );
+  assert.equal(cardTitle("X (Draft)"), "X");
+});
+
+test("cardTitle leaves a title without a trailing draft marker alone", () => {
+  const guide =
+    "Patient Imaging Results Access Guide – Valley Radiology & San Jose PET";
+  assert.equal(cardTitle(guide), guide);
+  const mid = "Patient Support (Enrollment & Member Experience) Guide";
+  assert.equal(cardTitle(mid), mid);
+  assert.equal(cardTitle("A (Draft) B"), "A (Draft) B");
+  // Case-sensitive: a lowercase "(draft)" is prose, not the status suffix.
+  assert.equal(cardTitle("Notes (draft)"), "Notes (draft)");
+  assert.equal(cardTitle("📋 Patient Check-In"), "Patient Check-In");
 });
 
 test("links a title mention to its Notion page", () => {

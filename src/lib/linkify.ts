@@ -2,6 +2,8 @@
 // retrieved SOP list as the source of truth, and pull each card's one-line
 // reason out of the citation section. Pure module (types only from pipeline).
 
+// Value import between src/lib modules, so the .ts extension (see prompt.ts).
+import { DRAFT_TITLE_RE } from "./pipeline.ts";
 import type { SOPRef } from "./pipeline";
 
 export function escapeRegExp(value: string): string {
@@ -11,6 +13,14 @@ export function escapeRegExp(value: string): string {
 // Strip a leading emoji from Notion titles for display (no emojis in the UI).
 export function displayTitle(title: string): string {
   return title.replace(/^[^\p{L}\p{N}]+/u, "").trim() || title;
+}
+
+// Same as displayTitle, minus the draft suffix that statusKind reads as the
+// status (DRAFT_TITLE_RE). Used only where a Draft chip is rendered, so the
+// word appears once; linkifySOPs/compileLinkers/reasonFor keep matching on
+// the raw title, which is what the model writes in the answer.
+export function cardTitle(title: string): string {
+  return displayTitle(title).replace(DRAFT_TITLE_RE, "").trim();
 }
 
 type Linker = { pattern: RegExp; url: string; label?: string; clean: string };

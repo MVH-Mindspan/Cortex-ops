@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pruneKeys, reconcileManifest } from "./manifest.ts";
+import { pruneKeys, reconcileManifest, suspiciousDrop } from "./manifest.ts";
 import type { Manifest, ManifestFile } from "./manifest.ts";
 
 const EARLIER = "2026-08-01T00:00:00.000Z";
@@ -38,7 +38,9 @@ test("reconcileManifest: a renamed page's old key becomes stale as of now", () =
   ];
   const { next, stale } = reconcileManifest(previous, exported, new Set(), NOW);
   assert.deepEqual(stale, ["refills.md"]);
-  assert.deepEqual(next.stale, [{ key: "refills.md", since: NOW }]);
+  assert.deepEqual(next.stale, [
+    { key: "refills.md", since: NOW, notion_id: "p1" }
+  ]);
   assert.deepEqual(
     next.files.map((f) => f.key),
     ["check-in.md", "prescription-refills.md"]
@@ -78,6 +80,38 @@ test("reconcileManifest: a previously stale key is carried forward with its orig
   const { next, stale } = reconcileManifest(previous, exported, new Set(), NOW);
   assert.deepEqual(stale, ["refills.md"]);
   assert.deepEqual(next.stale, [{ key: "refills.md", since: EARLIER }]);
+});
+
+test("reconcileManifest: a carried-over stale entry keeps its notion id", () => {
+  // Without this the key could never be tied back to a page again and would
+  // count as unexplained on every later run (see scripts/export-run.ts).
+  const previous: Manifest = {
+    exported_at: EARLIER,
+    files: [file("check-in.md", "p2")],
+    stale: [{ key: "refills.md", since: EARLIER, notion_id: "p1" }]
+  };
+  const exported = [file("check-in.md", "p2")];
+  const { next } = reconcileManifest(previous, exported, new Set(), NOW);
+  assert.deepEqual(next.stale, [
+    { key: "refills.md", since: EARLIER, notion_id: "p1" }
+  ]);
+});
+
+test("reconcileManifest: a newly stale key takes the notion id of its previous file", () => {
+  const previous: Manifest = {
+    exported_at: EARLIER,
+    files: [file("refills.md", "p1"), file("check-in.md", "p2")],
+    stale: []
+  };
+  const { next } = reconcileManifest(
+    previous,
+    [file("check-in.md", "p2")],
+    new Set(),
+    NOW
+  );
+  assert.deepEqual(next.stale, [
+    { key: "refills.md", since: NOW, notion_id: "p1" }
+  ]);
 });
 
 test("reconcileManifest: a key that is exported again leaves the stale list", () => {
@@ -122,9 +156,9 @@ test("reconcileManifest: files and stale keys are sorted by key", () => {
   );
   assert.deepEqual(stale, ["alpha.md", "mid.md", "zeta.md"]);
   assert.deepEqual(next.stale, [
-    { key: "alpha.md", since: NOW },
+    { key: "alpha.md", since: NOW, notion_id: "p2" },
     { key: "mid.md", since: EARLIER },
-    { key: "zeta.md", since: NOW }
+    { key: "zeta.md", since: NOW, notion_id: "p1" }
   ]);
 });
 
@@ -154,4 +188,32 @@ test("pruneKeys: drops pruned keys from the stale list without mutating the inpu
   assert.deepEqual(result.files, []);
   assert.equal(result.exported_at, NOW);
   assert.equal(next.stale.length, 2);
+});
+
+test("suspiciousDrop: exporting nothing is always suspicious", () => {
+  assert.equal(suspiciousDrop(0, 0, 0), true);
+});
+
+test("suspiciousDrop: a run that exports nothing is suspicious whatever the stale count", () => {
+  assert.equal(suspiciousDrop(80, 0, 0), true);
+});
+
+test("suspiciousDrop: the five-object floor keeps the guard armed while the tracked count is zero", () => {
+  assert.equal(suspiciousDrop(0, 4, 9), true);
+});
+
+test("suspiciousDrop: a stale count at the five-object floor is fine", () => {
+  assert.equal(suspiciousDrop(10, 9, 5), false);
+});
+
+test("suspiciousDrop: a stale count over the five-object floor is suspicious", () => {
+  assert.equal(suspiciousDrop(10, 4, 6), true);
+});
+
+test("suspiciousDrop: a stale count one over the ceiling of a fifth is suspicious", () => {
+  assert.equal(suspiciousDrop(76, 60, 17), true);
+});
+
+test("suspiciousDrop: a stale count at the ceiling of a fifth is fine", () => {
+  assert.equal(suspiciousDrop(76, 61, 16), false);
 });

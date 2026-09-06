@@ -80,6 +80,15 @@ export const LIBRARY_LOADING = "Fetching the full SOP list";
 export const LIBRARY_ERROR =
   "Couldn't load the SOP index. Open the library again to retry — if it keeps failing, tell the Cortex admin.";
 
+// Heading above the SOP result cards under an answer.
+export const SOP_CARDS_HEADING = "Relevant SOPs";
+
+// Chip on an SOP whose frontmatter status is "draft" (cards, library rows,
+// pinned rows). The tooltip states a fact and stops there: whether staff
+// should follow a draft is an open policy question, not ours to answer.
+export const DRAFT_BADGE = "Draft";
+export const DRAFT_BADGE_TITLE = "Not yet reviewed.";
+
 // Reach-out starter messages, copied to the clipboard on selection because
 // Slack deep links can't pre-fill DM text. Keyed by reason label; reasons
 // without a starter leave the clipboard alone.

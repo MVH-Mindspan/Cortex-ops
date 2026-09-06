@@ -6,11 +6,12 @@ import {
   createUIMessageStreamResponse,
   type UIMessage
 } from "ai";
-import matter from "gray-matter";
 import { checkPHI, PII_SCREEN_REASON } from "./lib/phi";
 import { DEGEN_SNIFF_CHARS, looksDegenerate } from "./lib/degenerate";
+import { loadSopMeta, parseSopFile } from "./lib/frontmatter";
 import {
   buildPassages,
+  buildUserBlock,
   classifyPipelineError,
   isTruncated,
   MAX_MESSAGE_CHARS,
@@ -24,8 +25,17 @@ import {
   type PipelineStage,
   type SearchChunk,
   type SOPRef,
+  type SopStatus,
   type Turn
 } from "./lib/pipeline";
+import {
+  retrievalConfig,
+  retrievalTelemetry,
+  searchOptions,
+  type RetrievalConfig,
+  type RetrievalTelemetry,
+  type SearchOutcome
+} from "./lib/retrieval";
 import {
   ANSWER_CUT_SHORT_LINE,
   BUDGET_PAUSED_LINE,
@@ -148,6 +158,7 @@ export class ChatAgent extends AIChatAgent<Env> {
       title: string;
       category: string;
       source_url: string | null;
+      status: SopStatus | null;
       file: string;
     }[]
   > {
@@ -157,19 +168,12 @@ export class ChatAgent extends AIChatAgent<Env> {
         try {
           const object = await this.env.SOP_BUCKET.get(obj.key);
           if (!object) return null;
-          const fm = matter(await object.text()).data as Record<
-            string,
-            unknown
-          >;
+          const meta = parseSopFile(obj.key, await object.text());
           return {
-            title:
-              typeof fm.title === "string" && fm.title ? fm.title : obj.key,
-            category:
-              typeof fm.category === "string" && fm.category
-                ? fm.category
-                : "uncategorized",
-            source_url:
-              typeof fm.source_url === "string" ? fm.source_url : null,
+            title: meta.title,
+            category: meta.category,
+            source_url: meta.source_url,
+            status: meta.status,
             file: obj.key
           };
         } catch {
@@ -309,6 +313,12 @@ export class ChatAgent extends AIChatAgent<Env> {
     const searchMessages: ChatTurn[] = conversation.length
       ? conversation.map(({ role, content }) => ({ role, content }))
       : [{ role: "user", content: "" }];
+    // Retrieval settings for this message, read once from the wrangler vars.
+    const cfg = retrievalConfig({
+      rewrite: this.env.RETRIEVAL_QUERY_REWRITE,
+      max: this.env.RETRIEVAL_MAX_RESULTS,
+      keyword: this.env.RETRIEVAL_KEYWORD_MATCH
+    });
 
     const stream = createUIMessageStream<CortexMessage>({
       execute: async ({ writer }) => {
@@ -350,39 +360,23 @@ export class ChatAgent extends AIChatAgent<Env> {
             return;
           }
 
-          // 1. Retrieval only, via AI Search. Near-zero thresholds on
-          // purpose: colloquial ops scenarios score 0.1-0.35 against SOP
-          // prose and the reranker scores them lower still — quality comes
-          // from rerank ORDERING plus the passage/file caps below.
-          // AI Search rate-limits bursts (open beta), so retry briefly with
-          // backoff before surfacing an error.
+          // 1. Retrieval only, via AI Search. The settings, the near-zero
+          // thresholds and their rationale, and the telemetry shape all live
+          // in lib/retrieval.ts.
           stage = "retrieval";
-          const searchOnce = () =>
-            this.env.AI_SEARCH.get(AI_SEARCH_INSTANCE).search({
-              messages: searchMessages,
-              ai_search_options: {
-                retrieval: { match_threshold: 0.01, max_num_results: 15 },
-                reranking: { enabled: true, match_threshold: 0.001 },
-                query_rewrite: { enabled: true }
-              }
-            });
-          let results: Awaited<ReturnType<typeof searchOnce>> | undefined;
-          for (let attempt = 0; ; attempt++) {
-            try {
-              results = await searchOnce();
-              break;
-            } catch (err) {
-              const message = err instanceof Error ? err.message : String(err);
-              if (attempt < 2 && /rate.?limit/i.test(message)) {
-                await new Promise((resolve) =>
-                  setTimeout(resolve, 1500 * (attempt + 1))
-                );
-                continue;
-              }
-              throw err;
-            }
-          }
-          const chunks = (results?.chunks ?? []) as SearchChunk[];
+          const search = await this.searchWithRetry(searchMessages, cfg);
+          // Logged before the no-match check below, so a question that
+          // retrieved nothing is measured too — that is the case worth
+          // watching when the settings change.
+          this.logRetrieval(() =>
+            retrievalTelemetry(
+              search,
+              latest?.content ?? "",
+              conversation.length,
+              cfg
+            )
+          );
+          const chunks = search.results.chunks;
 
           // Per the answer prompt: nothing retrieved -> fixed line, no model.
           if (chunks.length === 0) {
@@ -404,7 +398,7 @@ export class ChatAgent extends AIChatAgent<Env> {
           // 4. Generation via Workers AI with the operator's answer prompt,
           // behind the collapse guard.
           stage = "generation";
-          const userBlock = `SOP passages\n\n${passages.join("\n\n")}\n\nTeam member's message:\n\n${latest?.content ?? ""}`;
+          const userBlock = buildUserBlock(passages, latest?.content ?? "");
           const genMessages: ChatTurn[] = [
             { role: "system", content: SYSTEM_PROMPT },
             ...conversation
@@ -439,6 +433,53 @@ export class ChatAgent extends AIChatAgent<Env> {
     });
 
     return createUIMessageStreamResponse({ stream });
+  }
+
+  // One AI Search call with the retrieval settings stated explicitly, so the
+  // instance's own defaults never decide how Cortex searches. AI Search
+  // rate-limits bursts (open beta), so retry briefly with backoff; every
+  // other failure is rethrown for the pipeline's error classifier.
+  private async searchWithRetry(
+    messages: ChatTurn[],
+    cfg: RetrievalConfig
+  ): Promise<SearchOutcome> {
+    const instance = this.env.AI_SEARCH.get(AI_SEARCH_INSTANCE);
+    for (let attempt = 0; ; attempt++) {
+      const startedAt = Date.now();
+      try {
+        const results = await instance.search({
+          messages,
+          ai_search_options: searchOptions(cfg)
+        });
+        // The successful call only: retry backoff is not search latency.
+        return { results, ms: Date.now() - startedAt, attempts: attempt + 1 };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (attempt < 2 && /rate.?limit/i.test(message)) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1500 * (attempt + 1))
+          );
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  // Telemetry, never at the answer's expense: a bug in the stats would
+  // otherwise land in the pipeline's catch and re-label an answer that was
+  // already delivered as an error notice.
+  private logRetrieval(build: () => RetrievalTelemetry): void {
+    try {
+      console.log("[cortex] retrieval", JSON.stringify(build()));
+    } catch (err) {
+      // Safe to log in full: the throw can only come from our own pure code
+      // in lib/retrieval.ts, which never holds message text.
+      console.warn(
+        "[cortex] retrieval telemetry failed",
+        err instanceof Error ? (err.stack ?? err.message) : String(err)
+      );
+    }
   }
 
   // Streams one answer into `say`, re-rolling when the opening characters
@@ -575,53 +616,20 @@ export class ChatAgent extends AIChatAgent<Env> {
   }
 
   // Read frontmatter from R2 for every unique source file in the chunk set.
-  // AI Search does not surface frontmatter as metadata, so titles, categories
-  // and Notion links come straight from the bucket objects.
+  // AI Search does not surface frontmatter as metadata, so titles, categories,
+  // Notion links and the status come straight from the bucket objects. The
+  // read itself is loadSopMeta in lib/frontmatter.ts, shared with the eval
+  // harness so the two cannot drift; this only dedupes the keys.
   private async fileMetaFor(
     chunks: SearchChunk[]
   ): Promise<Map<string, FileMeta>> {
-    const keys = [
+    return loadSopMeta(this.env.SOP_BUCKET, [
       ...new Set(
         chunks
           .map((chunk) => chunk.item?.key)
           .filter((key): key is string => Boolean(key))
       )
-    ];
-    const entries = await Promise.all(
-      keys.map(async (key): Promise<[string, FileMeta]> => {
-        const fallback: FileMeta = {
-          title: key,
-          category: "uncategorized",
-          last_edited: null,
-          source_url: null,
-          text: ""
-        };
-        try {
-          const object = await this.env.SOP_BUCKET.get(key);
-          if (!object) return [key, fallback];
-          const parsed = matter(await object.text());
-          const fm = parsed.data as Record<string, unknown>;
-          return [
-            key,
-            {
-              title: typeof fm.title === "string" && fm.title ? fm.title : key,
-              category:
-                typeof fm.category === "string" && fm.category
-                  ? fm.category
-                  : "uncategorized",
-              last_edited:
-                typeof fm.last_edited === "string" ? fm.last_edited : null,
-              source_url:
-                typeof fm.source_url === "string" ? fm.source_url : null,
-              text: parsed.content
-            }
-          ];
-        } catch {
-          return [key, fallback];
-        }
-      })
-    );
-    return new Map(entries);
+    ]);
   }
 }
 
