@@ -52,6 +52,14 @@ How an answer is produced (`src/server.ts`, pure helpers in `src/lib/`):
 
 Conversations purge after 7 idle days.
 
+Reading preferences sit below the home and follow-up question boxes. Choose
+Concise or Detailed independently of New to Mindspan or Experienced. The
+default is Detailed + New to Mindspan. Selections are remembered in this
+browser and apply to the next submission, including deep links; changing them
+does not rewrite existing answers. Concise trims explanations while retaining
+required procedural detail, and Experienced omits introductory definitions.
+SOP retrieval, coverage rules and citations apply to every style.
+
 ## Commands
 
 ```bash
@@ -140,11 +148,12 @@ in progress.
   of a sentence-length question to match a chunk.
 - `docs/eval/README.md` documents the retrieval eval harness and the
   decision rule for flipping the vars above.
-- The answer format and grounding rules live in `SYSTEM_PROMPT` in
+- The answer format and grounding rules live in `buildSystemPrompt` in
   `src/lib/prompt.ts`; the team structure it embeds lives in
   `src/lib/teams.ts`. Edit the structure by hand when the Notion page changes
   (it is not synced), and never add people's names, Slack channels, or the
-  page's open questions. `npm test` pins both to the model-window budget in
+  page's open questions. `SYSTEM_PROMPT` exports the default style for existing
+  consumers. `npm test` pins every style to the model-window budget in
   `src/lib/pipeline.ts`. Every user-facing string, including the lines the
   Worker streams on errors, lives in `src/lib/copy.ts`.
 - Workers Logs are enabled (`observability` in `wrangler.jsonc`); nothing
