@@ -143,6 +143,14 @@ message of any change to the retrieval defaults.
 
 `npm run eval -- --mode answers --answers 4 --ids D1,R2,R4,B1` runs four **total** answers through the production generation settings, collapse guard, coverage gate, and citation repair. Pass `--without-rules` for the rules-block ablation. `--ids` cycles when `--answers` exceeds the number of IDs. `--out docs/eval/<name>.md` selects a summary report.
 
+`POST /answer` also accepts optional `readingPreferences`, for example
+`{"length":"concise","familiarity":"experienced"}`. Supported lengths are
+`concise` and `detailed`; familiarity is `new` or `experienced`. Missing or invalid
+fields default independently to `detailed` and `new`, using the same validation
+and prompt builder as production. Preferences affect generation only. The CLI
+continues to evaluate the default style. The same live-evaluation budget limits
+below apply to direct endpoint calls.
+
 The default is four answers. More than eight answers per batch, or any run during 06:00–20:00 America/Los_Angeles (DST-aware), requires `--use-production-budget`. A batch prints its rough generation-neuron estimate before calling the Worker and stops on an allocation or provider error. Reranking and retries add cost; this shares production's quota. Never continue after allocation exhaustion.
 
 Raw answers, rules, and source passages are saved only under gitignored `.context/eval/<timestamp>/`. Reports contain aggregate indicators and token counts, not content. The indicators catch known failure shapes, but require manual review: a keyword-based passing score is not evidence that a workflow is supported. No-match notices must not be counted as successful answer generation or as the model correctly choosing coverage `none`; the harness enforces this by reporting every indicator on such a row as `null`, and the report header states how many of its rows actually generated an answer. An answer that cites nothing reports `quoteWhole: null` for the same reason.

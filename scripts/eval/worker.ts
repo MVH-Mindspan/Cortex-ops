@@ -7,7 +7,8 @@ import {
   trimHistory
 } from "../../src/lib/pipeline.ts";
 import { selectRules, renderRulesBlock } from "../../src/lib/rules.ts";
-import { SYSTEM_PROMPT } from "../../src/lib/prompt.ts";
+import { buildSystemPrompt } from "../../src/lib/prompt.ts";
+import type { ReadingPreferences } from "../../src/lib/reading-preferences.ts";
 import {
   ANSWER_CUT_SHORT_LINE,
   DEGENERATE_GIVE_UP_LINE,
@@ -56,6 +57,7 @@ type EvalRequest = {
   messages: { role: "user" | "assistant"; content: string }[];
   config?: { rewrite?: string; max?: string; keyword?: string };
   rules?: boolean;
+  readingPreferences?: ReadingPreferences;
 };
 
 function json(body: unknown, status = 200): Response {
@@ -189,7 +191,10 @@ export default {
         });
         const outcome = await generateAnswer(
           [
-            { role: "system", content: SYSTEM_PROMPT },
+            {
+              role: "system",
+              content: buildSystemPrompt(body.readingPreferences)
+            },
             ...generationHistory(conversation.slice(0, -1)),
             {
               role: "user",

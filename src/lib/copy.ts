@@ -5,6 +5,24 @@
 
 import type { PipelineErrorKind } from "./pipeline";
 
+export const READING_PREFERENCES_COPY = {
+  length: {
+    label: "Answer length",
+    options: [
+      { value: "concise", label: "Concise" },
+      { value: "detailed", label: "Detailed" }
+    ]
+  },
+  familiarity: {
+    label: "Mindspan familiarity",
+    options: [
+      { value: "new", label: "New to Mindspan" },
+      { value: "experienced", label: "Experienced" }
+    ]
+  },
+  hint: "Applies to your next answer. Remembered in this browser."
+} as const;
+
 // Time-of-day greeting shown above the empty-state headline. One fixed string
 // per band — quiet is what survives the 100th viewing. "Working late." is an
 // observation, not a pep talk.

@@ -49,7 +49,11 @@ import {
   NO_MATCH_LINE,
   PIPELINE_ERROR_LINES
 } from "./lib/copy";
-import { SYSTEM_PROMPT } from "./lib/prompt";
+import { buildSystemPrompt } from "./lib/prompt";
+import {
+  normalizeReadingPreferences,
+  type ReadingPreferences
+} from "./lib/reading-preferences";
 
 // Re-exported for the client, which types its message parts with SOPRef.
 export type { SOPRef } from "./lib/pipeline";
@@ -105,6 +109,7 @@ export type CortexMessage = UIMessage<
     // `override` is the operator "break glass" flag: set on send to skip the
     // probabilistic name-screen (never the checkPHI hard identifiers).
     override?: boolean;
+    readingPreferences?: ReadingPreferences;
     // Set on assistant turns that are operator notices (budget, no-match and
     // error lines) rather than answers, so they are never replayed as history.
     notice?: boolean;
@@ -246,6 +251,11 @@ export class ChatAgent extends AIChatAgent<Env> {
 
   async onChatMessage(_onFinish: unknown, options?: OnChatMessageOptions) {
     const last = this.messages.at(-1);
+    const readingPreferences = normalizeReadingPreferences(
+      last?.role === "user"
+        ? (last.metadata as CortexMessage["metadata"])?.readingPreferences
+        : undefined
+    );
     if (last?.role === "user") {
       const meta = (last.metadata ?? {}) as {
         refused?: boolean;
@@ -424,7 +434,7 @@ export class ChatAgent extends AIChatAgent<Env> {
               writer.write({ type: "data-sops", id: "sops", data })
           });
           const genMessages: ChatTurn[] = [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: buildSystemPrompt(readingPreferences) },
             ...generationHistory(conversation.slice(0, -1)),
             { role: "user", content: userBlock }
           ];

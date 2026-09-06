@@ -65,6 +65,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { ReadingPreferenceControls } from "@/components/reading-preferences";
+import {
+  loadReadingPreferences,
+  saveReadingPreferences,
+  readingPreferenceMetadata,
+  type ReadingPreferences
+} from "@/lib/reading-preferences";
 import {
   ArrowUpIcon,
   ChatIcon,
@@ -713,7 +720,9 @@ function Conversation({
   onFirstMessage,
   pinnedKeys,
   onTogglePin,
-  insertPulse
+  insertPulse,
+  readingPreferences,
+  onReadingPreferencesChange
 }: {
   threadId: string;
   input: string;
@@ -726,6 +735,8 @@ function Conversation({
   pinnedKeys: Set<string>;
   onTogglePin: (sop: PinnedSOP) => void;
   insertPulse: number;
+  readingPreferences: ReadingPreferences;
+  onReadingPreferencesChange: (value: ReadingPreferences) => void;
 }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   // Text of the last message sent, kept so a server-side refusal can restore it
@@ -942,6 +953,10 @@ function Conversation({
       // amber counter says why nothing happens until the text is trimmed.
       if (!text || text.length > MAX_MESSAGE_CHARS || isStreaming || screening)
         return;
+      const metadata = readingPreferenceMetadata(
+        readingPreferences,
+        options?.override
+      );
       if (THANKS_RE.test(text)) {
         setInput("");
         setThanks(true);
@@ -988,13 +1003,14 @@ function Conversation({
       sendMessage({
         role: "user",
         parts: [{ type: "text", text }],
-        ...(options?.override ? { metadata: { override: true } } : {})
+        metadata
       });
       setInput("");
       requestAnimationFrame(resizeComposer);
     },
     [
       input,
+      readingPreferences,
       isStreaming,
       screening,
       agent,
@@ -1149,6 +1165,10 @@ function Conversation({
           </span>
         </div>
       </div>
+      <ReadingPreferenceControls
+        value={readingPreferences}
+        onChange={onReadingPreferencesChange}
+      />
       {preWarning && (
         <p className="mt-2.5 flex items-start justify-center gap-1.5 px-2 text-center text-[13px] leading-snug text-amber-400">
           <ShieldIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -1253,6 +1273,13 @@ function Conversation({
 }
 
 export default function App() {
+  const [readingPreferences, setReadingPreferences] = useState(
+    loadReadingPreferences
+  );
+  const changeReadingPreferences = useCallback((value: ReadingPreferences) => {
+    setReadingPreferences(value);
+    saveReadingPreferences(value);
+  }, []);
   // Seeded from the deep link, if any (idempotent on a Suspense replay; the
   // link is consumed — sent or not — only by the effect in Conversation).
   const [input, setInput] = useState<string>(() => pendingDeepLink?.text ?? "");
@@ -1712,6 +1739,8 @@ export default function App() {
               pinnedKeys={pinnedKeys}
               onTogglePin={togglePin}
               insertPulse={insertPulse}
+              readingPreferences={readingPreferences}
+              onReadingPreferencesChange={changeReadingPreferences}
             />
           </Suspense>
         )}
