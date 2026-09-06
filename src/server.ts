@@ -7,23 +7,26 @@ import {
   type UIMessage
 } from "ai";
 import { checkPHI, PII_SCREEN_REASON } from "./lib/phi";
-import { markCited, repairCitations, type RepairResult } from "./lib/citations";
-import { DEGEN_SNIFF_CHARS, looksDegenerate } from "./lib/degenerate";
+import { AnswerStream } from "./lib/answer-stream";
+import {
+  generateAnswer,
+  GENERATION_MODEL,
+  type ChatTurn
+} from "./lib/generation";
+import type { Coverage } from "./lib/coverage";
+import { selectRules, renderRulesBlock } from "./lib/rules";
 import { loadSopMeta, parseSopFile } from "./lib/frontmatter";
-import { TailHold } from "./lib/tail";
 import {
   buildPassages,
   buildUserBlock,
+  generationHistory,
   classifyPipelineError,
-  isTruncated,
   MAX_MESSAGE_CHARS,
-  MAX_OUTPUT_TOKENS,
   rankSops,
   textOf,
   trimHistory,
   windows,
   type FileMeta,
-  type GenerationUsage,
   type PipelineStage,
   type SearchChunk,
   type SOPRef,
@@ -52,7 +55,6 @@ import { SYSTEM_PROMPT } from "./lib/prompt";
 export type { SOPRef } from "./lib/pipeline";
 
 const AI_SEARCH_INSTANCE = "cortex";
-const GENERATION_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 // Where the id of this conversation's purge schedule is kept between wakes.
 const PURGE_SCHEDULE_KEY = "cortex:purge-schedule-id";
 
@@ -96,17 +98,6 @@ Examples:
 "check Mindy completion status at T-7" -> no
 "Mindy flagged #412 for an infusion check-in" -> no`;
 
-// Sampling per attempt of the fp8 collapse guard: two fresh rolls with the
-// production parameters, then one nudged roll to escape a stuck decoding path.
-const GENERATION_PARAMS: {
-  temperature: number;
-  repetition_penalty?: number;
-}[] = [
-  { temperature: 0.1 },
-  { temperature: 0.1 },
-  { temperature: 0.35, repetition_penalty: 1.2 }
-];
-
 export type CortexMessage = UIMessage<
   {
     refused?: boolean;
@@ -117,20 +108,11 @@ export type CortexMessage = UIMessage<
     // Set on assistant turns that are operator notices (budget, no-match and
     // error lines) rather than answers, so they are never replayed as history.
     notice?: boolean;
+    coverage?: Coverage;
+    coverageBlocked?: "none" | "unconfirmed";
   },
   { sops: SOPRef[]; refusal: { reason: string } }
 >;
-
-type ChatTurn = { role: "system" | "user" | "assistant"; content: string };
-
-type ConsumeResult =
-  | { kind: "degenerate" }
-  | {
-      kind: "done";
-      aborted: boolean;
-      text: string;
-      usage: GenerationUsage | undefined;
-    };
 
 export class ChatAgent extends AIChatAgent<Env> {
   maxPersistedMessages = 100;
@@ -303,6 +285,8 @@ export class ChatAgent extends AIChatAgent<Env> {
           (m): Turn => ({
             role: m.role as "user" | "assistant",
             content: textOf(m),
+            coverage: (m.metadata as CortexMessage["metadata"] | undefined)
+              ?.coverage,
             notice:
               (m.metadata as CortexMessage["metadata"] | undefined)?.notice ===
               true
@@ -331,6 +315,7 @@ export class ChatAgent extends AIChatAgent<Env> {
         const textId = crypto.randomUUID();
         let textStarted = false;
         const say = (delta: string) => {
+          if (!delta || options?.abortSignal?.aborted) return;
           if (!textStarted) {
             writer.write({ type: "text-start", id: textId });
             textStarted = true;
@@ -347,22 +332,9 @@ export class ChatAgent extends AIChatAgent<Env> {
           });
           say(line);
         };
-        // Holds back the "What the SOPs say" items so they can be rebuilt
-        // from retrieval; everything above them streams with zero lag.
-        const hold = new TailHold(
-          say,
-          () => options?.abortSignal?.aborted === true
-        );
-        let tailFlushed = false;
-        // Error and cleanup paths: hand the reader the held text raw rather
-        // than dropping it. Idempotent, so the finally block is safe after
-        // the answer path has already ended the hold.
-        const flushRaw = () => {
-          if (tailFlushed) return;
-          tailFlushed = true;
-          const raw = hold.end();
-          if (raw) say(raw);
-        };
+        let answer: AnswerStream | undefined;
+        let answerStats: Record<string, unknown> = {};
+        const startedAt = Date.now();
         let stage: PipelineStage = "budget";
         try {
           if (tooLong) {
@@ -415,82 +387,103 @@ export class ChatAgent extends AIChatAgent<Env> {
           // then remaining chunks for breadth (see buildPassages). The
           // entries carry the same labels as structure, so a "[3]" in the
           // model's citation resolves back to the file it came from.
-          const { passages, entries } = buildPassages(ranked, chunks, meta);
+          const { passages, entries, used } = buildPassages(
+            ranked,
+            chunks,
+            meta
+          );
           const labels = entries.map((e) => ({ label: e.label, file: e.file }));
 
           // 4. Generation via Workers AI with the operator's answer prompt,
           // behind the collapse guard.
           stage = "generation";
-          const userBlock = buildUserBlock(passages, latest?.content ?? "");
+          const rules = selectRules(entries);
+          const rulesBlock = renderRulesBlock(rules);
+          const userBlock = buildUserBlock(
+            passages,
+            latest?.content ?? "",
+            rulesBlock
+          );
+          answerStats = {
+            chunks: chunks.length,
+            files: meta.size,
+            passages: entries.length,
+            full_docs: entries.filter((e) => e.kind === "full").length,
+            passage_chars: used,
+            rules: rules.length,
+            rules_chars: rulesBlock.length,
+            rules_tier_a: rules.filter((r) => r.tier === "A").length
+          };
+          answer = new AnswerStream({
+            ctx: { labels, sops: ranked, meta },
+            emit: say,
+            isAborted: () => options?.abortSignal?.aborted === true,
+            metadata: (messageMetadata) =>
+              writer.write({ type: "message-metadata", messageMetadata }),
+            sources: (data) =>
+              writer.write({ type: "data-sops", id: "sops", data })
+          });
           const genMessages: ChatTurn[] = [
             { role: "system", content: SYSTEM_PROMPT },
-            ...conversation
-              .slice(0, -1)
-              .map(({ role, content }) => ({ role, content })),
+            ...generationHistory(conversation.slice(0, -1)),
             { role: "user", content: userBlock }
           ];
-          const outcome = await this.generate(
+          const outcome = await generateAnswer(
             genMessages,
-            hold,
+            answer,
+            async (input) =>
+              (await this.env.AI.run(
+                GENERATION_MODEL,
+                input,
+                gatewayOptions(this.env, "generation")
+              )) as ReadableStream<Uint8Array>,
             options?.abortSignal
           );
-          if (outcome === "degenerate") {
+          answerStats = {
+            ...answerStats,
+            attempt: outcome.attempt,
+            truncated: outcome.truncated,
+            aborted: outcome.aborted
+          };
+          if (outcome.degenerate) {
             notice(DEGENERATE_GIVE_UP_LINE);
             return;
           }
-          // 5. The citation section, rebuilt from the SOP text that was
-          // actually retrieved. A stop keeps the model's own words: the
-          // reader already has half of them.
-          const tail = hold.end();
-          tailFlushed = true;
-          if (tail !== null) {
-            if (outcome.aborted) {
-              if (tail) say(tail);
-            } else {
-              let repaired: RepairResult | undefined;
-              try {
-                repaired = repairCitations(tail, {
-                  labels,
-                  sops: ranked,
-                  meta
-                });
-              } catch (err) {
-                // Constant messages only: never log model text.
-                console.error(
-                  `[cortex] citation repair failed: ${err instanceof Error ? err.name : "Error"}`
-                );
-              }
-              const text = repaired?.text ?? tail;
-              if (text) say(text);
-              if (repaired) {
-                const s = repaired.stats;
-                console.log(
-                  `[cortex] citations items=${s.items} matched=${s.matched} unmatched=${s.unmatched} unknown=${s.unknown} droppedQuestion=${repaired.droppedQuestion}`
-                );
-                writer.write({
-                  type: "data-sops",
-                  id: "sops",
-                  data: markCited(ranked, repaired.cited)
-                });
-              }
-            }
-          }
-          if (outcome.truncated) say(`\n\n${ANSWER_CUT_SHORT_LINE}`);
+          answer.finish();
+          if (outcome.truncated && !answer.decision?.coverageBlocked)
+            say(`\n\n${ANSWER_CUT_SHORT_LINE}`);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          // Logged as text (stack or message), never the raw object: a
-          // provider error object can carry the request payload.
+          // The classifier may inspect provider text locally; logs never do.
           console.error(
             "[cortex] answer pipeline failed",
             stage,
-            err instanceof Error ? (err.stack ?? message) : message
+            classifyPipelineError(stage, message)
           );
-          // Before the notice, so held answer text keeps its place above it.
-          flushRaw();
-          notice(PIPELINE_ERROR_LINES[classifyPipelineError(stage, message)]);
+          answer?.fail();
+          if (
+            !answer?.decision?.coverageBlocked &&
+            !options?.abortSignal?.aborted
+          )
+            notice(PIPELINE_ERROR_LINES[classifyPipelineError(stage, message)]);
         } finally {
-          flushRaw();
-          if (textStarted) writer.write({ type: "text-end", id: textId });
+          answer?.fail();
+          try {
+            if (answer)
+              console.log(
+                "[cortex] answer",
+                JSON.stringify({
+                  ...answerStats,
+                  ...answer.stats(),
+                  ms: Date.now() - startedAt,
+                  aborted: options?.abortSignal?.aborted === true
+                })
+              );
+          } catch {
+            /* Telemetry must never alter an answer. */
+          }
+          if (textStarted && !options?.abortSignal?.aborted)
+            writer.write({ type: "text-end", id: textId });
         }
       }
     });
@@ -543,118 +536,6 @@ export class ChatAgent extends AIChatAgent<Env> {
         err instanceof Error ? (err.stack ?? err.message) : String(err)
       );
     }
-  }
-
-  // Streams one answer into `sink`, re-rolling when the opening characters
-  // read as the fp8 collapse. Returns "degenerate" once every attempt has
-  // collapsed; otherwise whether the answer was stopped or cut off. The sink
-  // is reset at the top of every attempt so a re-roll starts from an empty
-  // holder rather than one carrying the abandoned attempt's tail.
-  private async generate(
-    messages: ChatTurn[],
-    sink: TailHold,
-    abortSignal?: AbortSignal
-  ): Promise<"degenerate" | { aborted: boolean; truncated: boolean }> {
-    for (const [attempt, params] of GENERATION_PARAMS.entries()) {
-      sink.reset();
-      const sse = (await this.env.AI.run(
-        GENERATION_MODEL,
-        {
-          messages,
-          stream: true,
-          max_tokens: MAX_OUTPUT_TOKENS,
-          ...params
-        },
-        gatewayOptions(this.env, "generation")
-      )) as ReadableStream<Uint8Array>;
-      const result = await this.consume(sse, (d) => sink.push(d), abortSignal);
-      if (result.kind === "degenerate") {
-        console.warn(
-          `[cortex] degenerate generation on attempt ${attempt + 1}/${GENERATION_PARAMS.length}, regenerating`
-        );
-        continue;
-      }
-      return {
-        aborted: result.aborted,
-        truncated:
-          !result.aborted &&
-          isTruncated(result.usage, result.text, MAX_OUTPUT_TOKENS)
-      };
-    }
-    return "degenerate";
-  }
-
-  // Reads one Workers AI SSE stream. Text is held back until DEGEN_SNIFF_CHARS
-  // have arrived (or the stream ends) and released only if it does not read
-  // as collapsed; a collapsed stream is cancelled so nothing reaches the UI.
-  private async consume(
-    sse: ReadableStream<Uint8Array>,
-    say: (delta: string) => void,
-    abortSignal?: AbortSignal
-  ): Promise<ConsumeResult> {
-    const reader = sse.getReader();
-    // Cancel promptly on stop, not just at the next read.
-    const onAbort = () => {
-      void reader.cancel().catch(() => undefined);
-    };
-    abortSignal?.addEventListener("abort", onAbort, { once: true });
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let text = "";
-    let held = "";
-    let released = false;
-    let usage: GenerationUsage | undefined;
-    // Returns true when the held sample reads as collapsed.
-    const emit = (delta: string): boolean => {
-      text += delta;
-      if (released) {
-        say(delta);
-        return false;
-      }
-      held += delta;
-      if (held.length < DEGEN_SNIFF_CHARS) return false;
-      if (looksDegenerate(held)) return true;
-      say(held);
-      held = "";
-      released = true;
-      return false;
-    };
-    try {
-      readLoop: while (!abortSignal?.aborted) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const payload = line.slice(6).trim();
-          if (payload === "[DONE]") break readLoop;
-          try {
-            const event = JSON.parse(payload) as {
-              response?: string;
-              usage?: GenerationUsage;
-            };
-            if (event.usage) usage = event.usage;
-            if (event.response && emit(event.response)) {
-              await reader.cancel();
-              return { kind: "degenerate" };
-            }
-          } catch {
-            // ignore malformed keep-alive lines
-          }
-        }
-      }
-    } finally {
-      abortSignal?.removeEventListener("abort", onAbort);
-    }
-    const aborted = abortSignal?.aborted === true;
-    if (!released) {
-      // The stream ended inside the sniff window: judge what arrived.
-      if (!aborted && looksDegenerate(held)) return { kind: "degenerate" };
-      if (held) say(held);
-    }
-    return { kind: "done", aborted, text, usage };
   }
 
   // Refusal path: the sanitize hook already redacted the stored copy; delete

@@ -4,6 +4,7 @@ import {
   bestScoreByFile,
   buildPassages,
   buildUserBlock,
+  generationHistory,
   classifyPipelineError,
   isTruncated,
   MAX_OUTPUT_TOKENS,
@@ -472,4 +473,32 @@ test("trimHistory keeps at least two prior exchanges of realistic size by defaul
   const out = trimHistory(turns);
   assert.ok(out.length >= 5, String(out.length));
   assert.equal(out.at(-1)?.content, "latest");
+});
+
+test("generation alone receives coverage, and history budgets include its prefix", () => {
+  const prior = {
+    role: "assistant" as const,
+    content: "Supported steps",
+    coverage: "partial" as const
+  };
+  const latest = { role: "user" as const, content: "Then what?" };
+  assert.equal(
+    generationHistory([prior])[0].content,
+    "Coverage: partial\n\nSupported steps"
+  );
+  assert.deepEqual(
+    trimHistory([prior, latest], { charBudget: prior.content.length }),
+    [latest]
+  );
+  assert.deepEqual(trimHistory([prior, latest], { charBudget: 34 }), [
+    prior,
+    latest
+  ]);
+  assert.equal(prior.content, "Supported steps");
+});
+test("rules sit between passages and the latest message", () => {
+  assert.equal(
+    buildUserBlock(["source"], "message", "rules"),
+    "SOP passages\n\nsource\n\nrules\n\nTeam member's message:\n\nmessage"
+  );
 });

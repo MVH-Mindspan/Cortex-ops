@@ -151,3 +151,34 @@ in progress.
   Cortex logs contains message text. Every search writes one line tagged
   `[cortex] retrieval` with the SOP keys returned, their scores, counts,
   the active retrieval config, and latency — never the query or chunk text.
+
+### Coverage and source rules
+
+Cortex repeats complete governing rules from retrieved passages before
+generating an answer. Conditions and exceptions stay attached; an
+oversized rule is omitted from the repeated block, while its original
+passage remains available. The prompt limits remain inside the model
+window: 21,000 prompt characters, 26,000 passage characters, 1,500
+repeated-rule characters, and 9,000 history characters including
+coverage prefixes.
+
+Generation still streams through the existing collapse guard. Before any
+generated prose is delivered, a bounded gate reads the opening
+`Coverage:` declaration. Answers marked `none`, or missing a valid
+declaration, are replaced with a fixed response without a workflow.
+Their retrieved cards read “Searched, not used.” Answers marked
+`partial` can contain supported steps and show a coverage note. Coverage
+is a model judgment; this is not semantic validation of full or partial
+answers.
+
+Coverage metadata is optional on persisted messages, so older threads
+retain their existing display. Only delivered text enters history, and
+coverage declarations are replayed to generation, never to retrieval.
+`[cortex] answer` telemetry contains coverage/suppression enums,
+generated and delivered step/gap counts, citation counts, attempt
+counts, and timing. It contains no query, answer, or source text.
+
+Live answer evaluation runs through the same generation, coverage, and
+citation code as production. See `docs/eval/README.md`; raw answers and
+evidence stay in gitignored `.context/eval`, and committed reports
+contain summary indicators only.

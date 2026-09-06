@@ -1,3 +1,4 @@
+import { runAnswers } from "./answer-run.ts";
 // Retrieval eval runner: the IO half. Drives the local eval Worker
 // (scripts/eval/worker.ts, started by `npm run eval:dev`) over a matrix of
 // retrieval configs and the questions in questions.json, then writes a markdown
@@ -105,6 +106,10 @@ async function search(
 }
 
 async function main(): Promise<void> {
+  if (argValue(process.argv.slice(2), "--mode") === "answers") {
+    await runAnswers(process.argv.slice(2));
+    return;
+  }
   const argv = process.argv.slice(2);
   for (let i = 0; i < argv.length; i++) {
     if (!argv[i].startsWith("--")) continue;
@@ -115,7 +120,7 @@ async function main(): Promise<void> {
   }
   const mode = argValue(argv, "--mode") ?? "retrieval";
   if (mode !== "retrieval") {
-    fail(`Unknown --mode "${mode}". Only "retrieval" exists so far.`);
+    fail(`Unknown --mode "${mode}". Use "retrieval" or "answers".`);
   }
   const base = (argValue(argv, "--base") ?? DEFAULT_BASE).replace(/\/+$/, "");
   const date = new Date().toISOString().slice(0, 10);

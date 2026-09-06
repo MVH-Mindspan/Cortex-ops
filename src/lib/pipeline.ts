@@ -5,26 +5,24 @@
 // Durable Object in server.ts is a thin wrapper around these so they can be
 // unit-tested with node:test.
 
+import type { Coverage } from "./coverage";
+
 export const MAX_SOPS = 5;
 // Top-ranked SOPs go into context as complete documents (not chunks) so the
 // model can quote every sub-step and click path a first-timer needs.
 export const FULL_DOC_COUNT = 3;
 // Rough character budget for the SOP passages block (~8k tokens).
-export const PASSAGE_CHAR_BUDGET = 27_500;
+export const PASSAGE_CHAR_BUDGET = 26_000;
 
-// The generation model (llama-3.3-70b fp8-fast) has a 24k-token window shared
-// by the system prompt (SYSTEM_PROMPT_MAX_CHARS in prompt.ts: the answer
-// rules plus the team structure, ≤18.8k chars), the passages (≤27.5k chars),
-// the prior turns (≤12k chars), the latest message (≤8k chars) and the
-// answer. At ~3.5 chars per token that is 66.3k chars ≈ 18.9k tokens, plus
-// MAX_OUTPUT_TOKENS and a reserve for the chat template and the passage
-// labels (Notion URLs tokenize poorly): 23.9k of 24k. prompt.test.ts asserts
-// the inequality. A collapse retry re-sends the whole prompt up to 3 times.
+// The 24k model window includes <=21k prompt chars, 26k passages, 1.5k
+// repeated rules, 9k prior turns (coverage prefixes included), and the latest
+// <=8k message. At 3.5 chars/token, plus 3k output and 2k template/label
+// reserve, this is <=23,715 tokens. prompt.test.ts asserts the inequality.
 export const CONTEXT_WINDOW_TOKENS = 24_000;
 export const CHARS_PER_TOKEN = 3.5;
 export const WINDOW_RESERVE_TOKENS = 2_000;
 export const HISTORY_MAX_MESSAGES = 12;
-export const HISTORY_CHAR_BUDGET = 12_000;
+export const HISTORY_CHAR_BUDGET = 9_000;
 export const MAX_MESSAGE_CHARS = 8_000;
 export const MAX_OUTPUT_TOKENS = 3_000;
 
@@ -106,6 +104,7 @@ export type FileMeta = {
 };
 
 export type Turn = {
+  coverage?: Coverage;
   role: "user" | "assistant";
   content: string;
   /** Operator notices (budget, no-match, error lines) are not conversation. */
@@ -278,8 +277,25 @@ export function buildPassages(
 // The user turn sent to the generation model: the labelled passages, then the
 // team member's message. One place, so the eval harness sends the same bytes
 // as the Worker.
-export function buildUserBlock(passages: string[], message: string): string {
-  return `SOP passages\n\n${passages.join("\n\n")}\n\nTeam member's message:\n\n${message}`;
+export function buildUserBlock(
+  passages: string[],
+  message: string,
+  rulesBlock = ""
+): string {
+  return `SOP passages\n\n${passages.join("\n\n")}${rulesBlock ? `\n\n${rulesBlock}` : ""}\n\nTeam member's message:\n\n${message}`;
+}
+
+// Coverage is replayed only to generation, never to query rewriting.
+export function generationHistory(
+  turns: Turn[]
+): { role: "user" | "assistant"; content: string }[] {
+  return turns.map((turn) => ({
+    role: turn.role,
+    content:
+      turn.role === "assistant" && turn.coverage
+        ? `Coverage: ${turn.coverage}\n\n${turn.content}`
+        : turn.content
+  }));
 }
 
 // Size the conversation to the model window: drop empty and notice turns,
@@ -300,8 +316,9 @@ export function trimHistory(
   for (let i = usable.length - 2; i >= 0; i--) {
     const turn = usable[i];
     if (out.length >= maxMessages) break;
-    if (used + turn.content.length > charBudget) break;
-    used += turn.content.length;
+    const chars = generationHistory([turn])[0].content.length;
+    if (used + chars > charBudget) break;
+    used += chars;
     out.unshift(turn);
   }
   return out;

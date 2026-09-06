@@ -238,3 +238,12 @@ export const QUICK_STARTS: { label: string; template: string }[] = [
       "An insurer sent a claim back with a coding question on a cognitive assessment visit. What's the correction process?"
   }
 ];
+
+// Coverage is a model judgment; these lines do not claim semantic validation.
+export const COVERAGE_PARTIAL_LINE =
+  "The SOPs cover part of this request. See Not covered by the SOPs.";
+export const COVERAGE_NONE_LINE =
+  "The SOPs found do not cover this request. Ask your team lead.";
+export const COVERAGE_UNCONFIRMED_LINE =
+  "Cortex could not confirm SOP coverage for this request. Ask your team lead.";
+export const SOP_CARDS_HEADING_UNUSED = "Searched, not used";

@@ -1,3 +1,19 @@
+import { AnswerStream } from "../../src/lib/answer-stream.ts";
+import { generateAnswer, GENERATION_MODEL } from "../../src/lib/generation.ts";
+import {
+  buildPassages,
+  buildUserBlock,
+  generationHistory,
+  trimHistory
+} from "../../src/lib/pipeline.ts";
+import { selectRules, renderRulesBlock } from "../../src/lib/rules.ts";
+import { SYSTEM_PROMPT } from "../../src/lib/prompt.ts";
+import {
+  ANSWER_CUT_SHORT_LINE,
+  DEGENERATE_GIVE_UP_LINE,
+  NO_MATCH_LINE
+} from "../../src/lib/copy.ts";
+import type { CoverageMetadata } from "../../src/lib/coverage-gate";
 // Throwaway local Worker for the retrieval eval: one POST /search endpoint
 // that runs Cortex's retrieval stage exactly as src/server.ts does — the AI
 // Search binding with the Worker's own per-request options (lib/retrieval.ts),
@@ -39,6 +55,7 @@ const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
 type EvalRequest = {
   messages: { role: "user" | "assistant"; content: string }[];
   config?: { rewrite?: string; max?: string; keyword?: string };
+  rules?: boolean;
 };
 
 function json(body: unknown, status = 200): Response {
@@ -89,15 +106,37 @@ export default {
     if (!LOCAL_HOSTS.includes(url.hostname)) {
       return new Response("Not found", { status: 404 });
     }
-    if (request.method !== "POST" || url.pathname !== "/search") {
+    if (
+      request.method !== "POST" ||
+      !["/search", "/answer"].includes(url.pathname)
+    ) {
       return new Response("Not found", { status: 404 });
     }
     try {
       const body = (await request.json()) as EvalRequest;
-      const cfg = retrievalConfig(body.config ?? {});
+      if (
+        !Array.isArray(body.messages) ||
+        !body.messages.length ||
+        body.messages.some(
+          (m) =>
+            !["user", "assistant"].includes(m.role) ||
+            typeof m.content !== "string"
+        ) ||
+        body.messages.at(-1)?.role !== "user" ||
+        (body.messages.at(-1)?.content.length ?? 0) > 8000
+      )
+        return json({ error: "Invalid eval messages" }, 400);
+      const answering = url.pathname === "/answer";
+      const cfg = retrievalConfig(
+        body.config ??
+          (answering ? { rewrite: "on", max: "30", keyword: "and" } : {})
+      );
+      const conversation = answering
+        ? trimHistory(body.messages)
+        : body.messages;
       const { results, ms, attempts } = await searchWithRetry(
         env,
-        body.messages,
+        conversation,
         cfg
       );
       // The one shared R2 read, so the harness and the Worker resolve titles
@@ -110,6 +149,95 @@ export default {
         )
       ]);
       const ranked = rankSops(results.chunks, meta);
+      if (answering) {
+        if (!results.chunks.length)
+          return json({
+            answer: NO_MATCH_LINE,
+            raw: "",
+            notice: true,
+            ranked,
+            metadata: null,
+            stats: {},
+            rules: [],
+            passages: []
+          });
+        const { passages, entries } = buildPassages(
+          ranked,
+          results.chunks,
+          meta
+        );
+        const rules = body.rules === false ? [] : selectRules(entries);
+        let answer = "";
+        let metadata: CoverageMetadata | null = null;
+        let sources = ranked;
+        const sink = new AnswerStream({
+          ctx: {
+            labels: entries.map((e) => ({ label: e.label, file: e.file })),
+            sops: ranked,
+            meta
+          },
+          emit: (text) => {
+            answer += text;
+          },
+          metadata: (data) => {
+            metadata = data;
+          },
+          sources: (data) => {
+            sources = data;
+          },
+          isAborted: () => request.signal.aborted
+        });
+        const outcome = await generateAnswer(
+          [
+            { role: "system", content: SYSTEM_PROMPT },
+            ...generationHistory(conversation.slice(0, -1)),
+            {
+              role: "user",
+              content: buildUserBlock(
+                passages,
+                conversation.at(-1)?.content ?? "",
+                renderRulesBlock(rules)
+              )
+            }
+          ],
+          sink,
+          async (input) =>
+            (await env.AI.run(
+              GENERATION_MODEL,
+              input,
+              env.AI_GATEWAY_ID
+                ? {
+                    gateway: {
+                      id: env.AI_GATEWAY_ID,
+                      collectLog: false,
+                      metadata: { app: "cortex", team: "ops", step: "eval" }
+                    }
+                  }
+                : undefined
+            )) as ReadableStream<Uint8Array>,
+          request.signal
+        );
+        if (outcome.degenerate) answer = DEGENERATE_GIVE_UP_LINE;
+        else {
+          sink.finish();
+          if (outcome.truncated && !sink.decision?.coverageBlocked)
+            answer += `\n\n${ANSWER_CUT_SHORT_LINE}`;
+        }
+        // Local-only response. The runner keeps content under .context and
+        // writes only aggregate counts to public docs/eval reports.
+        return json({
+          answer,
+          raw: sink.raw,
+          metadata,
+          ranked: sources,
+          stats: sink.stats(),
+          rules,
+          passages: entries,
+          outcome,
+          citations: sink.repair?.cited ?? [],
+          ms
+        });
+      }
       return json({
         search_query: results.search_query,
         ms,

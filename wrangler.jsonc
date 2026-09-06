@@ -6,7 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   // Workers Logs (free tier). Nothing Cortex logs contains message text:
   // schedule ids, purge counts, message ids, provider error objects, and
-  // retrieval telemetry (SOP keys, scores, counts, config, latency — never
+  // retrieval and answer telemetry (SOP keys, scores, counts, coverage, suppression, latency — never
   // query or chunk text).
   "observability": { "enabled": true },
   "ai": { "binding": "AI", "remote": true },

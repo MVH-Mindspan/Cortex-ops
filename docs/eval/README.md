@@ -62,7 +62,7 @@ endpoint and the open internet. Leave both alone.
 | flag        | default                         | meaning                                                        |
 | ----------- | ------------------------------- | -------------------------------------------------------------- |
 | `--base`    | `http://127.0.0.1:8790`         | where the eval Worker is listening                             |
-| `--mode`    | `retrieval`                     | the only mode; anything else exits 1                           |
+| `--mode`    | `retrieval`                     | `retrieval` or `answers`; see Answer evaluation                |
 | `--out`     | `docs/eval/<date>-retrieval.md` | report path; the JSON sidecar takes the same name              |
 | `--configs` | the full 12-config matrix       | comma list of `rewrite/max/keyword`, e.g. `on/15/and,on/30/or` |
 
@@ -108,9 +108,7 @@ Not reproduced:
 - the `ChatAgent` Durable Object, its persistence and its purge alarm;
 - `trimHistory` — the follow-up cases send their turns verbatim;
 - the PHI name screen and the monthly `UsageBudget` gate;
-- generation. No model writes an answer in this mode, so nothing here measures
-  answer quality, only whether the right SOP was retrievable at all. A later
-  task adds `POST /answer`.
+- generation in retrieval mode. Answer mode below exercises the shared generation pipeline.
 
 Chunk text never leaves the Worker: reports are committed, and the repo is
 public. Only keys, scores, scoring details and section headings are returned.
@@ -140,3 +138,15 @@ message of any change to the retrieval defaults.
 ## Outcomes
 
 - **3 Sep 2026** (`2026-09-03-retrieval.md`, first run after the corpus refresh that indexed the agent hints): `on/30/and` adopted. All 16 expected SOPs in the top 3 with no misses, every rank-1 under `on/15/and` still rank 1, R3 at rank 2 and R4 at rank 1. Keyword mode `or` demoted R3 (weak keyword candidates crowd the reranker) and rewrite off lost the follow-up case T1 (with rewrite off only the latest message is searched), so both stay as they were.
+
+## Answer evaluation
+
+`npm run eval -- --mode answers --answers 4 --ids D1,R2,R4,B1` runs four **total** answers through the production generation settings, collapse guard, coverage gate, and citation repair. Pass `--without-rules` for the rules-block ablation. `--ids` cycles when `--answers` exceeds the number of IDs. `--out docs/eval/<name>.md` selects a summary report.
+
+The default is four answers. More than eight answers per batch, or any run during 06:00–20:00 America/Los_Angeles (DST-aware), requires `--use-production-budget`. A batch prints its rough generation-neuron estimate before calling the Worker and stops on an allocation or provider error. Reranking and retries add cost; this shares production's quota. Never continue after allocation exhaustion.
+
+Raw answers, rules, and source passages are saved only under gitignored `.context/eval/<timestamp>/`. Reports contain aggregate indicators and token counts, not content. The indicators catch known failure shapes, but require manual review: a keyword-based passing score is not evidence that a workflow is supported. No-match notices must not be counted as successful answer generation or as the model correctly choosing coverage `none`; the harness enforces this by reporting every indicator on such a row as `null`, and the report header states how many of its rows actually generated an answer. An answer that cites nothing reports `quoteWhole: null` for the same reason.
+
+For acceptance, run each of the 16 original cases three times, then T1 and T2. Run D1/R2/R4/B1 three times with the rules block disabled for ablation. Compare role authority, result interpretation, timing promises, gap handling, and complete citations against the original feedback; inspect full delivered answers locally. The report header records the prompt revision (`git describe --always --dirty`) automatically; keep failed smoke runs distinct from acceptance runs.
+
+The harness reproduces generation and stream processing, but does not call the production chat Durable Object, PHI screen, or monthly budget gate. UI and persistence checks remain separate. The eval Worker stays local and must never be deployed.

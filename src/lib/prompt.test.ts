@@ -1,3 +1,4 @@
+import { RULES_BLOCK_MAX_CHARS } from "./rules.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { SYSTEM_PROMPT, SYSTEM_PROMPT_MAX_CHARS } from "./prompt.ts";
@@ -16,6 +17,7 @@ const HEADINGS = [
   "### Hard rules",
   "### Writing rules",
   "### Which format to use",
+  "### Coverage line",
   "### Incident format",
   "### Question format",
   "### How to build the answer",
@@ -144,6 +146,7 @@ test("the worst-case request fits the model window", () => {
   const inputTokens =
     (SYSTEM_PROMPT_MAX_CHARS +
       PASSAGE_CHAR_BUDGET +
+      RULES_BLOCK_MAX_CHARS +
       HISTORY_CHAR_BUDGET +
       MAX_MESSAGE_CHARS) /
     CHARS_PER_TOKEN;
@@ -152,4 +155,12 @@ test("the worst-case request fits the model window", () => {
       CONTEXT_WINDOW_TOKENS,
     String(inputTokens)
   );
+});
+
+test("coverage and governing rules apply before every answer, including the example", () => {
+  assert.match(SYSTEM_PROMPT, /^13\. When a passage forbids/m);
+  assert.match(SYSTEM_PROMPT, /^14\. A timeframe/m);
+  assert.match(SYSTEM_PROMPT, /^15\. One question never asks/m);
+  assert.equal(SYSTEM_PROMPT.split("Rules stated in these passages").length, 2);
+  assert.match(section("### Example"), /Answer:\n\nCoverage: full\n/);
 });
