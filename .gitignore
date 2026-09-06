@@ -149,3 +149,6 @@ export/
 # Conductor machine-local settings
 .conductor/settings.local.toml
 .gstack/
+
+# Agent scratch and local eval artifacts (raw answers, SOP excerpts)
+.context/
