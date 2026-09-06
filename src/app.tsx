@@ -54,6 +54,8 @@ import {
   SCREENING_LINE,
   softPIIWarning,
   SOP_CARDS_HEADING,
+  SOP_CARDS_HEADING_UNUSED,
+  COVERAGE_PARTIAL_LINE,
   SOP_CITED_BADGE,
   THANKS_LINE,
   THANKS_RE
@@ -242,11 +244,13 @@ function CopyAnswerButton({ text }: { text: string }) {
 function SOPCards({
   sops,
   answer,
+  unused = false,
   pinned,
   onTogglePin
 }: {
   sops: SOPRef[];
   answer: string;
+  unused?: boolean;
   pinned: Set<string>;
   onTogglePin: (sop: PinnedSOP) => void;
 }) {
@@ -270,13 +274,13 @@ function SOPCards({
           fresh && "animate-in fade-in duration-300"
         )}
       >
-        {SOP_CARDS_HEADING}
+        {unused ? SOP_CARDS_HEADING_UNUSED : SOP_CARDS_HEADING}
       </p>
       <div className="flex flex-col gap-2">
         {sops.map((sop, rank) => {
           // The verified quote from the citation repair; reasonFor is the
           // fallback for turns stored before SOPRef.quote existed.
-          const reason = sop.quote ?? reasonFor(answer, sop);
+          const reason = unused ? null : (sop.quote ?? reasonFor(answer, sop));
           const isPinned = pinned.has(pinKey(sop));
           return (
             <Card
@@ -646,6 +650,11 @@ const AssistantMessage = memo(function AssistantMessage({
         fresh && "animate-in fade-in duration-300"
       )}
     >
+      {message.metadata?.coverage === "partial" && !isNotice && (
+        <p className="text-[13px] text-muted-foreground">
+          {COVERAGE_PARTIAL_LINE}
+        </p>
+      )}
       {text.trim() && (
         <div className="text-[15px] leading-relaxed [&_a]:font-medium [&_a]:text-brand-blue [&_a]:underline [&_a]:underline-offset-4">
           <Streamdown
@@ -665,6 +674,7 @@ const AssistantMessage = memo(function AssistantMessage({
         <SOPCards
           sops={sops}
           answer={text}
+          unused={Boolean(message.metadata?.coverageBlocked)}
           pinned={pinnedKeys}
           onTogglePin={onTogglePin}
         />
