@@ -121,6 +121,44 @@ What the SOPs say
   );
 });
 
+test("reasonFor returns a whole rendered list item, not just a short clause", () => {
+  // A repaired citation quotes the SOP's whole list item (capped at 420
+  // chars). This one is 299 — past the 220 the old cap allowed.
+  const quote =
+    "Attach the most recent chart notes and the prior brain imaging reports to the order before it is sent, because the facility rejects any order that is missing either of them, and the prescriber selects the clinically correct ICD-10 code; ops never adds or changes codes on an order it did not create.";
+  assert.equal(quote.length, 299);
+  const answer = [
+    "What the SOPs say",
+    "1. Imaging Order Requirements, Amyloid PET orders",
+    `   "${quote}"`
+  ].join("\n");
+  assert.equal(
+    reasonFor(answer, sop("Imaging Order Requirements", null)),
+    quote
+  );
+});
+
+test("links the short title of a draft-suffixed SOP, and the full title whole", () => {
+  const imaging = sop(
+    "🧠 Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review)",
+    "https://n/imaging"
+  );
+  assert.equal(
+    linkifySOPs(
+      "Per Imaging Order Requirements — Amyloid PET & MRI Checklist, attach the prior MRI report.",
+      [imaging]
+    ),
+    "Per [Imaging Order Requirements — Amyloid PET & MRI Checklist](https://n/imaging), attach the prior MRI report."
+  );
+  assert.equal(
+    linkifySOPs(
+      "Per Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review), attach it.",
+      [imaging]
+    ),
+    "Per [Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review)](https://n/imaging), attach it."
+  );
+});
+
 test("reasonFor falls back to the first nearby quote and to null", () => {
   assert.equal(
     reasonFor(
