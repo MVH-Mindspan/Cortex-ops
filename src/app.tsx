@@ -1090,28 +1090,37 @@ function Conversation({
           maxLength={MAX_MESSAGE_CHARS}
           className="max-h-[200px] min-h-[70px] resize-none border-0 bg-transparent px-4 pt-3.5 text-[15px] shadow-none placeholder:text-[16px] placeholder:text-muted-foreground/70 focus-visible:border-transparent focus-visible:ring-0"
         />
+        {/* Width budget: the trailing cluster is fixed-width across states
+            (chip + label/counter + send) and never shrinks; the leading
+            shield text is the one item that yields, truncating rather than
+            wrapping. The screening line lives in the shield slot — it is the
+            shield's own rule being checked — so a transient state never
+            widens the trailing cluster (which broke the row in the 640px
+            empty-state layout). */}
         <div className="flex items-center justify-between gap-2 px-3.5 pb-3">
           <span
             title={PHI_WARNING}
-            className="flex cursor-help items-center gap-1.5 text-[13px] text-muted-foreground"
+            className="flex min-w-0 cursor-help items-center gap-1.5 text-[13px] text-muted-foreground"
           >
-            <ShieldIcon className="h-3.5 w-3.5" />
-            No names or contact info
-          </span>
-          <span className="flex items-center gap-3">
-            <ReadingPreferencesMenu
-              value={readingPreferences}
-              onChange={onReadingPreferencesChange}
-            />
+            <ShieldIcon className="h-3.5 w-3.5 shrink-0" />
             {screening ? (
               // Mounted immediately, invisible for 400ms (fill-mode-backwards
               // holds the from-frame through the delay) so fast screens never
               // flash text. <output> is an implicit status live region, so
               // the appearance is announced.
-              <output className="animate-in fade-in fill-mode-backwards delay-400 duration-300 text-[13px] text-muted-foreground">
+              <output className="animate-in fade-in fill-mode-backwards delay-400 duration-300 truncate">
                 {SCREENING_LINE}
               </output>
-            ) : input.length >= COUNTER_FROM ? (
+            ) : (
+              <span className="truncate">No names or contact info</span>
+            )}
+          </span>
+          <span className="flex shrink-0 items-center gap-3">
+            <ReadingPreferencesMenu
+              value={readingPreferences}
+              onChange={onReadingPreferencesChange}
+            />
+            {input.length >= COUNTER_FROM ? (
               // Near the cap the model label gives way to a counter; at the
               // cap it turns amber (the textarea stops accepting input there).
               <span
