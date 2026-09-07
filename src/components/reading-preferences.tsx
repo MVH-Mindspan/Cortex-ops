@@ -29,7 +29,7 @@ export function ReadingPreferencesMenu({
         <button
           type="button"
           aria-label={`${READING_PREFERENCES_COPY.menuLabel}: ${summary}`}
-          className="pressable flex h-7 items-center gap-1.5 rounded-[6px] border px-2 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground"
+          className="pressable flex h-7 shrink-0 items-center gap-1.5 rounded-[6px] border px-2 text-[13px] whitespace-nowrap text-muted-foreground hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground"
         >
           <SlidersIcon className="h-3.5 w-3.5 shrink-0" />
           <span className="max-[560px]:hidden">{summary}</span>
