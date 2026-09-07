@@ -4,8 +4,12 @@
 // wait-strings must be true of the actual pipeline; errors name who to contact.
 
 import type { PipelineErrorKind } from "./pipeline";
+import type { ReadingPreferences } from "./reading-preferences";
 
+// Answer-style menu in the composer toolbar. `menuLabel` names the control
+// for assistive tech; the option labels double as the trigger text.
 export const READING_PREFERENCES_COPY = {
+  menuLabel: "Answer style",
   length: {
     label: "Answer length",
     options: [
@@ -22,6 +26,20 @@ export const READING_PREFERENCES_COPY = {
   },
   hint: "Applies to your next answer. Remembered in this browser."
 } as const;
+
+function optionLabel(
+  options: readonly { value: string; label: string }[],
+  value: string
+): string {
+  return options.find((option) => option.value === value)?.label ?? value;
+}
+
+// Trigger text for the answer-style menu: the current choice, so the values
+// that shape the next answer are visible without opening it.
+export function readingPreferencesSummary(value: ReadingPreferences): string {
+  const { length, familiarity } = READING_PREFERENCES_COPY;
+  return `${optionLabel(length.options, value.length)} · ${optionLabel(familiarity.options, value.familiarity)}`;
+}
 
 // Time-of-day greeting shown above the empty-state headline. One fixed string
 // per band — quiet is what survives the 100th viewing. "Working late." is an

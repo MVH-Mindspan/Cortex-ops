@@ -65,7 +65,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { ReadingPreferenceControls } from "@/components/reading-preferences";
+import { ReadingPreferencesMenu } from "@/components/reading-preferences";
 import {
   loadReadingPreferences,
   saveReadingPreferences,
@@ -1099,6 +1099,10 @@ function Conversation({
             No names or contact info
           </span>
           <span className="flex items-center gap-3">
+            <ReadingPreferencesMenu
+              value={readingPreferences}
+              onChange={onReadingPreferencesChange}
+            />
             {screening ? (
               // Mounted immediately, invisible for 400ms (fill-mode-backwards
               // holds the from-frame through the delay) so fast screens never
@@ -1121,7 +1125,7 @@ function Conversation({
                 {composerCounter(input.length, MAX_MESSAGE_CHARS)}
               </span>
             ) : (
-              <span className="text-[13px] text-muted-foreground">
+              <span className="text-[13px] text-muted-foreground max-[480px]:hidden">
                 {MODEL_LABEL}
               </span>
             )}
@@ -1165,10 +1169,6 @@ function Conversation({
           </span>
         </div>
       </div>
-      <ReadingPreferenceControls
-        value={readingPreferences}
-        onChange={onReadingPreferencesChange}
-      />
       {preWarning && (
         <p className="mt-2.5 flex items-start justify-center gap-1.5 px-2 text-center text-[13px] leading-snug text-amber-400">
           <ShieldIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
