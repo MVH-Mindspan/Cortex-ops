@@ -106,3 +106,17 @@ test("every string in the copy file keeps the file's voice", () => {
     assert.doesNotMatch(line, /!/, name);
   }
 });
+
+test("the answer-style chip names both current choices", () => {
+  assert.equal(
+    copy.readingPreferencesSummary({ length: "detailed", familiarity: "new" }),
+    "Detailed · New to Mindspan"
+  );
+  assert.equal(
+    copy.readingPreferencesSummary({
+      length: "concise",
+      familiarity: "experienced"
+    }),
+    "Concise · Experienced"
+  );
+});

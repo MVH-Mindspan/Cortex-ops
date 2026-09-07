@@ -135,3 +135,29 @@ export function ChatIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+// Answer-style menu trigger: two rails with offset knobs.
+export function SlidersIcon({ className }: IconProps) {
+  return (
+    <svg {...base({ className })} aria-hidden="true">
+      <path d="M2.5 5h11M2.5 11h11" />
+      <path d="M6 3v4M10 9v4" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ className }: IconProps) {
+  return (
+    <svg {...base({ className })} aria-hidden="true">
+      <path d="m4 6.5 4 4 4-4" />
+    </svg>
+  );
+}
+
+export function CheckIcon({ className }: IconProps) {
+  return (
+    <svg {...base({ className })} aria-hidden="true">
+      <path d="m3.5 8.5 3 3 6-6.5" />
+    </svg>
+  );
+}

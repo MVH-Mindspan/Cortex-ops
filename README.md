@@ -52,12 +52,13 @@ How an answer is produced (`src/server.ts`, pure helpers in `src/lib/`):
 
 Conversations purge after 7 idle days.
 
-Reading preferences sit below the home and follow-up question boxes. Choose
-Concise or Detailed independently of New to Mindspan or Experienced. The
-default is Detailed + New to Mindspan. Selections are remembered in this
-browser and apply to the next submission, including deep links; changing them
-does not rewrite existing answers. Concise trims explanations while retaining
-required procedural detail, and Experienced omits introductory definitions.
+The answer style lives in a menu in the question box's toolbar, next to Send;
+the chip shows the current choice. Choose Concise or Detailed independently of
+New to Mindspan or Experienced. The default is Detailed + New to Mindspan.
+Selections are remembered in this browser and apply to the next submission,
+including deep links; changing them does not rewrite existing answers. Concise
+trims explanations while retaining required procedural detail, and Experienced
+omits introductory definitions.
 SOP retrieval, coverage rules and citations apply to every style.
 
 ## Commands
