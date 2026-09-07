@@ -4,6 +4,12 @@
   "main": "src/server.ts",
   "compatibility_date": "2026-06-11",
   "compatibility_flags": ["nodejs_compat"],
+  // Branded host on the mindspan.co zone (same Cloudflare account). With
+  // custom_domain, Cloudflare auto-creates the DNS record + TLS cert on deploy.
+  // The default cortex.mvh-9c9.workers.dev host stays live alongside it. A
+  // separate Zero Trust Access application must cover cortex.mindspan.co or the
+  // host is unprotected.
+  "routes": [{ "pattern": "cortex.mindspan.co", "custom_domain": true }],
   // Workers Logs (free tier). Nothing Cortex logs contains message text:
   // schedule ids, purge counts, message ids, provider error objects, and
   // retrieval and answer telemetry (SOP keys, scores, counts, coverage, suppression, latency — never
