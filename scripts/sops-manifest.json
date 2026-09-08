@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-09-03T04:03:34.539Z",
+  "exported_at": "2026-09-08T20:09:56.397Z",
   "files": [
     {
       "key": "active-numbers-in-regal-as-of-6-25-26.md",
@@ -47,7 +47,7 @@
       "key": "care-navigation-tools.md",
       "title": "Care Navigation Tools",
       "notion_id": "390b5943-d52d-81c5-9f97-c4dbbce9bcba",
-      "last_edited": "2026-09-02T18:30:00.000Z"
+      "last_edited": "2026-09-07T20:52:00.000Z"
     },
     {
       "key": "caremore-call-guide.md",
@@ -126,6 +126,12 @@
       "title": "🏥 External Facility & Provider Calls — Records, Re-Faxes, Code Fixes (DRAFT — Needs Review)",
       "notion_id": "3cdb5943-d52d-8142-892b-e80df91d00c3",
       "last_edited": "2026-09-01T02:24:00.000Z"
+    },
+    {
+      "key": "faxing-medical-record-requests-draft-edit-video-needed.md",
+      "title": "Faxing Medical Record Requests (DRAFT—- EDIT/video needed)",
+      "notion_id": "3d1b5943-d52d-80d3-b69b-d3b69b557370",
+      "last_edited": "2026-09-04T20:27:00.000Z"
     },
     {
       "key": "first-visit-scheduling.md",
@@ -263,7 +269,7 @@
       "key": "new-pt-pre-visit-checklist-sop.md",
       "title": "New PT Pre-Visit Checklist SOP",
       "notion_id": "3c0b5943-d52d-8033-9c06-f2dd8f953c32",
-      "last_edited": "2026-09-01T15:29:00.000Z"
+      "last_edited": "2026-09-03T14:09:00.000Z"
     },
     {
       "key": "order-prescription-corrections-and-rx-requests-draft-needs-review.md",
@@ -335,7 +341,7 @@
       "key": "provider-onboarding-tracker.md",
       "title": "📋 Provider Onboarding Tracker",
       "notion_id": "33eb5943-d52d-8160-9d61-f527c1c0d499",
-      "last_edited": "2026-06-30T17:56:00.000Z"
+      "last_edited": "2026-09-04T19:23:00.000Z"
     },
     {
       "key": "referral-acceptance-criteria-draft-needs-review.md",
