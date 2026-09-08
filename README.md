@@ -111,11 +111,17 @@ warns when one is older than 7 days. Notion edits still in progress ship at
 03:07 UTC the same as finished ones — a Draft status shows a chip on the
 card rather than being filtered out.
 
-The workflow needs four repository secrets that do not exist yet:
-`NOTION_TOKEN` (an internal integration secret with Read content access,
-connected to the database), `NOTION_SOP_ROOT` (store as the dashed
-lowercase UUID), `CLOUDFLARE_API_TOKEN` (account-scoped: Workers R2
-Storage Edit + AI Search Edit), and `CLOUDFLARE_ACCOUNT_ID`.
+The workflow needs four repository secrets: `NOTION_TOKEN` (an internal
+integration secret with Read content access, connected to the database),
+`NOTION_SOP_ROOT` (store as the dashed lowercase UUID),
+`CLOUDFLARE_API_TOKEN` (account-scoped: Workers R2 Storage Edit + AI Search
+Edit), and `CLOUDFLARE_ACCOUNT_ID`. The run fails in its first step, naming
+the missing ones, when any is unset. To load or rotate them from a local
+`.env` holding those four lines:
+
+```sh
+gh secret set --env-file .env --repo MVH-Mindspan/Cortex-ops
+```
 
 Logs and step summaries are public: only titles and object keys are
 printed, never page bodies. A manifest commit triggers a Workers Builds
