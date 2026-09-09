@@ -50,6 +50,7 @@ import {
   PIPELINE_ERROR_LINES
 } from "./lib/copy";
 import { buildSystemPrompt } from "./lib/prompt";
+import { expandSearchQuery } from "./lib/query";
 import {
   normalizeReadingPreferences,
   type ReadingPreferences
@@ -306,8 +307,17 @@ export class ChatAgent extends AIChatAgent<Env> {
     const latest = conversation.at(-1);
     const tooLong =
       latest?.role === "user" && latest.content.length > MAX_MESSAGE_CHARS;
+    // The latest user turn is expanded with SOP-vocabulary hints for retrieval
+    // only (see lib/query.ts); generation still gets the untouched message via
+    // `latest.content` below, and telemetry logs the original `latest` too.
     const searchMessages: ChatTurn[] = conversation.length
-      ? conversation.map(({ role, content }) => ({ role, content }))
+      ? conversation.map(({ role, content }, i) => ({
+          role,
+          content:
+            i === conversation.length - 1 && role === "user"
+              ? expandSearchQuery(content)
+              : content
+        }))
       : [{ role: "user", content: "" }];
     // Retrieval settings for this message, read once from the wrangler vars.
     const cfg = retrievalConfig({

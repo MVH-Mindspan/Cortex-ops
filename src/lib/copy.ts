@@ -278,8 +278,15 @@ export const QUICK_STARTS: { label: string; template: string }[] = [
 // Coverage is a model judgment; these lines do not claim semantic validation.
 export const COVERAGE_PARTIAL_LINE =
   "The SOPs cover part of this request. See Not covered by the SOPs.";
+// No SOP covers the request, but retrieval still found related ones (this
+// line only fires when cards were retrieved and shown). Point the reader at
+// them rather than dead-ending: "the closest SOPs are below" pairs with the
+// SOP_CARDS_HEADING_RELATED heading the client uses on a blocked answer.
 export const COVERAGE_NONE_LINE =
-  "The SOPs found do not cover this request. Ask your team lead.";
+  "No SOP directly covers this. The closest SOPs are below — check those, then ask your team lead if they do not answer it.";
 export const COVERAGE_UNCONFIRMED_LINE =
-  "Cortex could not confirm SOP coverage for this request. Ask your team lead.";
-export const SOP_CARDS_HEADING_UNUSED = "Searched, not used";
+  "Cortex could not confirm SOP coverage for this request. The closest SOPs are below; ask your team lead if they do not answer it.";
+// Heading above the cards on a blocked-coverage answer (none or unconfirmed):
+// they were retrieved but not cited, so they are offered as related, not as
+// the source of steps.
+export const SOP_CARDS_HEADING_RELATED = "Related SOPs";

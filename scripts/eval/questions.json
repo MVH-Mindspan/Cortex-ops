@@ -178,5 +178,15 @@
     ],
     "expected": ["results-next-steps-requests-draft-needs-review.md"],
     "notes": "measures query rewrite, which only applies to follow-up turns"
+  },
+  {
+    "id": "E1",
+    "block": "referral",
+    "prompt": "An Orchestration Manager task asks me to confirm a partner referral was received before a Neurology Evaluation pre-visit. Enrollment created a Salesforce lead but there is no Athena patient record yet. If records are missing I need to request them. What are the steps and who handles it?",
+    "expected": [
+      "referral-acceptance-criteria-draft-needs-review.md",
+      "inbound-fax-referral-document-handling-draft-needs-review.md"
+    ],
+    "notes": "task-tracker vocabulary (partner referral, pre-visit, Salesforce lead, CENP codes) with no exact SOP; retrieval should still surface the referral acceptance / inbound fax referral SOPs as related rather than dead-end. Guards the crosswalk in src/lib/query.ts."
   }
 ]
