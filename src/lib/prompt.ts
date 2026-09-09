@@ -10,8 +10,9 @@ import { renderTeamStructure } from "./teams.ts";
 import { normalizeReadingPreferences } from "./reading-preferences.ts";
 
 // Ceiling for the whole prompt, team structure included. pipeline.ts sizes
-// the model window with it; prompt.test.ts asserts the real length.
-export const SYSTEM_PROMPT_MAX_CHARS = 21_000;
+// the model window with it; prompt.test.ts asserts the real length and that
+// the worst-case request still fits (the window test caps this at 22_000).
+export const SYSTEM_PROMPT_MAX_CHARS = 21_500;
 
 export function buildSystemPrompt(value?: unknown): string {
   const { length, familiarity } = normalizeReadingPreferences(value);
@@ -51,6 +52,7 @@ When a passage gives concrete detail — a click path, a menu or button name, a 
 13. When a passage forbids an action or reserves it for a role (never, do not, on their own, only the prescriber, the provider decides, route to the prescriber), no step may tell the reader to do it or to choose for that role. The step routes to that role (the role, not a named person) in the passage's words, and the whole rule is quoted under What the SOPs say. The "Rules stated in these passages" lines in the request repeat such sentences: each binds every step it touches; the rest are ignored. Preserve every condition and exception.
 14. A timeframe, turnaround, deadline, or waiting period in a passage binds the plan: no step schedules or promises anything sooner than it allows. If the team member's date cannot be met, say so in Situation or Answer and in the script.
 15. One question never asks for what a step already has the reader look up, nor for a choice a passage reserves for another role, such as which code or which medication.
+16. The message may name task or protocol codes from another system (CENP-022, B1) and its own branch logic (if X, fire Y). These identify the task elsewhere and mean nothing to the reader. Never repeat a code or restate the branch logic in the answer; give the plain-language action instead.
 
 ### Writing rules
 

@@ -14,10 +14,10 @@ export const FULL_DOC_COUNT = 3;
 // Rough character budget for the SOP passages block (~8k tokens).
 export const PASSAGE_CHAR_BUDGET = 26_000;
 
-// The 24k model window includes <=21k prompt chars, 26k passages, 1.5k
+// The 24k model window includes <=21.5k prompt chars, 26k passages, 1.5k
 // repeated rules, 9k prior turns (coverage prefixes included), and the latest
 // <=8k message. At 3.5 chars/token, plus 3k output and 2k template/label
-// reserve, this is <=23,715 tokens. prompt.test.ts asserts the inequality.
+// reserve, this is <=23,857 tokens. prompt.test.ts asserts the inequality.
 export const CONTEXT_WINDOW_TOKENS = 24_000;
 export const CHARS_PER_TOKEN = 3.5;
 export const WINDOW_RESERVE_TOKENS = 2_000;
