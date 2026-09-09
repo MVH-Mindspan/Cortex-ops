@@ -54,7 +54,7 @@ import {
   SCREENING_LINE,
   softPIIWarning,
   SOP_CARDS_HEADING,
-  SOP_CARDS_HEADING_UNUSED,
+  SOP_CARDS_HEADING_RELATED,
   COVERAGE_PARTIAL_LINE,
   SOP_CITED_BADGE,
   THANKS_LINE,
@@ -281,7 +281,7 @@ function SOPCards({
           fresh && "animate-in fade-in duration-300"
         )}
       >
-        {unused ? SOP_CARDS_HEADING_UNUSED : SOP_CARDS_HEADING}
+        {unused ? SOP_CARDS_HEADING_RELATED : SOP_CARDS_HEADING}
       </p>
       <div className="flex flex-col gap-2">
         {sops.map((sop, rank) => {
