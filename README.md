@@ -26,7 +26,10 @@ How an answer is produced (`src/server.ts`, pure helpers in `src/lib/`):
 2. AI Search retrieves and reranks SOP passages; the top SOPs go to the model
    as full documents so every click path and field name can be quoted.
    Retrieval settings — query rewrite, result count, keyword match mode —
-   are wrangler vars passed to AI Search per request. With rewrite on, a
+   are wrangler vars passed to AI Search per request. A hybrid search that
+   comes back empty without having run its vector leg is re-run vector-only
+   and logged with `fallback: true`, so a platform-side hybrid outage (seen
+   14 Sep 2026) does not reach the reader as the no-match line. With rewrite on, a
    model rewrites every query before search, the first message included,
    which adds seconds and hides what was typed. Chunk passages have their
    frontmatter stripped so the model never sees a passage's link, status, or

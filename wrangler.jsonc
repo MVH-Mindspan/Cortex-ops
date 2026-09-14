@@ -50,7 +50,10 @@
     // "and" needs every word of a sentence-length question to match one
     // chunk, so in practice the keyword half returns nothing and hybrid
     // search silently degrades to vector-only in our probes; "or" lets
-    // tokens like G31.84, VRI, ICD-10 hit the keyword index.
+    // tokens like G31.84, VRI, ICD-10 hit the keyword index. If hybrid
+    // comes back empty without running its vector leg (14 Sep 2026: every
+    // query), the Worker re-runs the search vector-only and logs
+    // `fallback: true` (src/lib/retrieval.ts, hybridSkippedVector).
     "RETRIEVAL_KEYWORD_MATCH": "and"
   },
   "durable_objects": {

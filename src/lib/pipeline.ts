@@ -86,8 +86,19 @@ export type SearchChunk = {
 };
 
 /** What AI_SEARCH.search() returns: the query it actually ran (rewritten on
- * follow-up turns) and the chunks. */
-export type SearchResponse = { search_query: string; chunks: SearchChunk[] };
+ * follow-up turns), the chunks, and for hybrid retrieval which legs ran.
+ * `hybrid_meta` is how the Worker tells "nothing matched" from "the vector
+ * leg never ran" (seen 14 Sep 2026: every hybrid search came back with
+ * search_methods [] while vector-only searches worked). */
+export type SearchResponse = {
+  search_query: string;
+  chunks: SearchChunk[];
+  hybrid_meta?: {
+    search_methods?: string[];
+    vector_result_count?: number;
+    keyword_result_count?: number;
+  };
+};
 
 export type FileMeta = {
   title: string;

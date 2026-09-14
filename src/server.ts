@@ -34,11 +34,13 @@ import {
   type Turn
 } from "./lib/pipeline";
 import {
+  hybridSkippedVector,
   retrievalConfig,
   retrievalTelemetry,
   searchOptions,
   type RetrievalConfig,
   type RetrievalTelemetry,
+  type SearchOptions,
   type SearchOutcome
 } from "./lib/retrieval";
 import {
@@ -515,9 +517,34 @@ export class ChatAgent extends AIChatAgent<Env> {
   // instance's own defaults never decide how Cortex searches. AI Search
   // rate-limits bursts (open beta), so retry briefly with backoff; every
   // other failure is rethrown for the pipeline's error classifier.
+  //
+  // Hybrid first. If it comes back empty without having run its vector leg
+  // (hybridSkippedVector), the same query runs again vector-only: on 14 Sep
+  // 2026 every hybrid search did exactly that and every reader got the
+  // no-match line while the index was fine. The fallback costs one extra
+  // call only on an empty result, is flagged in the telemetry, and stops
+  // firing by itself once hybrid runs its vector leg again.
   private async searchWithRetry(
     messages: ChatTurn[],
     cfg: RetrievalConfig
+  ): Promise<SearchOutcome> {
+    const hybrid = await this.searchOnce(messages, searchOptions(cfg));
+    if (!hybridSkippedVector(hybrid.results)) return hybrid;
+    const vector = await this.searchOnce(
+      messages,
+      searchOptions(cfg, "vector")
+    );
+    return {
+      results: vector.results,
+      ms: hybrid.ms + vector.ms,
+      attempts: hybrid.attempts + vector.attempts,
+      fallback: true
+    };
+  }
+
+  private async searchOnce(
+    messages: ChatTurn[],
+    options: SearchOptions
   ): Promise<SearchOutcome> {
     const instance = this.env.AI_SEARCH.get(AI_SEARCH_INSTANCE);
     for (let attempt = 0; ; attempt++) {
@@ -525,7 +552,7 @@ export class ChatAgent extends AIChatAgent<Env> {
       try {
         const results = await instance.search({
           messages,
-          ai_search_options: searchOptions(cfg)
+          ai_search_options: options
         });
         // The successful call only: retry backoff is not search latency.
         return { results, ms: Date.now() - startedAt, attempts: attempt + 1 };
