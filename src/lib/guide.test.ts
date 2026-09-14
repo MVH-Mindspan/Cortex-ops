@@ -60,18 +60,19 @@ test("example SOP cards point at pages in the exported manifest", () => {
   assert.ok(cards >= 3);
 });
 
-test("the examples cover a cited answer and a no-coverage answer", () => {
-  const assistant = GUIDE_EXAMPLES.flatMap((e) =>
-    e.turns.filter((t) => t.role === "assistant")
-  );
-  assert.ok(
-    assistant.some((t) => t.sops?.some((s) => s.cited === true)),
-    "one example should show a Cited card"
-  );
-  assert.ok(
-    assistant.some((t) => t.coverageBlocked === "none"),
-    "one example should show the Related SOPs path"
-  );
+// Every example must show Cortex at its best: an answer grounded in a cited
+// SOP. A no-coverage example was tried and dropped (MVH, 14 Sep 2026): it
+// teaches the dead end first.
+test("every example is answered from a cited SOP", () => {
+  for (const example of GUIDE_EXAMPLES) {
+    const first = example.turns.find((t) => t.role === "assistant");
+    assert.ok(first, example.id);
+    assert.ok(
+      first.sops?.some((s) => s.cited === true),
+      `${example.id}: first answer has no cited card`
+    );
+    assert.equal(first.coverageBlocked, undefined, example.id);
+  }
 });
 
 test("toGuideMessages builds the message shape the answer components read", () => {
