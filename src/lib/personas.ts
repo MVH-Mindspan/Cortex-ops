@@ -119,19 +119,20 @@ function oneLine(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-function reachOf(persona: Persona): string {
-  const slack = oneLine(persona.reach.slack);
-  const dashboard = oneLine(persona.reach.dashboard);
-  const parts: string[] = [];
+// How answers say to reach the person: Slack when the entry has a Slack route
+// (operator decision, 14 Sep 2026: everything goes via Slack), else the
+// dashboard. An "(unverified)" marker in Notion is for its editors and never
+// reaches an answer.
+export function reachOf(persona: Persona): string {
+  const clean = (text: string) => oneLine(text.replace(/\(unverified\)/gi, ""));
+  const slack = clean(persona.reach.slack);
   if (slack) {
-    parts.push(
-      /^direct message$/i.test(slack)
-        ? "Slack direct message"
-        : `Slack ${slack}`
-    );
+    return /^direct message$/i.test(slack)
+      ? "Slack direct message"
+      : `Slack ${slack}`;
   }
-  if (dashboard) parts.push(`Dashboard ${dashboard}`);
-  return parts.join("; ");
+  const dashboard = clean(persona.reach.dashboard);
+  return dashboard ? `Dashboard ${dashboard}` : "";
 }
 
 // One persona in the spec's compact template: a header line, then one "- "

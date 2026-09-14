@@ -9,6 +9,7 @@ import {
 } from "./prompt.ts";
 import { renderTeamStructure, TEAMS } from "./teams.ts";
 import { PERSONAS_MAX_CHARS } from "./personas.ts";
+import { CONTACT_BLOCK_MAX_CHARS } from "./contacts.ts";
 import type { ReadingPreferences } from "./reading-preferences.ts";
 import {
   CHARS_PER_TOKEN,
@@ -304,6 +305,55 @@ test("the passage budget is what the window leaves, capped, and has a floor", ()
     String(tokens)
   );
   assert.equal(request(WINDOW_CHARS, 0, 0), 0);
+});
+
+test("work is handed over on Slack, never through a ticket queue", () => {
+  // Operator decision (14 Sep 2026): there is no Zendesk.
+  for (const prompt of [
+    SYSTEM_PROMPT,
+    buildSystemPrompt(undefined, DIRECTORY)
+  ]) {
+    assert.doesNotMatch(prompt, /Zendesk|<route>|Route work through/);
+    assert.match(
+      prompt,
+      /"If this is not your team, message the <Team> team on Slack\."/
+    );
+    assert.match(prompt, /never name a ticket queue or ticketing system/);
+  }
+  assert.match(
+    section("### Example"),
+    /then message the Care Support team on Slack\./
+  );
+});
+
+test("the directory prompt defers to the code's contact match and never says unverified", () => {
+  const prompt = buildSystemPrompt(undefined, DIRECTORY);
+  assert.match(prompt, /"Team directory match for this message" block/);
+  assert.match(prompt, /the first person in the Team directory match/);
+  assert.doesNotMatch(prompt, /unverified/i);
+  assert.doesNotMatch(SYSTEM_PROMPT, /Team directory match/);
+});
+
+test("the worst case still fits with the contact match block reserved", () => {
+  const worst = passageBudgetFor({
+    systemChars: SYSTEM_PROMPT_WITH_DIRECTORY_MAX_CHARS,
+    history: [{ content: "x".repeat(HISTORY_CHAR_BUDGET) }],
+    messageChars: MAX_MESSAGE_CHARS,
+    rulesChars: RULES_BLOCK_MAX_CHARS + CONTACT_BLOCK_MAX_CHARS
+  });
+  assert.ok(worst >= MIN_PASSAGE_CHARS, String(worst));
+  const tokens =
+    (SYSTEM_PROMPT_WITH_DIRECTORY_MAX_CHARS +
+      worst +
+      RULES_BLOCK_MAX_CHARS +
+      CONTACT_BLOCK_MAX_CHARS +
+      HISTORY_CHAR_BUDGET +
+      MAX_MESSAGE_CHARS) /
+    CHARS_PER_TOKEN;
+  assert.ok(
+    tokens + MAX_OUTPUT_TOKENS + WINDOW_RESERVE_TOKENS <= CONTEXT_WINDOW_TOKENS,
+    String(tokens)
+  );
 });
 
 test("coverage and governing rules apply before every answer, including the example", () => {

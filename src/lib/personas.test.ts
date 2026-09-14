@@ -49,9 +49,25 @@ test("renders one persona in the compact template", () => {
       "- Systems: Salesforce",
       "- Out of scope: Clinical questions → Blake Rowe",
       "- Backup: Blake Rowe",
-      "- Reach: Slack #fictional-intake; Dashboard Escalate → Member Experience"
+      "- Reach: Slack #fictional-intake"
     ].join("\n")
   );
+});
+
+test("reach is Slack when there is a Slack route, else the dashboard, never 'unverified'", () => {
+  const reach = (slack: string, dashboard: string) =>
+    renderPersona(persona({ reach: { slack, dashboard } }))
+      .split("\n")
+      .find((line) => line.startsWith("- Reach: "));
+  assert.equal(
+    reach("#fictional-escalations (unverified)", "Escalate → Clinical"),
+    "- Reach: Slack #fictional-escalations"
+  );
+  assert.equal(
+    reach("", "Escalate → Clinical (Unverified)"),
+    "- Reach: Dashboard Escalate → Clinical"
+  );
+  assert.equal(reach("", ""), undefined);
 });
 
 test("omits empty fields, collapses line breaks, and words a direct message", () => {
