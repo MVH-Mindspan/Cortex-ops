@@ -161,3 +161,13 @@ export function CheckIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+// Sidebar row for the how-to guide: an open book.
+export function BookIcon({ className }: IconProps) {
+  return (
+    <svg {...base({ className })} aria-hidden="true">
+      <path d="M2.5 3.5h3.5a2 2 0 0 1 2 2v7a2 2 0 0 0-2-2H2.5Z" />
+      <path d="M13.5 3.5H10a2 2 0 0 0-2 2v7a2 2 0 0 1 2-2h3.5Z" />
+    </svg>
+  );
+}
