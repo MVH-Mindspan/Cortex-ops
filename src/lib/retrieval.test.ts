@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   RETRIEVAL_DEFAULTS,
   retrievalConfig,
+  hybridSkippedVector,
   retrievalTelemetry,
   searchOptions,
   type RetrievalConfig,
@@ -140,6 +141,7 @@ test("telemetry is counts, SOP keys, scores, config, calls and latency", () => {
   assert.deepEqual(Object.keys(stats).sort(), [
     "attempts",
     "chunks",
+    "fallback",
     "files",
     "kw",
     "max",
@@ -165,7 +167,64 @@ test("telemetry is counts, SOP keys, scores, config, calls and latency", () => {
   assert.equal(stats.sqlen, QUERY.length);
   assert.equal(stats.max, 15);
   assert.equal(stats.kw, "and");
+  assert.equal(stats.fallback, false);
   assert.equal(stats.ms, 42);
+});
+
+test("the vector-only options keep the thresholds and drop the keyword leg", () => {
+  assert.deepEqual(searchOptions(RETRIEVAL_DEFAULTS, "vector"), {
+    retrieval: {
+      retrieval_type: "vector",
+      match_threshold: 0.01,
+      max_num_results: 15,
+      return_on_failure: false
+    },
+    reranking: { enabled: true, match_threshold: 0.001 },
+    query_rewrite: { enabled: true }
+  });
+  const flipped = retrievalConfig({ rewrite: "off", max: "30", keyword: "or" });
+  assert.equal(searchOptions(flipped, "vector").retrieval.max_num_results, 30);
+  assert.equal(searchOptions(flipped, "vector").query_rewrite.enabled, false);
+  assert.equal(
+    "keyword_match_mode" in searchOptions(flipped, "vector").retrieval,
+    false
+  );
+});
+
+test("hybridSkippedVector fires only on an empty result whose vector leg did not run", () => {
+  const empty = (methods?: string[]): SearchResponse => ({
+    search_query: QUERY,
+    chunks: [],
+    ...(methods === undefined
+      ? {}
+      : { hybrid_meta: { search_methods: methods } })
+  });
+  // The 14 Sep 2026 shape: nothing ran.
+  assert.equal(hybridSkippedVector(empty([])), true);
+  // Keyword ran, vector did not.
+  assert.equal(hybridSkippedVector(empty(["keyword"])), true);
+  // No metadata at all: cannot tell, so try.
+  assert.equal(hybridSkippedVector(empty()), true);
+  // Vector ran and found nothing: a real miss.
+  assert.equal(hybridSkippedVector(empty(["vector"])), false);
+  assert.equal(hybridSkippedVector(empty(["vector", "keyword"])), false);
+  // Anything retrieved is never a fallback case.
+  assert.equal(
+    hybridSkippedVector({ ...results, hybrid_meta: { search_methods: [] } }),
+    false
+  );
+});
+
+test("telemetry says when the results came from the vector fallback", () => {
+  const stats = retrievalTelemetry(
+    { ...outcome(results, 80, 2), fallback: true },
+    "q",
+    1,
+    CFG
+  );
+  assert.equal(stats.fallback, true);
+  assert.equal(stats.attempts, 2);
+  assert.equal(stats.ms, 80);
 });
 
 test("no query text and no chunk text reach the log line", () => {

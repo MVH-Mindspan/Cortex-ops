@@ -73,24 +73,37 @@ export function retrievalConfig(vars: {
  * the AI Search instance's own settings, so retrieval behaviour lives in
  * wrangler.jsonc and this file rather than in a dashboard nobody can diff;
  * `retrieval_type` and `fusion_method` restate what the live instance is
- * configured to do (see RETRIEVAL_DEFAULTS) and win if that ever changes. */
-export function searchOptions(cfg: RetrievalConfig): {
+ * configured to do (see RETRIEVAL_DEFAULTS) and win if that ever changes.
+ *
+ * `vector` is the fallback shape: the same thresholds and result count
+ * with the keyword leg and fusion left out. Hybrid with keyword "and" was
+ * vector-only in practice (the keyword leg matches nothing for a sentence),
+ * so a vector-only search reproduces what the 3 Sep 2026 matrix measured. */
+export type RetrievalType = "hybrid" | "vector";
+
+export type SearchOptions = {
   retrieval: {
-    retrieval_type: "hybrid";
-    fusion_method: "rrf";
-    keyword_match_mode: "and" | "or";
+    retrieval_type: RetrievalType;
+    fusion_method?: "rrf";
+    keyword_match_mode?: "and" | "or";
     match_threshold: number;
     max_num_results: number;
     return_on_failure: boolean;
   };
   reranking: { enabled: boolean; match_threshold: number };
   query_rewrite: { enabled: boolean };
-} {
+};
+
+export function searchOptions(
+  cfg: RetrievalConfig,
+  type: RetrievalType = "hybrid"
+): SearchOptions {
   return {
     retrieval: {
-      retrieval_type: "hybrid",
-      fusion_method: "rrf",
-      keyword_match_mode: cfg.keywordMatch,
+      retrieval_type: type,
+      ...(type === "hybrid"
+        ? { fusion_method: "rrf", keyword_match_mode: cfg.keywordMatch }
+        : {}),
       match_threshold: MATCH_THRESHOLD,
       max_num_results: cfg.maxResults,
       // AI Search defaults to returning empty results when its own backend
@@ -104,6 +117,20 @@ export function searchOptions(cfg: RetrievalConfig): {
   };
 }
 
+/** True when a hybrid search came back empty without having run its vector
+ * leg, so the emptiness says nothing about the corpus. Observed on 14 Sep
+ * 2026: hybrid returned `search_methods: []` for every query while a
+ * vector-only search of the same instance returned 30 chunks; with keyword
+ * mode "and" that reached every reader as the no-match line. A response
+ * with no `hybrid_meta` at all is treated the same way: one extra call is
+ * cheaper than a false "No SOP covers this yet". An empty result whose
+ * vector leg did run is a real miss and is left alone. */
+export function hybridSkippedVector(results: SearchResponse): boolean {
+  if (results.chunks.length > 0) return false;
+  const methods = results.hybrid_meta?.search_methods;
+  return !Array.isArray(methods) || !methods.includes("vector");
+}
+
 /** One completed search: what AI Search returned, how long the successful
  * call took (retry backoff and failed attempts excluded) and how many calls
  * it took to get it (1 when the first one worked). */
@@ -111,6 +138,9 @@ export type SearchOutcome = {
   results: SearchResponse;
   ms: number;
   attempts: number;
+  /** The hybrid search skipped its vector leg and came back empty, so these
+   * results are from the vector-only search that ran in its place. */
+  fallback?: boolean;
 };
 
 export type RetrievalTelemetry = {
@@ -133,6 +163,10 @@ export type RetrievalTelemetry = {
   sqlen: number;
   max: number;
   kw: "and" | "or";
+  /** Whether the results came from the vector-only fallback (see
+   * hybridSkippedVector). A run of trues is the signal to look at the
+   * instance; a false after a run of trues says hybrid is back. */
+  fallback: boolean;
   ms: number;
 };
 
@@ -182,6 +216,7 @@ export function retrievalTelemetry(
     sqlen: results.search_query.length,
     max: cfg.maxResults,
     kw: cfg.keywordMatch,
+    fallback: search.fallback === true,
     ms
   };
 }

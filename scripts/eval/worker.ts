@@ -37,9 +37,11 @@ import {
   type SearchResponse
 } from "../../src/lib/pipeline.ts";
 import {
+  hybridSkippedVector,
   retrievalConfig,
   searchOptions,
   type RetrievalConfig,
+  type SearchOptions,
   type SearchOutcome
 } from "../../src/lib/retrieval.ts";
 
@@ -67,15 +69,33 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-// The same retry the server uses (ChatAgent.searchWithRetry): AI Search
-// rate-limits bursts while it is in open beta, and a matrix run is a burst by
-// definition. Everything else is rethrown, so a real failure still surfaces.
+// The same retry and the same vector fallback the server uses
+// (ChatAgent.searchWithRetry / searchOnce): AI Search rate-limits bursts
+// while it is in open beta, and a matrix run is a burst by definition.
+// Everything else is rethrown, so a real failure still surfaces.
 // SearchOutcome is the server's own type, so the timing the harness reports
-// means the same thing as the timing the Worker logs.
+// means the same thing as the timing the Worker logs, and `fallback` says
+// when a row was answered by the vector-only search.
 async function searchWithRetry(
   env: EvalEnv,
   messages: EvalRequest["messages"],
   cfg: RetrievalConfig
+): Promise<SearchOutcome> {
+  const hybrid = await searchOnce(env, messages, searchOptions(cfg));
+  if (!hybridSkippedVector(hybrid.results)) return hybrid;
+  const vector = await searchOnce(env, messages, searchOptions(cfg, "vector"));
+  return {
+    results: vector.results,
+    ms: hybrid.ms + vector.ms,
+    attempts: hybrid.attempts + vector.attempts,
+    fallback: true
+  };
+}
+
+async function searchOnce(
+  env: EvalEnv,
+  messages: EvalRequest["messages"],
+  options: SearchOptions
 ): Promise<SearchOutcome> {
   const instance = env.AI_SEARCH.get(AI_SEARCH_INSTANCE);
   for (let attempt = 0; ; attempt++) {
@@ -83,7 +103,7 @@ async function searchWithRetry(
     try {
       const results: SearchResponse = await instance.search({
         messages,
-        ai_search_options: searchOptions(cfg)
+        ai_search_options: options
       });
       // The successful call only: retry backoff is not search latency.
       return { results, ms: Date.now() - startedAt, attempts: attempt + 1 };
@@ -136,7 +156,7 @@ export default {
       const conversation = answering
         ? trimHistory(body.messages)
         : body.messages;
-      const { results, ms, attempts } = await searchWithRetry(
+      const { results, ms, attempts, fallback } = await searchWithRetry(
         env,
         conversation,
         cfg
@@ -247,8 +267,10 @@ export default {
         search_query: results.search_query,
         ms,
         // 1 unless a rate limit forced a retry, in which case `ms` is the
-        // successful call and the wall-clock was longer.
+        // successful call and the wall-clock was longer; 2 when the vector
+        // fallback ran, in which case `ms` is both calls.
         attempts,
+        fallback: fallback === true,
         config: cfg,
         // Scores and section headings only. Chunk text never leaves this
         // Worker: an eval report is committed to a public repo.
