@@ -31,6 +31,7 @@ import {
   HINT_FIRST_ANSWER,
   LIBRARY_ERROR,
   LIBRARY_LOADING,
+  MODEL_LABEL,
   NO_SEARCH_MATCH,
   PHI_FOOTER,
   PHI_WARNING,
@@ -52,7 +53,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { ReadingPreferencesMenu } from "@/components/reading-preferences";
-import { Guide } from "@/components/guide";
+import { Onboarding } from "@/components/onboarding";
 import { guideSeen, markGuideSeen } from "@/lib/guide";
 import {
   AssistantMessage,
@@ -87,8 +88,6 @@ import {
   StopIcon
 } from "@/components/icons";
 import type { ChatAgent, CortexMessage } from "./server";
-
-const MODEL_LABEL = "llama-3.3-70b";
 
 // Pre-send name screen: fail open after this long so a dropped socket never
 // holds the composer (the callable RPC would otherwise wait a full minute).
@@ -1361,14 +1360,14 @@ export default function App() {
           <ReachOutMenu />
         </div>
         {viewMode === "guide" ? (
-          <ScrollArea key="guide" className="min-h-0 flex-1">
-            <Guide
-              onTryExample={tryExample}
-              onNewSituation={newSituation}
-              pinnedKeys={pinnedKeys}
-              onTogglePin={togglePin}
-            />
-          </ScrollArea>
+          <Onboarding
+            key="guide"
+            onTryExample={tryExample}
+            onDone={newSituation}
+            pinnedKeys={pinnedKeys}
+            onTogglePin={togglePin}
+            readingPreferences={readingPreferences}
+          />
         ) : viewMode === "library" ? (
           <ScrollArea key="library" className="min-h-0 flex-1">
             <div className="mx-auto w-full max-w-[760px] px-6 py-10">

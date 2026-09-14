@@ -292,114 +292,111 @@ export const COVERAGE_UNCONFIRMED_LINE =
 // the source of steps.
 export const SOP_CARDS_HEADING_RELATED = "Related SOPs";
 
-// --- How to use Cortex (the guide view) ---
+// --- How to use Cortex (the onboarding flow) ---
 
-// One label for one intent: the sidebar row, the empty-state link and the
-// page title all say this.
+// One label for one intent: the sidebar row and the empty-state link.
 export const GUIDE_LINK = "How to use Cortex";
-export const GUIDE_TRY = "Try this";
 
-// The page's prose. Plain statements about what the tool does and does not
-// do; every claim here must stay true of the pipeline it describes.
-type GuideStep = {
-  title: string;
-  body: string;
-  // The answer-heading glossary, on the "Read the answer" step only.
-  glossary?: { term: string; meaning: string }[];
-};
-export const GUIDE_COPY: {
-  title: string;
-  lede: string;
-  who: { title: string; paragraphs: string[] };
-  how: { title: string; steps: GuideStep[] };
-  conversation: { title: string; paragraphs: string[] };
-  examples: { title: string; intro: string; trimmed: string };
-  newSituation: string;
-} = {
-  title: "How to use Cortex",
-  lede: "Cortex turns a live operations situation into the steps the SOPs give for it, with the SOP behind each step one click away.",
-  who: {
-    title: "Who it is for",
-    paragraphs: [
-      "Cortex is for Mindspan operations staff: front desk, care navigation, scheduling, orders, and billing. It is for the moment a caregiver is on the phone, an insurer email needs a reply, or an order has gone missing and you need the procedure now.",
-      "It is not a clinical tool. It answers only from the team's SOPs, so it will not judge symptoms, choose a medication or a code, or interpret a result. When no SOP covers a situation it says so rather than guessing."
-    ]
+// Shown in the composer toolbar next to Send, and in the onboarding replica.
+export const MODEL_LABEL = "llama-3.3-70b";
+
+// Five screens, one idea each: a headline, one or two sentences, and a live
+// visual built from the real components. The words stay short because the
+// visual does the explaining. Every claim here must stay true of the
+// pipeline it describes.
+export const ONBOARDING_COPY = {
+  skip: "Skip",
+  next: "Next",
+  back: "Back",
+  screens: {
+    paste: {
+      title: "Paste the situation. Get the procedure.",
+      body: "For Mindspan operations staff: caregiver calls, insurer emails, missing orders. Leave out names, dates of birth, and contact details. Patient, chart, and MRN numbers are fine."
+    },
+    shape: {
+      title: "Every answer has the same shape.",
+      body: "Tap a part to see what it is for."
+    },
+    source: {
+      title: "Every step points back to its SOP.",
+      body: "The cards under an answer open the page in Notion.",
+      notes: [
+        {
+          term: "Cited",
+          meaning: "The answer quoted this SOP, word for word."
+        },
+        { term: "Draft", meaning: "Not yet reviewed." },
+        {
+          term: "Pin",
+          meaning: "Keeps the SOP in your sidebar on this device. Try it."
+        }
+      ]
+    },
+    followUp: {
+      title: "Ask again. It keeps the situation in view.",
+      body: "A follow-up is grounded again, so it can surface a different SOP. Start a new situation when the topic changes.",
+      shortened: "Shortened here. A real answer has every section.",
+      styleNote:
+        "Answer style, next to Send: Concise or Detailed, New to Mindspan or Experienced."
+    },
+    tryOne: {
+      title: "Try one now.",
+      body: "Tap a situation to drop it into the box."
+    }
   },
-  how: {
-    title: "How to use it",
-    steps: [
-      {
-        title: "Describe the situation",
-        body: "Paste the message or write what happened in plain words: what the caller wants, what you can see in the system, what you have already tried. Leave out names, dates of birth, and contact details. Patient, chart, and MRN numbers are fine. Cortex checks for names before anything is sent."
-      },
-      {
-        title: "Read the answer",
-        body: "Every answer has the same shape, so you can go straight to the part you need.",
-        glossary: [
-          {
-            term: "Situation and Urgency",
-            meaning: "One line each, so a colleague can pick it up."
-          },
-          {
-            term: "Who handles this",
-            meaning:
-              "The team and function that likely owns the work. A steer from the team structure, not an SOP instruction."
-          },
-          {
-            term: "Do now",
-            meaning:
-              "The steps that stop the problem getting worse. If someone is waiting, contacting them is here."
-          },
-          {
-            term: "Then",
-            meaning:
-              "The investigation and the fix, in the order the SOP gives."
-          },
-          {
-            term: "Tell the patient",
-            meaning: "A script that says only what the SOP allows."
-          },
-          {
-            term: "Stop and escalate",
-            meaning: "When to stop, and who to hand to."
-          },
-          {
-            term: "Done when",
-            meaning: "The end state that means you can stop."
-          },
-          {
-            term: "What the SOPs say",
-            meaning:
-              "The sentence each step rests on, quoted word for word, with a link to the SOP."
-          },
-          {
-            term: "Not covered by the SOPs",
-            meaning: "Any gap, and who to ask about it."
-          }
-        ]
-      },
-      {
-        title: "Open the source",
-        body: "The SOP cards under an answer open the page in Notion. Cited marks a card the answer quoted. Draft marks an SOP not yet reviewed. Pin a card to keep it in your sidebar, or copy the answer to relay it into Slack or a call note."
-      }
-    ]
-  },
-  conversation: {
-    title: "Having a conversation",
-    paragraphs: [
-      "Ask a follow-up in the same box and Cortex keeps the situation in view: the caller is unreachable, the status is not what the SOP expects, the prescriber is out. Each answer is grounded again, so a follow-up can surface a different SOP.",
-      "Start a new situation when the topic changes. One situation per conversation keeps the answers precise and the recent list useful.",
-      "The Answer style menu in the toolbar switches between Concise and Detailed, and between New to Mindspan and Experienced. It applies to your next answer and is remembered in this browser.",
-      "When Cortex says no SOP covers the situation, the closest SOPs are listed as Related. Check those, ask your team lead, then use Reach out to request an SOP so the next person gets an answer."
-    ]
-  },
-  examples: {
-    title: "Example conversations",
-    intro:
-      "Three situations, with answers trimmed for length. Try one to drop it into the box.",
-    trimmed: "Trimmed from a real answer"
-  },
-  newSituation: "New situation"
+  // What each answer heading is for, keyed by the heading exactly as the
+  // answer prints it. Shown under the chips on the "same shape" screen.
+  sections: [
+    {
+      heading: "Situation",
+      meaning: "One line, so a colleague can pick it up."
+    },
+    {
+      heading: "Urgency",
+      meaning: "Now, Today, or This week, and why."
+    },
+    {
+      heading: "Who handles this",
+      meaning:
+        "The team and function that likely owns the work. A steer from the team structure, not an SOP instruction."
+    },
+    {
+      heading: "Answer",
+      meaning: "For a question about a rule or a term: the rule, from the SOP."
+    },
+    {
+      heading: "Do now",
+      meaning:
+        "The steps that stop the problem getting worse. If someone is waiting, contacting them is here."
+    },
+    {
+      heading: "Then",
+      meaning: "The investigation and the fix, in the order the SOP gives."
+    },
+    {
+      heading: "Tell the patient",
+      meaning: "A script that says only what the SOP allows."
+    },
+    {
+      heading: "Stop and escalate",
+      meaning: "When to stop, and who to hand to."
+    },
+    { heading: "Done when", meaning: "The end state that means you can stop." },
+    {
+      heading: "What the SOPs say",
+      meaning:
+        "The sentence each step rests on, quoted word for word, with a link to the SOP."
+    },
+    {
+      heading: "Not covered by the SOPs",
+      meaning: "Any gap, and who to ask about it."
+    },
+    {
+      heading: "One question",
+      meaning:
+        "Asked only when the right path depends on something you did not say."
+    }
+  ]
 };
 
 // Real conversations, captured from the pipeline and trimmed for length:

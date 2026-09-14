@@ -1,12 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { GUIDE_COPY, GUIDE_EXAMPLES } from "./copy.ts";
+import { GUIDE_EXAMPLES, ONBOARDING_COPY } from "./copy.ts";
 import { checkPHI, checkPossiblePII } from "./phi.ts";
 import {
   guidePrompt,
   guideSeen,
   markGuideSeen,
+  splitAnswerSections,
   toGuideMessages,
   type GuideExample
 } from "./guide.ts";
@@ -159,19 +160,65 @@ test("the seen flag is a boolean in localStorage and fails closed", (t) => {
   assert.doesNotThrow(() => markGuideSeen());
 });
 
-test("the guide's prose names every answer heading the prompt produces", () => {
-  const glossary = GUIDE_COPY.how.steps.find((s) => s.glossary)?.glossary ?? [];
-  const terms = glossary.map((g) => g.term);
-  for (const heading of [
-    "Who handles this",
+test("splitAnswerSections keeps inline and block headings apart", () => {
+  const text = [
+    "",
+    "Situation: A caller is waiting.",
+    "",
+    "Urgency: Now. Someone is on the phone.",
+    "",
     "Do now",
-    "Then",
+    "1. Pick up. Expect to see a name.",
+    "2. Ask for the chart number.",
+    "",
     "Tell the patient",
-    "Stop and escalate",
-    "Done when",
-    "What the SOPs say",
-    "Not covered by the SOPs"
-  ]) {
-    assert.ok(terms.includes(heading), heading);
+    '"One moment."',
+    "",
+    "Not covered by the SOPs",
+    "- Nothing."
+  ].join("\n");
+  assert.deepEqual(splitAnswerSections(text), [
+    { heading: "Situation", body: "A caller is waiting." },
+    { heading: "Urgency", body: "Now. Someone is on the phone." },
+    {
+      heading: "Do now",
+      body: "1. Pick up. Expect to see a name.\n2. Ask for the chart number."
+    },
+    { heading: "Tell the patient", body: '"One moment."' },
+    { heading: "Not covered by the SOPs", body: "- Nothing." }
+  ]);
+  assert.deepEqual(splitAnswerSections("no headings here"), []);
+});
+
+test("every heading in the example answers has a meaning on the shape screen", () => {
+  const known = new Set(ONBOARDING_COPY.sections.map((s) => s.heading));
+  let headings = 0;
+  for (const example of GUIDE_EXAMPLES) {
+    for (const turn of example.turns) {
+      if (turn.role !== "assistant") continue;
+      for (const section of splitAnswerSections(turn.text)) {
+        headings++;
+        assert.ok(
+          known.has(section.heading),
+          `${example.id}: ${section.heading}`
+        );
+      }
+    }
   }
+  assert.ok(headings >= 10);
+  // The shape screen lights up "Do now" first, so that example must have it.
+  const phone = GUIDE_EXAMPLES.find((e) => e.id === "on-the-phone");
+  const first = phone?.turns.find((t) => t.role === "assistant");
+  assert.ok(
+    first && splitAnswerSections(first.text).some((s) => s.heading === "Do now")
+  );
+  // The follow-up screen shows these sections from its two answers.
+  const follow = GUIDE_EXAMPLES.find((e) => e.id === "follow-up");
+  const answers = follow?.turns.filter((t) => t.role === "assistant") ?? [];
+  assert.ok(
+    splitAnswerSections(answers[0].text).some((s) => s.heading === "Answer")
+  );
+  assert.ok(
+    splitAnswerSections(answers[1].text).some((s) => s.heading === "Do now")
+  );
 });
