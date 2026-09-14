@@ -28,6 +28,7 @@ function persona(overrides: Partial<Persona> = {}): Persona {
       slack: "#fictional-intake",
       dashboard: "Escalate → Member Experience"
     },
+    routeWhen: "Referral intake questions",
     ...overrides
   };
 }
@@ -149,6 +150,23 @@ test("parseDirectory accepts the exported shape and rejects anything else", () =
     directory([{ ...persona(), reach: null } as unknown as Persona])
   ];
   for (const value of bad) assert.equal(parseDirectory(value), null);
+});
+
+test("parseDirectory reads an object exported before Route When existed", () => {
+  const old: Record<string, unknown> = { ...persona() };
+  delete old.routeWhen;
+  const parsed = parseDirectory({ ...directory([]), personas: [old] });
+  assert.equal(parsed?.personas[0].routeWhen, "");
+  assert.equal(
+    parseDirectory(
+      directory([{ ...persona(), routeWhen: 3 } as unknown as Persona])
+    ),
+    null
+  );
+});
+
+test("Route When is not rendered into the prompt", () => {
+  assert.doesNotMatch(renderPersona(persona()), /Referral intake questions/);
 });
 
 test("staffNames gives full names, plus first names except for doctors", () => {

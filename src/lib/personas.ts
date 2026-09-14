@@ -46,6 +46,10 @@ export type Persona = {
   readonly backup: string;
   readonly escalatesTo: string;
   readonly reach: { readonly slack: string; readonly dashboard: string };
+  /** The Notion Route When property: when to send someone to this person,
+   * as clauses separated by ";". Only the contact matcher reads it (it is
+   * not rendered into the prompt); "" when the row has none. */
+  readonly routeWhen: string;
 };
 
 export type Directory = {
@@ -88,7 +92,9 @@ function isPersona(value: unknown): value is Persona {
     Boolean(reach) &&
     typeof reach === "object" &&
     isString(reach?.slack) &&
-    isString(reach?.dashboard)
+    isString(reach?.dashboard) &&
+    // Absent from objects exported before the Route When property existed.
+    (p.routeWhen === undefined || isString(p.routeWhen))
   );
 }
 
@@ -109,7 +115,10 @@ export function parseDirectory(value: unknown): Directory | null {
   return {
     version: DIRECTORY_VERSION,
     generated_at: d.generated_at,
-    personas: d.personas
+    personas: d.personas.map((persona: Persona) => ({
+      ...persona,
+      routeWhen: persona.routeWhen ?? ""
+    }))
   };
 }
 

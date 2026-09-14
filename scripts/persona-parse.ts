@@ -35,6 +35,7 @@ export type PersonaRow = {
   priority: string;
   backup: string;
   slackChannel: string;
+  routeWhen: string;
   /** The page body, rendered to markdown. */
   markdown: string;
 };
@@ -154,7 +155,8 @@ export function personaFrom(row: PersonaRow): Persona {
       dashboard:
         labelled(reach, "dashboard") ||
         (propertyIsDashboard ? property.replace(/^dashboard\s*/i, "") : "")
-    }
+    },
+    routeWhen: clean(row.routeWhen)
   };
 }
 

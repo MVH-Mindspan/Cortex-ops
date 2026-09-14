@@ -183,6 +183,25 @@ function resolver(
   };
 }
 
+// A Backup that names one directory person by a shorter name ("Casey",
+// "Casey (weekdays only)") becomes that person's full name, with any trailing
+// note kept, so answers say "contact Casey Lin". A Backup that is ambiguous,
+// names no one, names a department, or names the row itself is left as
+// written; the reference check still reports one that matches no one.
+export function withFullBackups(personas: readonly Persona[]): Persona[] {
+  const resolve = resolver(personas, []);
+  return personas.map((persona) => {
+    const match = persona.backup.trim().match(/^([^()]*?)\s*(\([^()]*\))?$/);
+    const name = match?.[1] ?? "";
+    const people = name ? resolve.person(name) : [];
+    if (people.length !== 1 || people[0] === persona) return persona;
+    const full = people[0].name.trim();
+    if (full === name) return persona;
+    const note = match?.[2];
+    return { ...persona, backup: note ? `${full} ${note}` : full };
+  });
+}
+
 function rowOf(persona: Persona): string {
   return `${persona.title.trim() || "untitled row"} (${persona.department.trim() || "no department"})`;
 }

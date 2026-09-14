@@ -4,10 +4,12 @@
 // naming someone when no one owned the work, so the pick is no longer left to
 // it.
 //
-// Each Live entry is scored by the words its Owns lines and title share with
-// the message. Rare words count more than common ones ("copay" above
-// "clinical"), and product names from the Systems lines count little: naming
-// a system does not make someone its owner. Out of scope lines count both
+// Each Live entry is scored by the words its Owns lines, Route When clauses
+// (the Notion property ops write routing triggers in) and title share with
+// the message; the directory's own names never count. Rare words count more
+// than common ones ("copay" above "clinical"), and product names from the
+// Systems lines count little: naming a system does not make someone its
+// owner. Out of scope lines count both
 // ways: the entry a line points to gains, the entry that holds it loses. The
 // top one or two entries above a threshold go into the request as a short
 // block that the prompt treats as the answer to "who" (hard rule 17); with
@@ -55,7 +57,13 @@ const STOPWORDS = new Set(
     "tuesday wednesday thursday friday saturday sunday patient member family " +
     "visit question team handle handles handling message contact issue work " +
     // "ins" is left over from "check-ins"; "task" is every orchestration item.
-    "person ins task"
+    "person ins task " +
+    // How work moves, not what it is. Route When clauses say "escalation when
+    // the specific person listed above can't resolve", "first point of
+    // contact", "when unsure"; alone, one of these named a leader for any
+    // message asking to escalate (sim, 15 Sep 2026).
+    "escalate escalated escalating escalation resolve resolved unsure first " +
+    "point specific listed above"
   ).split(" ")
 );
 
@@ -96,12 +104,27 @@ function clip(text: string): string {
     : `${line.slice(0, REASON_MAX_CHARS - 1).trimEnd()}…`;
 }
 
+type Line = { line: string; words: Set<string>; route: boolean };
+
 type Entry = {
   persona: Persona;
-  owns: { line: string; words: Set<string> }[];
+  /** The Owns lines, then the Route When clauses. */
+  lines: Line[];
   ownsWords: Set<string>;
   title: Set<string>;
 };
+
+// Route When is written as clauses separated by ";".
+function routeClauses(routeWhen: string): string[] {
+  return routeWhen.split(";").map(oneLine).filter(Boolean);
+}
+
+// The words of the directory's own names. Route When text names people
+// ("meetings with <name>"), and asking about someone must not score the row
+// that mentions them.
+function nameWordsOf(personas: readonly Persona[]): Set<string> {
+  return new Set(personas.flatMap((persona) => contactWords(persona.name)));
+}
 
 // Inverse document frequency over the entries' Owns and title words, with
 // product names (capitalised words on Systems lines) weighted down.
@@ -186,6 +209,9 @@ export type ContactMatch = {
   readonly score: number;
   /** The Owns line that matched best, or null. */
   readonly owns: string | null;
+  /** The Route When clause that matched best, when it beat every Owns line;
+   * null otherwise. */
+  readonly route: string | null;
   /** The Out of scope topic on another entry that points here, or null. */
   readonly redirect: string | null;
 };
@@ -198,15 +224,18 @@ export function matchContacts(
   const message = new Set(contactWords(text));
   if (message.size === 0) return [];
   const personas = directory.personas;
+  const nameWords = nameWordsOf(personas);
+  const wordsOf = (text: string) =>
+    new Set(contactWords(text).filter((word) => !nameWords.has(word)));
   const entries: Entry[] = personas.map((persona) => {
-    const owns = persona.owns.map((line) => ({
-      line,
-      words: new Set(contactWords(line))
-    }));
+    const lines = [
+      ...persona.owns.map((line) => ({ line, route: false })),
+      ...routeClauses(persona.routeWhen).map((line) => ({ line, route: true }))
+    ].map((line) => ({ ...line, words: wordsOf(line.line) }));
     return {
       persona,
-      owns,
-      ownsWords: new Set(owns.flatMap((o) => [...o.words])),
+      lines,
+      ownsWords: new Set(lines.flatMap((line) => [...line.words])),
       title: new Set(contactWords(persona.title))
     };
   });
@@ -241,11 +270,12 @@ export function matchContacts(
 
   const scored = entries
     .map((entry, index) => {
-      let best: { line: string; score: number } | null = null;
-      for (const own of entry.owns) {
-        const score = scoreOf(own.words, message, weight);
+      // Owns lines come first, so an Owns line wins a tie with a clause.
+      let best: { line: string; route: boolean; score: number } | null = null;
+      for (const line of entry.lines) {
+        const score = scoreOf(line.words, message, weight);
         if (score > 0 && (!best || score > best.score)) {
-          best = { line: own.line, score };
+          best = { line: line.line, route: line.route, score };
         }
       }
       const redirect = inbound.get(entry.persona);
@@ -257,7 +287,8 @@ export function matchContacts(
       const match: ContactMatch = {
         persona: entry.persona,
         score,
-        owns: best?.line ?? null,
+        owns: best && !best.route ? best.line : null,
+        route: best?.route ? best.line : null,
         redirect: redirect?.topic ?? null
       };
       return { index, match };
@@ -292,9 +323,11 @@ export function renderContactBlock(
   matches.forEach((match, i) => {
     const why = match.owns
       ? `Owns "${clip(match.owns)}".`
-      : match.redirect
-        ? `Another entry's Out of scope line sends "${clip(match.redirect)}" here.`
-        : "Title matches.";
+      : match.route
+        ? `Route when "${clip(match.route)}".`
+        : match.redirect
+          ? `Another entry's Out of scope line sends "${clip(match.redirect)}" here.`
+          : "Title matches.";
     // Reach and backup sit beside the name so the answer copies them: without
     // them here the model wrote "contact his Backup" (live eval, 14 Sep 2026).
     const reach = reachOf(match.persona);

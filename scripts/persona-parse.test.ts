@@ -42,6 +42,7 @@ function row(overrides: Partial<PersonaRow> = {}): PersonaRow {
     priority: "P0 — Launch",
     backup: "Blake Rowe",
     slackChannel: "#fictional-intake",
+    routeWhen: "Referral intake;  new leads\nfrom the website",
     markdown: BODY,
     ...overrides
   };
@@ -115,7 +116,8 @@ test("personaFrom reads the page template", () => {
     reach: {
       slack: "#fictional-intake (unverified)",
       dashboard: "Escalate → Member Experience"
-    }
+    },
+    routeWhen: "Referral intake; new leads from the website"
   });
 });
 

@@ -25,6 +25,7 @@ function persona(overrides: Partial<Persona>): Persona {
     backup: "",
     escalatesTo: "",
     reach: { slack: "", dashboard: "" },
+    routeWhen: "",
     ...overrides
   };
 }
@@ -229,12 +230,87 @@ test("the block carries the reach and backup, so the answer copies them", () => 
       }),
       score: 2,
       owns: "Copay-process questions",
+      route: null,
       redirect: null
     }
   ]);
   assert.equal(
     block.split("\n")[1],
     '1. Casey Lin, Billing Lead (Finance). Reach: Slack #fictional-billing. Backup: Revenue lead. Owns "Copay-process questions".'
+  );
+});
+
+test("a Route When clause picks the row and is given as the reason", () => {
+  const dir: Directory = {
+    ...DIRECTORY,
+    personas: [
+      ...DIRECTORY.personas,
+      persona({
+        name: "Gray Hale",
+        title: "Provider",
+        department: "Clinical",
+        owns: ["Patient visits"],
+        routeWhen: "Medication management protocol changes only; dosing policy"
+      })
+    ]
+  };
+  const matches = matchContacts(
+    dir,
+    "We need to change the medication management protocol"
+  );
+  assert.deepEqual(
+    matches.map((m) => m.persona.name),
+    ["Gray Hale"]
+  );
+  assert.equal(matches[0].owns, null);
+  assert.equal(matches[0].route, "Medication management protocol changes only");
+  assert.equal(
+    renderContactBlock(dir, matches).split("\n")[1],
+    '1. Gray Hale, Provider (Clinical). Route when "Medication management protocol changes only".'
+  );
+});
+
+test("a directory name inside Route When never scores", () => {
+  const dir: Directory = {
+    ...DIRECTORY,
+    personas: [
+      ...DIRECTORY.personas,
+      persona({
+        name: "Gray Hale",
+        title: "Coordinator",
+        owns: ["Room setup"],
+        routeWhen: "Clinic meetings with Avery"
+      })
+    ]
+  };
+  assert.deepEqual(matchContacts(dir, "Should this go to Avery?"), []);
+});
+
+test("words about how work moves never pick a row on their own", () => {
+  const dir: Directory = {
+    ...DIRECTORY,
+    personas: [
+      ...DIRECTORY.personas,
+      persona({
+        name: "Gray Hale",
+        title: "Leadership",
+        owns: ["Strategy"],
+        routeWhen:
+          "Cross-clinic decisions only; escalation when the specific person listed above can't resolve"
+      })
+    ]
+  };
+  for (const text of [
+    "This needs escalation, the family is upset",
+    "Nobody can resolve this"
+  ]) {
+    assert.deepEqual(matchContacts(dir, text), [], text);
+  }
+  assert.deepEqual(
+    matchContacts(dir, "A cross-clinic decision about opening hours").map(
+      (m) => m.persona.name
+    ),
+    ["Gray Hale"]
   );
 });
 
