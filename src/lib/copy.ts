@@ -5,6 +5,7 @@
 
 import type { PipelineErrorKind } from "./pipeline";
 import type { ReadingPreferences } from "./reading-preferences";
+import type { GuideExample } from "./guide";
 
 // Answer-style menu in the composer toolbar. `menuLabel` names the control
 // for assistive tech; the option labels double as the trigger text.
@@ -290,3 +291,352 @@ export const COVERAGE_UNCONFIRMED_LINE =
 // they were retrieved but not cited, so they are offered as related, not as
 // the source of steps.
 export const SOP_CARDS_HEADING_RELATED = "Related SOPs";
+
+// --- How to use Cortex (the guide view) ---
+
+// One label for one intent: the sidebar row, the empty-state link and the
+// page title all say this.
+export const GUIDE_LINK = "How to use Cortex";
+export const GUIDE_TRY = "Try this";
+
+// The page's prose. Plain statements about what the tool does and does not
+// do; every claim here must stay true of the pipeline it describes.
+type GuideStep = {
+  title: string;
+  body: string;
+  // The answer-heading glossary, on the "Read the answer" step only.
+  glossary?: { term: string; meaning: string }[];
+};
+export const GUIDE_COPY: {
+  title: string;
+  lede: string;
+  who: { title: string; paragraphs: string[] };
+  how: { title: string; steps: GuideStep[] };
+  conversation: { title: string; paragraphs: string[] };
+  examples: { title: string; intro: string; trimmed: string };
+  newSituation: string;
+} = {
+  title: "How to use Cortex",
+  lede: "Cortex turns a live operations situation into the steps the SOPs give for it, with the SOP behind each step one click away.",
+  who: {
+    title: "Who it is for",
+    paragraphs: [
+      "Cortex is for Mindspan operations staff: front desk, care navigation, scheduling, orders, and billing. It is for the moment a caregiver is on the phone, an insurer email needs a reply, or an order has gone missing and you need the procedure now.",
+      "It is not a clinical tool. It answers only from the team's SOPs, so it will not judge symptoms, choose a medication or a code, or interpret a result. When no SOP covers a situation it says so rather than guessing."
+    ]
+  },
+  how: {
+    title: "How to use it",
+    steps: [
+      {
+        title: "Describe the situation",
+        body: "Paste the message or write what happened in plain words: what the caller wants, what you can see in the system, what you have already tried. Leave out names, dates of birth, and contact details. Patient, chart, and MRN numbers are fine. Cortex checks for names before anything is sent."
+      },
+      {
+        title: "Read the answer",
+        body: "Every answer has the same shape, so you can go straight to the part you need.",
+        glossary: [
+          {
+            term: "Situation and Urgency",
+            meaning: "One line each, so a colleague can pick it up."
+          },
+          {
+            term: "Who handles this",
+            meaning:
+              "The team and function that likely owns the work. A steer from the team structure, not an SOP instruction."
+          },
+          {
+            term: "Do now",
+            meaning:
+              "The steps that stop the problem getting worse. If someone is waiting, contacting them is here."
+          },
+          {
+            term: "Then",
+            meaning:
+              "The investigation and the fix, in the order the SOP gives."
+          },
+          {
+            term: "Tell the patient",
+            meaning: "A script that says only what the SOP allows."
+          },
+          {
+            term: "Stop and escalate",
+            meaning: "When to stop, and who to hand to."
+          },
+          {
+            term: "Done when",
+            meaning: "The end state that means you can stop."
+          },
+          {
+            term: "What the SOPs say",
+            meaning:
+              "The sentence each step rests on, quoted word for word, with a link to the SOP."
+          },
+          {
+            term: "Not covered by the SOPs",
+            meaning: "Any gap, and who to ask about it."
+          }
+        ]
+      },
+      {
+        title: "Open the source",
+        body: "The SOP cards under an answer open the page in Notion. Cited marks a card the answer quoted. Draft marks an SOP not yet reviewed. Pin a card to keep it in your sidebar, or copy the answer to relay it into Slack or a call note."
+      }
+    ]
+  },
+  conversation: {
+    title: "Having a conversation",
+    paragraphs: [
+      "Ask a follow-up in the same box and Cortex keeps the situation in view: the caller is unreachable, the status is not what the SOP expects, the prescriber is out. Each answer is grounded again, so a follow-up can surface a different SOP.",
+      "Start a new situation when the topic changes. One situation per conversation keeps the answers precise and the recent list useful.",
+      "The Answer style menu in the toolbar switches between Concise and Detailed, and between New to Mindspan and Experienced. It applies to your next answer and is remembered in this browser.",
+      "When Cortex says no SOP covers the situation, the closest SOPs are listed as Related. Check those, ask your team lead, then use Reach out to request an SOP so the next person gets an answer."
+    ]
+  },
+  examples: {
+    title: "Example conversations",
+    intro:
+      "Three situations, with answers trimmed for length. Try one to drop it into the box.",
+    trimmed: "Trimmed from a real answer"
+  },
+  newSituation: "New situation"
+};
+
+// Real conversations, captured from the pipeline and trimmed for length:
+// every heading kept, long step lists cut, quotes left word for word. The
+// SOP cards are the ones the Worker emitted. Prompts are the eval fixtures
+// (scripts/eval/questions.json), already identifier-free.
+// Captured 14 Sep 2026 through the eval Worker (scripts/eval) with keyword
+// mode "or", the only mode returning chunks that day. Trims: "Before you
+// start" dropped, Then cut to one step, one or two quotes kept, cards cut to
+// the top three (the cited card always among them). Quotes are verbatim.
+export const GUIDE_EXAMPLES: GuideExample[] = [
+  {
+    id: "follow-up",
+    label: "A follow-up that changes the answer",
+    turns: [
+      {
+        role: "user",
+        text: "Which ICD-10 goes on an amyloid PET order?"
+      },
+      {
+        role: "assistant",
+        text: 'Who handles this: Likely the Care Support team, Provider & Clinic Support function, because the team structure gives it the day-to-day needs of active clinics and clinic operations questions.\n\nAnswer: The ICD-10 code for an amyloid PET order is chosen by the prescriber from the list of Medicare-covered codes: G31.84, R41.3, G30.0, G30.1, G30.9.\n\nWhat the SOPs say\n\n1. [Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review)](https://app.notion.com/p/Imaging-Order-Requirements-Amyloid-PET-MRI-Checklist-DRAFT-Needs-Review-3cdb5943d52d81a19494e5a6545f2a20), Amyloid PET orders — required before sending\n   "Medicare-covered ICD-10 on the order. Codes VRI has accepted: G31.84, R41.3, G30.0, G30.1, G30.9 — the prescriber selects the clinically correct one (ops never adds or changes codes; route to the provider per External Facility & Provider Calls)."\n\nNot covered by the SOPs\nNothing',
+        sops: [
+          {
+            title:
+              "🧠 Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review)",
+            category: "SOP",
+            last_edited: "2026-08-31T23:18:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Imaging-Order-Requirements-Amyloid-PET-MRI-Checklist-DRAFT-Needs-Review-3cdb5943d52d81a19494e5a6545f2a20",
+            score: 0.8812477588653564,
+            file: "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+            status: "draft",
+            cited: true,
+            quote:
+              "Medicare-covered ICD-10 on the order. Codes VRI has accepted: G31.84, R41.3, G30.0, G30.1, G30.9 — the prescriber selects the clinically correct one (ops never adds or changes codes; route to the provider per External Facility & Provider Calls)."
+          },
+          {
+            title:
+              "🛡️ Insurance Verification & Prior Authorization (DRAFT — Needs Review)",
+            category: "SOP",
+            last_edited: "2026-08-31T23:17:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Insurance-Verification-Prior-Authorization-DRAFT-Needs-Review-3cdb5943d52d81d48ecbe16b2000c326",
+            score: 0.1759306788444519,
+            file: "insurance-verification-prior-authorization-draft-needs-review.md",
+            status: "draft"
+          },
+          {
+            title: "📋 Chart Prep — Initial & Follow-Up Visits",
+            category: "SOP",
+            last_edited: "2026-08-31T22:58:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Chart-Prep-Initial-Follow-Up-Visits-344b5943d52d8157bc76d44367c1b9ba",
+            score: 0.0224993284791708,
+            file: "chart-prep-initial-follow-up-visits.md"
+          }
+        ]
+      },
+      {
+        role: "user",
+        text: "And if the prescriber is unreachable today?"
+      },
+      {
+        role: "assistant",
+        text: 'Situation: The prescriber is unreachable to select the clinically correct Medicare-covered ICD-10 code for an amyloid PET order.\n\nUrgency: Today, because the order needs to be sent to the facility.\n\nWho handles this: Likely the Care Support team, Provider & Clinic Support function, because the team structure gives it the day-to-day needs of active clinics and clinic operations questions.\n\nDo now\n1. Try to reach the prescriber through other channels, such as a message or a call to their office. Expect to see a response or a return call. If not, go to Stop and escalate.\n\nThen\n2. If the prescriber is still unreachable, route the issue to the provider per External Facility & Provider Calls, as the SOP says the prescriber selects the code. Expect to see the issue assigned to the provider.\n3. Wait for the provider\'s response with the selected code. Expect to see the code and the order updated.\n\nTell the patient\n"We are waiting to hear back from your prescriber to complete your amyloid PET order. We will let you know as soon as it is ready."\n\nStop and escalate\n- If the prescriber is unreachable and the order cannot be completed: The SOPs name no one for this. Ask your team lead. This likely sits with the Care Support team, Provider & Clinic Support function.\n\nDone when\nThe prescriber has selected the clinically correct Medicare-covered ICD-10 code and the order is updated.\n\nWhat the SOPs say\n\n1. [Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review)](https://app.notion.com/p/Imaging-Order-Requirements-Amyloid-PET-MRI-Checklist-DRAFT-Needs-Review-3cdb5943d52d81a19494e5a6545f2a20), Amyloid PET orders — required before sending\n   "Medicare-covered ICD-10 on the order. Codes VRI has accepted: G31.84, R41.3, G30.0, G30.1, G30.9 — the prescriber selects the clinically correct one (ops never adds or changes codes; route to the provider per External Facility & Provider Calls)."\n\nNot covered by the SOPs\n- What to do when the prescriber is unreachable and the order is urgent. The SOPs do not say. Ask the Care Support team, Provider & Clinic Support function, or your team lead.\n\nOne question\nIs there another prescriber available to select the ICD-10 code today?',
+        sops: [
+          {
+            title:
+              "🧠 Imaging Order Requirements — Amyloid PET & MRI Checklist (DRAFT — Needs Review)",
+            category: "SOP",
+            last_edited: "2026-08-31T23:18:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Imaging-Order-Requirements-Amyloid-PET-MRI-Checklist-DRAFT-Needs-Review-3cdb5943d52d81a19494e5a6545f2a20",
+            score: 0.8215833306312561,
+            file: "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
+            status: "draft",
+            cited: true,
+            quote:
+              "Medicare-covered ICD-10 on the order. Codes VRI has accepted: G31.84, R41.3, G30.0, G30.1, G30.9 — the prescriber selects the clinically correct one (ops never adds or changes codes; route to the provider per External Facility & Provider Calls)."
+          },
+          {
+            title:
+              "🛡️ Insurance Verification & Prior Authorization (DRAFT — Needs Review)",
+            category: "SOP",
+            last_edited: "2026-08-31T23:17:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Insurance-Verification-Prior-Authorization-DRAFT-Needs-Review-3cdb5943d52d81d48ecbe16b2000c326",
+            score: 0.017474491149187088,
+            file: "insurance-verification-prior-authorization-draft-needs-review.md",
+            status: "draft"
+          },
+          {
+            title: "📋 Chart Prep — Initial & Follow-Up Visits",
+            category: "SOP",
+            last_edited: "2026-08-31T22:58:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Chart-Prep-Initial-Follow-Up-Visits-344b5943d52d8157bc76d44367c1b9ba",
+            score: 0.006896953098475933,
+            file: "chart-prep-initial-follow-up-visits.md"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: "on-the-phone",
+    label: "A patient on the phone",
+    turns: [
+      {
+        role: "user",
+        text: "A patient wants their imaging results explained. They're asking me directly on the phone. What do I tell them?"
+      },
+      {
+        role: "assistant",
+        text: 'Situation: A patient is asking for an explanation of their imaging results over the phone. The patient needs to be told what operations staff may share and what must come from a clinician.\n\nUrgency: Now. The patient is on the phone and waiting for a response.\n\nWho handles this: Likely the Care Support team, Patient Support function, because the team structure gives it the patient lifecycle and care coordinators sit here.\n\nDo now\n1. Tell the patient that you can share the status and logistics of their imaging results, but not the interpretation of the results themselves. Expect to see the patient understand that you cannot provide a diagnosis or explanation of the results.\n2. Offer to point the patient to the portal copy of their results or send them via the records process, but only if the results have been reviewed and released by the provider. Expect to see the patient acknowledge your offer.\n\nThen\n3. Flag the provider in Athena that the patient is asking about their results, so the provider can review and discuss the results with the patient. Expect to see the flag in Athena.\n\nTell the patient\n"I can tell you that your imaging results are in and have been reviewed by the provider. However, I\'m not able to interpret the results or provide a diagnosis. The provider will be in touch with you to discuss the results and answer any questions you may have. Would you like me to point you to the portal copy of your results or send them to you via our records process?"\n\nStop and escalate\n- If the patient is anxious or confused about their results: The SOPs name the care team for clinical questions. Route the patient to the care team as a routine clinical message.\n\nDone when\nThe patient has been told what operations staff may share and what must come from a clinician, and the provider has been flagged to discuss the results with the patient.\n\nWhat the SOPs say\n\n1. [Results & Next-Steps Requests (DRAFT — Needs Review)](https://app.notion.com/p/Results-Next-Steps-Requests-DRAFT-Needs-Review-3cdb5943d52d8189bde6c232816f049f), Step 2. What ops may share\n   "Never: interpretation of an unreviewed result, reading values or impressions from a report the provider hasn\'t released, or reassurance/concern about what a result means."\n2. [Results & Next-Steps Requests (DRAFT — Needs Review)](https://app.notion.com/p/Results-Next-Steps-Requests-DRAFT-Needs-Review-3cdb5943d52d8189bde6c232816f049f), Quick-Reference Checklist\n   "Only status/logistics shared for unreviewed results; no interpretation by ops"\n\nNot covered by the SOPs\n- Nothing.',
+        sops: [
+          {
+            title: "Post-Visit Checklist SOP",
+            category: "SOP",
+            last_edited: "2026-09-01T17:56:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Post-Visit-Checklist-SOP-3c1b5943d52d80a0b30ddfe9f2e75bed",
+            score: 0.2364109605550766,
+            file: "post-visit-checklist-sop.md"
+          },
+          {
+            title: "📋 Managing the Clinical Inbox",
+            category: "SOP",
+            last_edited: "2026-09-01T20:09:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Managing-the-Clinical-Inbox-3acb5943d52d81e3b911d16e0c32aad9",
+            score: 0.22495654225349426,
+            file: "managing-the-clinical-inbox.md"
+          },
+          {
+            title: "📊 Results & Next-Steps Requests (DRAFT — Needs Review)",
+            category: "SOP",
+            last_edited: "2026-08-31T23:17:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Results-Next-Steps-Requests-DRAFT-Needs-Review-3cdb5943d52d8189bde6c232816f049f",
+            score: 0.19908550381660461,
+            file: "results-next-steps-requests-draft-needs-review.md",
+            status: "draft",
+            cited: true,
+            quote:
+              "Never: interpretation of an unreviewed result, reading values or impressions from a report the provider hasn't released, or reassurance/concern about what a result means."
+          }
+        ]
+      },
+      {
+        role: "user",
+        text: "What if it has not been reviewed yet?"
+      },
+      {
+        role: "assistant",
+        text: 'Situation: A patient is asking about their imaging results, but they have not been reviewed by the provider yet. The patient needs to be told that the results have arrived, but the provider must review them before they can be shared.\n\nUrgency: Now. The patient is asking about their results and needs a response.\n\nWho handles this: Likely the Care Support team, Patient Support function, because the team structure gives it the patient lifecycle and care coordinators sit here.\n\nDo now\n1. Tell the patient that the imaging results have arrived, but the provider must review them before they can be shared. Expect to see the patient understand that the results are not yet available for discussion.\n2. Flag the provider in Athena that the patient is asking about their results, so the provider can review and discuss the results with the patient. Expect to see the flag in Athena.\n\nThen\n3. Give the patient a specific expectation for when they will hear from the provider, such as "you\'ll hear from us by [day]". Expect to see the patient acknowledge the expectation.\n\nTell the patient\n"Your imaging results have arrived, but the provider needs to review them before we can discuss them with you. The provider will review the results and will be in touch with you by [day] to discuss them. If there\'s anything that needs to be discussed sooner, the clinician will reach out to you."\n\nStop and escalate\n- If the patient is anxious or confused about their results: The SOPs name the care team for clinical questions. Route the patient to the care team as a routine clinical message.\n\nDone when\nThe patient has been told that the results have arrived, but the provider must review them before they can be shared, and the provider has been flagged to review and discuss the results with the patient.\n\nWhat the SOPs say\n\n1. [Results & Next-Steps Requests (DRAFT — Needs Review)](https://app.notion.com/p/Results-Next-Steps-Requests-DRAFT-Needs-Review-3cdb5943d52d8189bde6c232816f049f), Step 3. Resulted but not reviewed\n   "Tell the patient the result has arrived and the provider will review it; give a specific expectation (e.g., \'you\'ll hear from us by [day]\')."\n\nNot covered by the SOPs\n- Nothing.',
+        sops: [
+          {
+            title: "📊 Results & Next-Steps Requests (DRAFT — Needs Review)",
+            category: "SOP",
+            last_edited: "2026-08-31T23:17:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Results-Next-Steps-Requests-DRAFT-Needs-Review-3cdb5943d52d8189bde6c232816f049f",
+            score: 0.965302586555481,
+            file: "results-next-steps-requests-draft-needs-review.md",
+            status: "draft",
+            cited: true,
+            quote:
+              "If the provider's review surfaces something needing discussion, the clinician makes that call — ops schedules it."
+          },
+          {
+            title: "Post-Visit Checklist SOP",
+            category: "SOP",
+            last_edited: "2026-09-01T17:56:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Post-Visit-Checklist-SOP-3c1b5943d52d80a0b30ddfe9f2e75bed",
+            score: 0.4797479510307312,
+            file: "post-visit-checklist-sop.md"
+          },
+          {
+            title:
+              "🧭 Misrouted & Missing Orders — Cross-System Reconciliation (DRAFT — Needs Review)",
+            category: "SOP",
+            last_edited: "2026-08-31T23:16:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Misrouted-Missing-Orders-Cross-System-Reconciliation-DRAFT-Needs-Review-3cdb5943d52d81afadb3fc3c6448a68a",
+            score: 0.366950660943985,
+            file: "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md",
+            status: "draft"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: "not-covered",
+    label: "Nothing covers it",
+    turns: [
+      {
+        role: "user",
+        text: "A caregiver is asking whether we validate parking at the clinic. What do I tell them?"
+      },
+      {
+        role: "assistant",
+        text: COVERAGE_NONE_LINE,
+        sops: [
+          {
+            title: "🎓 Dementia & Memory Loss Communication Training",
+            category: "SOP",
+            last_edited: "2026-08-31T22:59:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Dementia-Memory-Loss-Communication-Training-3adb5943d52d819e9065c620bf662eb3",
+            score: 0.09638752788305283,
+            file: "dementia-memory-loss-communication-training.md"
+          },
+          {
+            title: "📝 New Clinic Setup (Embed)",
+            category: "SOP",
+            last_edited: "2026-08-31T22:59:00.000Z",
+            source_url:
+              "https://app.notion.com/p/New-Clinic-Setup-Embed-335b5943d52d80f2b61becb64c47d0f8",
+            score: 0.016270682215690613,
+            file: "new-clinic-setup-embed.md"
+          },
+          {
+            title: "📝 Transition to Care Support",
+            category: "SOP",
+            last_edited: "2026-08-31T22:59:00.000Z",
+            source_url:
+              "https://app.notion.com/p/Transition-to-Care-Support-335b5943d52d8045b7d3dc166f6f96fe",
+            score: 0.016270682215690613,
+            file: "transition-to-care-support.md"
+          }
+        ],
+        coverageBlocked: "none"
+      }
+    ]
+  }
+];

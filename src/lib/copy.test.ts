@@ -95,11 +95,28 @@ test("a recents title is the first non-empty line, up to 48 characters", () => {
 
 // The voice rules in the file header, enforced over every line at once so a
 // new constant is covered the moment it is added.
+// Walks nested objects and arrays too, so the guide copy and the scenario
+// templates are covered, not only the top-level constants. SOP titles inside
+// the example cards are the SOPs' own (Notion allows emoji there) and are
+// skipped by name.
+function strings(value: unknown, name: string): [string, string][] {
+  if (typeof value === "string") return [[name, value]];
+  if (Array.isArray(value))
+    return value.flatMap((v, i) => strings(v, `${name}[${i}]`));
+  if (value && typeof value === "object")
+    return Object.entries(value).flatMap(([k, v]) =>
+      k === "title" && name.includes("sops") ? [] : strings(v, `${name}.${k}`)
+    );
+  return [];
+}
+
 test("every string in the copy file keeps the file's voice", () => {
-  const lines = Object.entries(copy).filter(
-    ([, value]) => typeof value === "string"
-  ) as [string, string][];
-  assert.ok(lines.length > 20);
+  const lines = Object.entries(copy).flatMap(([name, value]) =>
+    typeof value === "function" || value instanceof RegExp
+      ? []
+      : strings(value, name)
+  );
+  assert.ok(lines.length > 60);
   for (const [name, line] of lines) {
     assert.ok(line.length > 0, name);
     assert.doesNotMatch(line, /\p{Extended_Pictographic}/u, name);
