@@ -4,10 +4,10 @@
 // naming someone when no one owned the work, so the pick is no longer left to
 // it.
 //
-// Each Live entry is scored by the words its Owns lines and title share with
-// the message. Rare words count more than common ones ("copay" above
-// "clinical"), and product names from the Systems lines count little: naming
-// a system does not make someone its owner. Out of scope lines count both
+// Each Live entry is scored by the words its Owns lines, title and Route When
+// hint share with the message. Rare words count more than common ones ("copay"
+// above "clinical"), and product names from the Systems lines count little:
+// naming a system does not make someone its owner. Out of scope lines count both
 // ways: the entry a line points to gains, the entry that holds it loses. The
 // top one or two entries above a threshold go into the request as a short
 // block that the prompt treats as the answer to "who" (hard rule 17); with
@@ -101,14 +101,19 @@ type Entry = {
   owns: { line: string; words: Set<string> }[];
   ownsWords: Set<string>;
   title: Set<string>;
+  routeWhen: Set<string>;
 };
 
-// Inverse document frequency over the entries' Owns and title words, with
-// product names (capitalised words on Systems lines) weighted down.
+// Inverse document frequency over the entries' Owns, title and Route When
+// words, with product names (capitalised words on Systems lines) weighted down.
 function weightsFor(entries: Entry[]): (word: string) => number {
   const df = new Map<string, number>();
   for (const entry of entries) {
-    for (const word of new Set([...entry.ownsWords, ...entry.title])) {
+    for (const word of new Set([
+      ...entry.ownsWords,
+      ...entry.title,
+      ...entry.routeWhen
+    ])) {
       df.set(word, (df.get(word) ?? 0) + 1);
     }
   }
@@ -186,6 +191,8 @@ export type ContactMatch = {
   readonly score: number;
   /** The Owns line that matched best, or null. */
   readonly owns: string | null;
+  /** The Route When hint, when it shares a word with the message, or null. */
+  readonly routeWhen: string | null;
   /** The Out of scope topic on another entry that points here, or null. */
   readonly redirect: string | null;
 };
@@ -207,7 +214,8 @@ export function matchContacts(
       persona,
       owns,
       ownsWords: new Set(owns.flatMap((o) => [...o.words])),
-      title: new Set(contactWords(persona.title))
+      title: new Set(contactWords(persona.title)),
+      routeWhen: new Set(contactWords(persona.routeWhen))
     };
   });
   const weight = weightsFor(entries);
@@ -249,15 +257,18 @@ export function matchContacts(
         }
       }
       const redirect = inbound.get(entry.persona);
+      const routeWhenScore = scoreOf(entry.routeWhen, message, weight);
       const score =
         scoreOf(entry.ownsWords, message, weight) +
         scoreOf(entry.title, message, weight) +
+        routeWhenScore +
         REDIRECT_WEIGHT * (redirect?.score ?? 0) -
         (penalty.get(entry.persona) ?? 0);
       const match: ContactMatch = {
         persona: entry.persona,
         score,
         owns: best?.line ?? null,
+        routeWhen: routeWhenScore > 0 ? entry.persona.routeWhen : null,
         redirect: redirect?.topic ?? null
       };
       return { index, match };
@@ -292,9 +303,11 @@ export function renderContactBlock(
   matches.forEach((match, i) => {
     const why = match.owns
       ? `Owns "${clip(match.owns)}".`
-      : match.redirect
-        ? `Another entry's Out of scope line sends "${clip(match.redirect)}" here.`
-        : "Title matches.";
+      : match.routeWhen
+        ? `Route when "${clip(match.routeWhen)}".`
+        : match.redirect
+          ? `Another entry's Out of scope line sends "${clip(match.redirect)}" here.`
+          : "Title matches.";
     // Reach and backup sit beside the name so the answer copies them: without
     // them here the model wrote "contact his Backup" (live eval, 14 Sep 2026).
     const reach = reachOf(match.persona);

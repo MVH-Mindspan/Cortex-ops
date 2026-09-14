@@ -39,8 +39,9 @@ The person is picked in code before the model answers
 (`src/lib/contacts.ts`). Left to itself, the model tended to name whoever sat
 on the team it had just named.
 
-- **Scoring:** each Live row is scored by the words its Core Responsibilities
-  and Title share with the question. Rare words count more than common ones.
+- **Scoring:** each Live row is scored by the words its Route When hint, Core
+  Responsibilities and Title share with the question. Rare words count more than
+  common ones.
   Product names (the capitalised words on Systems lines) count little, since
   naming a system does not make someone its owner.
 - **Out of Scope:** these lines count both ways. The person a line points to
@@ -72,6 +73,9 @@ and a test keeps one out of the prompt.
 
 The page body uses these headings. A missing heading leaves that field empty.
 
+- `## Route When`: free text (prose or bullets) saying when to route here. Its
+  words feed the code matcher exactly like Core Responsibilities, so phrase it
+  in the words people use for the work. Optional.
 - `## Core Responsibilities`: one bullet per responsibility. Required.
 - `## Domain Expertise`: the `Systems:` line is used.
 - `## Out of Scope (Do NOT route here)`: one bullet per topic, ending
