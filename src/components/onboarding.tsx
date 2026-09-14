@@ -138,78 +138,86 @@ export function Onboarding({
           </button>
         </div>
 
-        <div
-          key={step}
-          className={cn(
-            "flex flex-1 flex-col justify-center py-8",
-            "animate-in fade-in duration-300 ease-out-quart",
-            direction === 1 ? "slide-in-from-right-2" : "slide-in-from-left-2"
-          )}
-        >
-          <h1
-            ref={headingRef}
-            tabIndex={-1}
-            className="text-center font-serif text-[40px] leading-tight text-foreground outline-none max-[560px]:text-[32px]"
-          >
-            {screen.title}
-          </h1>
-          <p className="mx-auto mt-3 max-w-[520px] text-center text-[15px] leading-relaxed text-muted-foreground">
-            {screen.body}
-          </p>
-          <div className="mt-10">
-            {current === "paste" && (
-              <ComposerDemo readingPreferences={readingPreferences} />
-            )}
-            {current === "shape" && <AnswerAnatomy />}
-            {current === "source" && (
-              <SourceScreen pinnedKeys={pinnedKeys} onTogglePin={onTogglePin} />
-            )}
-            {current === "followUp" && (
-              <FollowUpScreen readingPreferences={readingPreferences} />
-            )}
-            {current === "tryOne" && <TryOneScreen onTry={onTryExample} />}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-4">
-          <button
-            type="button"
-            onClick={() => go(step - 1)}
+        {/* Content and controls travel together: the column is centered
+            as one unit, so Next sits right under the visual on any window
+            height instead of pinned to the bottom edge, far from the eye.
+            Only the screen animates; the dots and buttons stay put. */}
+        <div className="flex flex-1 flex-col justify-center py-8">
+          <div
+            key={step}
             className={cn(
-              "w-[72px] text-left text-[13px] text-muted-foreground hover:text-foreground",
-              step === 0 && "invisible"
+              "animate-in fade-in duration-300 ease-out-quart",
+              direction === 1 ? "slide-in-from-right-2" : "slide-in-from-left-2"
             )}
           >
-            {ONBOARDING_COPY.back}
-          </button>
-          <div className="flex items-center gap-1.5">
-            {STEPS.map((name, index) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => go(index)}
-                aria-label={`${index + 1} of ${total}`}
-                aria-current={index === step ? "step" : undefined}
-                className={cn(
-                  "h-1.5 rounded-full transition-[width,background-color] duration-200 ease-out-quart",
-                  index === step
-                    ? "w-4 bg-foreground"
-                    : "w-1.5 bg-muted-foreground/40 hover:bg-muted-foreground"
-                )}
-              />
-            ))}
-          </div>
-          {last ? (
-            <span className="w-[72px]" />
-          ) : (
-            <button
-              type="button"
-              onClick={() => go(step + 1)}
-              className="flex h-[34px] w-[72px] items-center justify-center rounded-full bg-accent text-[15px] font-medium text-foreground hover:bg-muted"
+            <h1
+              ref={headingRef}
+              tabIndex={-1}
+              className="text-center font-serif text-[40px] leading-tight text-foreground outline-none max-[560px]:text-[32px]"
             >
-              {ONBOARDING_COPY.next}
-            </button>
-          )}
+              {screen.title}
+            </h1>
+            <p className="mx-auto mt-3 max-w-[520px] text-center text-[15px] leading-relaxed text-muted-foreground">
+              {screen.body}
+            </p>
+            <div className="mt-10">
+              {current === "paste" && (
+                <ComposerDemo readingPreferences={readingPreferences} />
+              )}
+              {current === "shape" && <AnswerAnatomy />}
+              {current === "source" && (
+                <SourceScreen
+                  pinnedKeys={pinnedKeys}
+                  onTogglePin={onTogglePin}
+                />
+              )}
+              {current === "followUp" && (
+                <FollowUpScreen readingPreferences={readingPreferences} />
+              )}
+              {current === "tryOne" && <TryOneScreen onTry={onTryExample} />}
+            </div>
+          </div>
+
+          <div className="mt-10 flex flex-col items-center gap-5">
+            <div className="flex items-center gap-1.5">
+              {STEPS.map((name, index) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => go(index)}
+                  aria-label={`${index + 1} of ${total}`}
+                  aria-current={index === step ? "step" : undefined}
+                  className={cn(
+                    "h-1.5 rounded-full transition-[width,background-color] duration-200 ease-out-quart",
+                    index === step
+                      ? "w-4 bg-foreground"
+                      : "w-1.5 bg-muted-foreground/40 hover:bg-muted-foreground"
+                  )}
+                />
+              ))}
+            </div>
+            <div className="flex h-[38px] items-center gap-6">
+              {step > 0 && (
+                <button
+                  type="button"
+                  onClick={() => go(step - 1)}
+                  className="text-[13px] text-muted-foreground hover:text-foreground"
+                >
+                  {ONBOARDING_COPY.back}
+                </button>
+              )}
+              {!last && (
+                // The one accent, spent on the one primary action.
+                <button
+                  type="button"
+                  onClick={() => go(step + 1)}
+                  className="pressable flex h-[38px] items-center justify-center rounded-full bg-brand-orange px-7 text-[15px] font-medium text-white hover:opacity-90"
+                >
+                  {ONBOARDING_COPY.next}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
