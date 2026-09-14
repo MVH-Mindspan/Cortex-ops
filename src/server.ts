@@ -65,6 +65,7 @@ import {
   type Directory
 } from "./lib/personas";
 import { buildScreenPrompt } from "./lib/screen";
+import { contactBlockFor } from "./lib/contacts";
 import { expandSearchQuery } from "./lib/query";
 import {
   normalizeReadingPreferences,
@@ -433,14 +434,18 @@ export class ChatAgent extends AIChatAgent<Env> {
           // of the model window (passageBudgetFor). The entries carry the
           // same labels as structure, so a "[3]" in the model's citation
           // resolves back to the file it came from.
-          const directory = renderDirectory(await loadDirectory(this.env));
+          const directoryData = await loadDirectory(this.env);
+          const directory = renderDirectory(directoryData);
           const systemPrompt = buildSystemPrompt(readingPreferences, directory);
+          // Who to contact is matched in code (lib/contacts.ts), not left to
+          // the model; the block rides in the request next to the rules.
+          const contacts = contactBlockFor(directoryData, conversation);
           const history = generationHistory(conversation.slice(0, -1));
           const passageBudget = passageBudgetFor({
             systemChars: systemPrompt.length,
             history,
             messageChars: latest?.content.length ?? 0,
-            rulesChars: RULES_BLOCK_MAX_CHARS
+            rulesChars: RULES_BLOCK_MAX_CHARS + contacts.block.length
           });
           const { passages, entries, used } = buildPassages(
             ranked,
@@ -458,7 +463,8 @@ export class ChatAgent extends AIChatAgent<Env> {
           const userBlock = buildUserBlock(
             passages,
             latest?.content ?? "",
-            rulesBlock
+            rulesBlock,
+            contacts.block
           );
           answerStats = {
             chunks: chunks.length,
@@ -471,7 +477,10 @@ export class ChatAgent extends AIChatAgent<Env> {
             rules_tier_a: rules.filter((r) => r.tier === "A").length,
             passage_budget: passageBudget,
             directory: directory ? "ok" : "missing",
-            directory_chars: directory.length
+            directory_chars: directory.length,
+            // Counts and a score only: never the names matched.
+            contact_matches: contacts.matches,
+            contact_top: contacts.top
           };
           answer = new AnswerStream({
             ctx: { labels, sops: ranked, meta },

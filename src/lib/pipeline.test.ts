@@ -502,3 +502,13 @@ test("rules sit between passages and the latest message", () => {
     "SOP passages\n\nsource\n\nrules\n\nTeam member's message:\n\nmessage"
   );
 });
+test("the contact match sits after the rules, just before the message", () => {
+  assert.equal(
+    buildUserBlock(["source"], "message", "rules", "match"),
+    "SOP passages\n\nsource\n\nrules\n\nmatch\n\nTeam member's message:\n\nmessage"
+  );
+  assert.equal(
+    buildUserBlock(["source"], "message", "", "match"),
+    "SOP passages\n\nsource\n\nmatch\n\nTeam member's message:\n\nmessage"
+  );
+});

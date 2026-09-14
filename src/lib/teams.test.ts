@@ -14,7 +14,7 @@ const rendered = renderTeamStructure();
 function dataStrings(): string[] {
   const out: string[] = [];
   for (const team of TEAMS) {
-    out.push(team.name, team.purpose, team.route ?? "");
+    out.push(team.name, team.purpose);
     for (const fn of team.functions) {
       out.push(fn.name, fn.covers, ...(fn.aliases ?? []));
     }
@@ -52,15 +52,10 @@ test("renders every team header and function line once, in order", () => {
   }
 });
 
-test("renders the route only for teams that have one", () => {
-  const withRoute = TEAMS.filter((team) => team.route);
-  assert.equal(withRoute.length, 1);
-  assert.equal(withRoute[0].name, "Care Support");
-  assert.equal(countOf(rendered, "Route work through: "), 1);
-  assert.match(
-    rendered,
-    /Care Support team: [^\n]* Route work through: Inbound Triage \(Zendesk\)\.\n/
-  );
+test("names no intake route or ticketing system", () => {
+  // Operator decision (14 Sep 2026): there is no Zendesk; work reaches a team
+  // on Slack, which the prompt says, not this structure.
+  assert.doesNotMatch(rendered, /Route work through|Zendesk|ticket queue/i);
 });
 
 test("renders aliases only where a function has them", () => {
@@ -127,7 +122,7 @@ test("carries no people, channels, links, arrows, dashes, or vendor products", (
     assert.doesNotMatch(s, /#\S/, s);
     assert.doesNotMatch(s, /@|https?:\/\/|slack|unverified|interim/i, s);
     assert.doesNotMatch(s, /[—→\u{1F300}-\u{1FAFF}]/u, s);
-    assert.doesNotMatch(s, /\bRegal\b|\bAWS\b/, s);
+    assert.doesNotMatch(s, /\bRegal\b|\bAWS\b|Zendesk/, s);
     assert.doesNotMatch(
       s,
       /Stephanie|Dangberg|Mallory|Elson|Erik|Muci|Lindsay/,

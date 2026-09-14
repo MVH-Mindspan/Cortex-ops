@@ -33,6 +33,30 @@ gh workflow run "Sync SOPs" --ref main
 If R2 has no directory, or it cannot be read, answers go out exactly as
 before: team-level steer only, and no person named.
 
+## Who gets named
+
+The person is picked in code before the model answers
+(`src/lib/contacts.ts`). Left to itself, the model tended to name whoever sat
+on the team it had just named.
+
+- **Scoring:** each Live row is scored by the words its Core Responsibilities
+  and Title share with the question. Rare words count more than common ones.
+  Product names (the capitalised words on Systems lines) count little, since
+  naming a system does not make someone its owner.
+- **Out of Scope:** these lines count both ways. The person a line points to
+  gains, and the person who holds the line loses.
+- **The match:** the top one or two rows above a threshold go into the request
+  as a "Team directory match" block, with each one's reach and backup, and
+  the answer names the first. When no
+  row scores high enough, the block says so and the answer names no one.
+
+So the wording of a row matters. Use the words people actually use for the
+work (for example "copay") in Core Responsibilities, and list the work someone
+should not get in Out of Scope, with where it goes instead.
+
+Hand-overs between teams always go "on Slack". There is no ticketing system,
+and a test keeps one out of the prompt.
+
 ## What a row needs
 
 | Property           | Used for                                                                                         |
@@ -54,8 +78,9 @@ The page body uses these headings. A missing heading leaves that field empty.
   `(route to <person or department>)` or `(→ <person>)`. Separate two
   targets with `/`.
 - `## Escalation Path`: `Backup:` and `Escalates to:` lines.
-- `## How to Reach`: `Slack:` and `Dashboard:` lines. Mark a channel nobody
-  has confirmed `(unverified)`; answers then give the dashboard route first.
+- `## How to Reach`: `Slack:` and `Dashboard:` lines. Answers give the Slack
+  route, and the dashboard only when there is no Slack line. An
+  `(unverified)` marker is for editors; answers never show it.
 
 ## Checks
 
@@ -121,3 +146,6 @@ Past about 50 people, move the directory into retrieval instead.
   invented rows.
 - The spec does not map people to the routing map's departments. The
   Routing Department property was added for that.
+- The spec leaves the choice of person to the model. A live eval showed it
+  misrouting (a copay question went to an enrollment lead), so the person is
+  matched in code and the model is told to use the match.

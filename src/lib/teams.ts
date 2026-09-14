@@ -28,8 +28,6 @@ export type TeamFunction = {
 export type Team = {
   readonly name: TeamName;
   readonly purpose: string;
-  /** How work reaches the team, when the page names an intake. */
-  readonly route?: string;
   readonly functions: readonly TeamFunction[];
 };
 
@@ -86,13 +84,14 @@ export const TEAMS: readonly Team[] = [
     name: "Care Support",
     purpose:
       "the operational backbone for live clinics and established partners; the first point of contact for inbound requests from patients, providers, and health-system staff",
-    route: "Inbound Triage (Zendesk)",
     functions: [
       {
+        // No ticketing system (operator decision, 14 Sep 2026): requests
+        // arrive and move on Slack, which the prompt names, not this data.
         name: "Inbound Triage",
         covers:
-          "every inbound request enters one Zendesk queue to be categorised, prioritised, and routed; inbound mail is scanned here",
-        aliases: ["Zendesk triage", "ticket queue"]
+          "every inbound request is categorised, prioritised, and routed here; inbound mail is scanned here",
+        aliases: ["triage"]
       },
       {
         name: "Patient Support (Enrollment & Member Experience)",
@@ -253,8 +252,7 @@ export function renderTeamStructure(
 ): string {
   const blocks: string[] = [];
   for (const team of teams) {
-    const route = team.route ? ` Route work through: ${team.route}.` : "";
-    const lines = [`${team.name} team: ${team.purpose}.${route}`];
+    const lines = [`${team.name} team: ${team.purpose}.`];
     for (const fn of team.functions) {
       lines.push(`- ${fn.name}: ${fn.covers}.${alsoCalled(fn.aliases)}`);
     }

@@ -22,7 +22,8 @@ export const PASSAGE_CHAR_BUDGET = 26_000;
 // team directory adds up to ~12k to the prompt, so the passages get what the
 // request leaves instead (passageBudgetFor): the full 26k for an ordinary
 // turn, never less than MIN_PASSAGE_CHARS for the longest history plus the
-// longest paste. prompt.test.ts asserts both.
+// longest paste, with the contact match block (lib/contacts.ts) reserved
+// next to the rules. prompt.test.ts asserts both.
 export const CONTEXT_WINDOW_TOKENS = 24_000;
 export const CHARS_PER_TOKEN = 3.5;
 export const WINDOW_RESERVE_TOKENS = 2_000;
@@ -33,7 +34,7 @@ export const MAX_OUTPUT_TOKENS = 3_000;
 export const WINDOW_CHARS =
   (CONTEXT_WINDOW_TOKENS - MAX_OUTPUT_TOKENS - WINDOW_RESERVE_TOKENS) *
   CHARS_PER_TOKEN;
-export const MIN_PASSAGE_CHARS = 14_500;
+export const MIN_PASSAGE_CHARS = 13_500;
 
 // The passage budget for one request: whatever the window has left after the
 // system prompt, the prior turns, the latest message and the repeated-rules
@@ -317,15 +318,17 @@ export function buildPassages(
   return { passages, used, entries };
 }
 
-// The user turn sent to the generation model: the labelled passages, then the
-// team member's message. One place, so the eval harness sends the same bytes
-// as the Worker.
+// The user turn sent to the generation model: the labelled passages, the
+// repeated rules, the team directory match (lib/contacts.ts), then the team
+// member's message. One place, so the eval harness sends the same bytes as
+// the Worker.
 export function buildUserBlock(
   passages: string[],
   message: string,
-  rulesBlock = ""
+  rulesBlock = "",
+  contactBlock = ""
 ): string {
-  return `SOP passages\n\n${passages.join("\n\n")}${rulesBlock ? `\n\n${rulesBlock}` : ""}\n\nTeam member's message:\n\n${message}`;
+  return `SOP passages\n\n${passages.join("\n\n")}${rulesBlock ? `\n\n${rulesBlock}` : ""}${contactBlock ? `\n\n${contactBlock}` : ""}\n\nTeam member's message:\n\n${message}`;
 }
 
 // Coverage is replayed only to generation, never to query rewriting.

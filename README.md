@@ -208,7 +208,7 @@ generating an answer. Conditions and exceptions stay attached; an
 oversized rule is omitted from the repeated block, while its original
 passage remains available. The prompt limits remain inside the model
 window: 21,500 prompt characters (33,500 with the team directory at its
-cap), up to 26,000 passage characters (never fewer than 14,500), 1,500
+cap), up to 26,000 passage characters (never fewer than 13,500), 1,500
 repeated-rule characters, and 9,000 history characters including
 coverage prefixes.
 

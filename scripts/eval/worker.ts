@@ -18,6 +18,7 @@ import {
   parseDirectory,
   renderDirectory
 } from "../../src/lib/personas.ts";
+import { contactBlockFor } from "../../src/lib/contacts.ts";
 import type { ReadingPreferences } from "../../src/lib/reading-preferences.ts";
 import {
   ANSWER_CUT_SHORT_LINE,
@@ -198,9 +199,11 @@ export default {
           });
         // The same team directory, prompt and passage budget as the Worker.
         const directoryObject = await env.DIRECTORY_BUCKET.get(DIRECTORY_KEY);
-        const directory = renderDirectory(
-          directoryObject ? parseDirectory(await directoryObject.json()) : null
-        );
+        const directoryData = directoryObject
+          ? parseDirectory(await directoryObject.json())
+          : null;
+        const directory = renderDirectory(directoryData);
+        const contacts = contactBlockFor(directoryData, conversation);
         const systemPrompt = buildSystemPrompt(
           body.readingPreferences,
           directory
@@ -215,7 +218,7 @@ export default {
               systemChars: systemPrompt.length,
               history,
               messageChars: conversation.at(-1)?.content.length ?? 0,
-              rulesChars: RULES_BLOCK_MAX_CHARS
+              rulesChars: RULES_BLOCK_MAX_CHARS + contacts.block.length
             })
           }
         );
@@ -249,7 +252,8 @@ export default {
               content: buildUserBlock(
                 passages,
                 conversation.at(-1)?.content ?? "",
-                renderRulesBlock(rules)
+                renderRulesBlock(rules),
+                contacts.block
               )
             }
           ],
@@ -289,7 +293,9 @@ export default {
           outcome,
           citations: sink.repair?.cited ?? [],
           ms,
-          directory_chars: directory.length
+          directory_chars: directory.length,
+          // Local only (see above); names stay under .context.
+          contact_block: contacts.block
         });
       }
       return json({
