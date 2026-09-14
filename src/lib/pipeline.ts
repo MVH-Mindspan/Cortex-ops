@@ -14,10 +14,15 @@ export const FULL_DOC_COUNT = 3;
 // Rough character budget for the SOP passages block (~8k tokens).
 export const PASSAGE_CHAR_BUDGET = 26_000;
 
-// The 24k model window includes <=21.5k prompt chars, 26k passages, 1.5k
-// repeated rules, 9k prior turns (coverage prefixes included), and the latest
-// <=8k message. At 3.5 chars/token, plus 3k output and 2k template/label
-// reserve, this is <=23,857 tokens. prompt.test.ts asserts the inequality.
+// The 24k model window includes the prompt, the passages, <=1.5k repeated
+// rules, <=9k prior turns (coverage prefixes included), and the latest <=8k
+// message. At 3.5 chars/token, plus 3k output and 2k template/label reserve,
+// that leaves WINDOW_CHARS of input. Without a team directory the prompt is
+// <=21.5k and the passages always get their full 26k (<=23,857 tokens). The
+// team directory adds up to ~12k to the prompt, so the passages get what the
+// request leaves instead (passageBudgetFor): the full 26k for an ordinary
+// turn, never less than MIN_PASSAGE_CHARS for the longest history plus the
+// longest paste. prompt.test.ts asserts both.
 export const CONTEXT_WINDOW_TOKENS = 24_000;
 export const CHARS_PER_TOKEN = 3.5;
 export const WINDOW_RESERVE_TOKENS = 2_000;
@@ -25,6 +30,33 @@ export const HISTORY_MAX_MESSAGES = 12;
 export const HISTORY_CHAR_BUDGET = 9_000;
 export const MAX_MESSAGE_CHARS = 8_000;
 export const MAX_OUTPUT_TOKENS = 3_000;
+export const WINDOW_CHARS =
+  (CONTEXT_WINDOW_TOKENS - MAX_OUTPUT_TOKENS - WINDOW_RESERVE_TOKENS) *
+  CHARS_PER_TOKEN;
+export const MIN_PASSAGE_CHARS = 14_500;
+
+// The passage budget for one request: whatever the window has left after the
+// system prompt, the prior turns, the latest message and the repeated-rules
+// reserve, capped at PASSAGE_CHAR_BUDGET. The rules block is chosen from the
+// passages, so the caller reserves its ceiling rather than its actual size.
+export function passageBudgetFor(request: {
+  systemChars: number;
+  history: ReadonlyArray<{ content: string }>;
+  messageChars: number;
+  rulesChars: number;
+}): number {
+  const historyChars = request.history.reduce(
+    (sum, turn) => sum + turn.content.length,
+    0
+  );
+  const room =
+    WINDOW_CHARS -
+    request.systemChars -
+    historyChars -
+    request.messageChars -
+    request.rulesChars;
+  return Math.max(0, Math.min(PASSAGE_CHAR_BUDGET, Math.floor(room)));
+}
 
 // The name screen reads the whole message in overlapping windows so a name in
 // the tail of a long paste is seen (the model call is cheap; the cap above

@@ -1,17 +1,44 @@
 import { RULES_BLOCK_MAX_CHARS } from "./rules.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SYSTEM_PROMPT, SYSTEM_PROMPT_MAX_CHARS } from "./prompt.ts";
+import {
+  buildSystemPrompt,
+  SYSTEM_PROMPT,
+  SYSTEM_PROMPT_MAX_CHARS,
+  SYSTEM_PROMPT_WITH_DIRECTORY_MAX_CHARS
+} from "./prompt.ts";
 import { renderTeamStructure, TEAMS } from "./teams.ts";
+import { PERSONAS_MAX_CHARS } from "./personas.ts";
+import type { ReadingPreferences } from "./reading-preferences.ts";
 import {
   CHARS_PER_TOKEN,
   CONTEXT_WINDOW_TOKENS,
   HISTORY_CHAR_BUDGET,
   MAX_MESSAGE_CHARS,
   MAX_OUTPUT_TOKENS,
+  MIN_PASSAGE_CHARS,
   PASSAGE_CHAR_BUDGET,
+  passageBudgetFor,
+  WINDOW_CHARS,
   WINDOW_RESERVE_TOKENS
 } from "./pipeline.ts";
+
+// A fictional directory entry: the real directory lives in Notion and R2,
+// never in this public repository.
+const DIRECTORY = [
+  "Avery Quinn: Intake Lead (Operations)",
+  "- Owns: New referrals",
+  "- Out of scope: Clinical questions → Blake Rowe",
+  "- Backup: Blake Rowe",
+  "- Reach: Slack #fictional-intake"
+].join("\n");
+
+const STYLES: ReadingPreferences[] = [
+  { length: "concise", familiarity: "new" },
+  { length: "concise", familiarity: "experienced" },
+  { length: "detailed", familiarity: "new" },
+  { length: "detailed", familiarity: "experienced" }
+];
 
 const HEADINGS = [
   "### Hard rules",
@@ -155,6 +182,128 @@ test("the worst-case request fits the model window", () => {
       CONTEXT_WINDOW_TOKENS,
     String(inputTokens)
   );
+});
+
+test("adds the team directory only when one is passed, after the team structure", () => {
+  assert.equal(buildSystemPrompt(undefined, ""), SYSTEM_PROMPT);
+  assert.equal(buildSystemPrompt(undefined, " \n "), SYSTEM_PROMPT);
+  const prompt = buildSystemPrompt(undefined, DIRECTORY);
+  assert.equal(prompt.split("### Team directory").length, 2);
+  assert.equal(prompt.split(DIRECTORY).length, 2);
+  ordered(prompt, [
+    "### Team structure",
+    renderTeamStructure(),
+    "### Team directory",
+    DIRECTORY,
+    "### Example"
+  ]);
+  assert.match(
+    prompt,
+    /Copy the name, title, department and reach exactly as the entry writes them, and always give the Backup: "If <Name> is unavailable, contact <Backup>\."/
+  );
+  assert.match(
+    prompt,
+    /When no entry covers the work, name no one and keep the team steer\./
+  );
+});
+
+test("with a directory the rules allow one named contact; without, they forbid any", () => {
+  const withDirectory = buildSystemPrompt(undefined, DIRECTORY);
+  assert.match(SYSTEM_PROMPT, / Never a person, never a channel\./);
+  assert.doesNotMatch(withDirectory, /Never a person, never a channel/);
+  assert.doesNotMatch(SYSTEM_PROMPT, /^17\. /m);
+  assert.match(
+    withDirectory,
+    /^17\. The team directory is a steer, not an SOP\./m
+  );
+  assert.match(
+    withDirectory,
+    /^12\. The team structure is a steer, not an SOP\./m
+  );
+  assert.match(
+    withDirectory,
+    /"the team structure" for who handles the work, and "the team directory" for who to contact/
+  );
+  assert.match(withDirectory, /Who handles this, at most 5 sentences/);
+  assert.match(SYSTEM_PROMPT, /Who handles this, at most 3 sentences/);
+  assert.match(
+    withDirectory,
+    /"Contact <Name>, <Title> \(<Department>\), through <Reach>; if <Name> is unavailable, contact <Backup>\."/
+  );
+  // Live eval (14 Sep 2026): without this the model named whoever sat on the
+  // team it had just named, and dropped the backup.
+  assert.match(
+    withDirectory,
+    /chosen by the work itself, not by the team you named/
+  );
+  assert.match(
+    withDirectory,
+    /any contact or channel that is not in a quoted passage or the team directory/
+  );
+  // The example is unchanged: it never names a person as a contact.
+  assert.equal(
+    withDirectory.slice(withDirectory.indexOf("### Example")),
+    SYSTEM_PROMPT.slice(SYSTEM_PROMPT.indexOf("### Example"))
+  );
+});
+
+test("every style with a directory at its ceiling stays under the directory ceiling", () => {
+  const unit = `${DIRECTORY}\n\n`;
+  const full = unit
+    .repeat(Math.ceil(PERSONAS_MAX_CHARS / unit.length))
+    .slice(0, PERSONAS_MAX_CHARS);
+  for (const style of STYLES) {
+    const prompt = buildSystemPrompt(style, full);
+    assert.ok(
+      prompt.length <= SYSTEM_PROMPT_WITH_DIRECTORY_MAX_CHARS,
+      `${prompt.length} > ${SYSTEM_PROMPT_WITH_DIRECTORY_MAX_CHARS}`
+    );
+    assert.ok(buildSystemPrompt(style).length <= SYSTEM_PROMPT_MAX_CHARS);
+  }
+});
+
+test("the passage budget is what the window leaves, capped, and has a floor", () => {
+  const request = (
+    systemChars: number,
+    historyChars: number,
+    messageChars: number
+  ) =>
+    passageBudgetFor({
+      systemChars,
+      history: [{ content: "x".repeat(historyChars) }],
+      messageChars,
+      rulesChars: RULES_BLOCK_MAX_CHARS
+    });
+  // Without a directory even the worst case keeps the full budget.
+  assert.equal(
+    request(SYSTEM_PROMPT_MAX_CHARS, HISTORY_CHAR_BUDGET, MAX_MESSAGE_CHARS),
+    PASSAGE_CHAR_BUDGET
+  );
+  // An ordinary turn with a full directory keeps the full budget too.
+  assert.equal(
+    request(SYSTEM_PROMPT_WITH_DIRECTORY_MAX_CHARS, 2_000, 600),
+    PASSAGE_CHAR_BUDGET
+  );
+  // The worst case shrinks the passages, never below the floor, and fits.
+  const worst = request(
+    SYSTEM_PROMPT_WITH_DIRECTORY_MAX_CHARS,
+    HISTORY_CHAR_BUDGET,
+    MAX_MESSAGE_CHARS
+  );
+  assert.ok(worst >= MIN_PASSAGE_CHARS, String(worst));
+  assert.ok(worst < PASSAGE_CHAR_BUDGET);
+  const tokens =
+    (SYSTEM_PROMPT_WITH_DIRECTORY_MAX_CHARS +
+      worst +
+      RULES_BLOCK_MAX_CHARS +
+      HISTORY_CHAR_BUDGET +
+      MAX_MESSAGE_CHARS) /
+    CHARS_PER_TOKEN;
+  assert.ok(
+    tokens + MAX_OUTPUT_TOKENS + WINDOW_RESERVE_TOKENS <= CONTEXT_WINDOW_TOKENS,
+    String(tokens)
+  );
+  assert.equal(request(WINDOW_CHARS, 0, 0), 0);
 });
 
 test("coverage and governing rules apply before every answer, including the example", () => {

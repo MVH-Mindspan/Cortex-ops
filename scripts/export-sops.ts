@@ -40,6 +40,7 @@ import {
   titleOf,
   useWhenOf
 } from "./notion-props.ts";
+import { redactIds } from "./redact.ts";
 import { slugify, uniqueSlug } from "./slug.ts";
 
 const BUCKET = "cortex-sops";
@@ -100,16 +101,6 @@ function parseArgs(argv: string[]): {
 
 function messageOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-// Notion quotes the id of the page or block that failed in its error text.
-// This runs in a workflow whose logs are public, so ids are stripped before
-// any error reaches them (dashed and undashed, both forms Notion returns).
-function redactIds(message: string): string {
-  return message.replace(
-    /[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
-    "<id>"
-  );
 }
 
 function isErrno(err: unknown, code: string): boolean {

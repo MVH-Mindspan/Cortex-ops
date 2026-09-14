@@ -4,10 +4,20 @@ import {
   buildPassages,
   buildUserBlock,
   generationHistory,
+  passageBudgetFor,
   trimHistory
 } from "../../src/lib/pipeline.ts";
-import { selectRules, renderRulesBlock } from "../../src/lib/rules.ts";
+import {
+  RULES_BLOCK_MAX_CHARS,
+  selectRules,
+  renderRulesBlock
+} from "../../src/lib/rules.ts";
 import { buildSystemPrompt } from "../../src/lib/prompt.ts";
+import {
+  DIRECTORY_KEY,
+  parseDirectory,
+  renderDirectory
+} from "../../src/lib/personas.ts";
 import type { ReadingPreferences } from "../../src/lib/reading-preferences.ts";
 import {
   ANSWER_CUT_SHORT_LINE,
@@ -45,7 +55,10 @@ import {
   type SearchOutcome
 } from "../../src/lib/retrieval.ts";
 
-type EvalEnv = Pick<Env, "AI" | "AI_SEARCH" | "SOP_BUCKET" | "AI_GATEWAY_ID">;
+type EvalEnv = Pick<
+  Env,
+  "AI" | "AI_SEARCH" | "SOP_BUCKET" | "DIRECTORY_BUCKET" | "AI_GATEWAY_ID"
+>;
 
 // The same instance production searches, so the corpus and the index settings
 // under test are the real ones.
@@ -183,10 +196,28 @@ export default {
             rules: [],
             passages: []
           });
+        // The same team directory, prompt and passage budget as the Worker.
+        const directoryObject = await env.DIRECTORY_BUCKET.get(DIRECTORY_KEY);
+        const directory = renderDirectory(
+          directoryObject ? parseDirectory(await directoryObject.json()) : null
+        );
+        const systemPrompt = buildSystemPrompt(
+          body.readingPreferences,
+          directory
+        );
+        const history = generationHistory(conversation.slice(0, -1));
         const { passages, entries } = buildPassages(
           ranked,
           results.chunks,
-          meta
+          meta,
+          {
+            charBudget: passageBudgetFor({
+              systemChars: systemPrompt.length,
+              history,
+              messageChars: conversation.at(-1)?.content.length ?? 0,
+              rulesChars: RULES_BLOCK_MAX_CHARS
+            })
+          }
         );
         const rules = body.rules === false ? [] : selectRules(entries);
         let answer = "";
@@ -211,11 +242,8 @@ export default {
         });
         const outcome = await generateAnswer(
           [
-            {
-              role: "system",
-              content: buildSystemPrompt(body.readingPreferences)
-            },
-            ...generationHistory(conversation.slice(0, -1)),
+            { role: "system", content: systemPrompt },
+            ...history,
             {
               role: "user",
               content: buildUserBlock(
@@ -260,7 +288,8 @@ export default {
           passages: entries,
           outcome,
           citations: sink.repair?.cited ?? [],
-          ms
+          ms,
+          directory_chars: directory.length
         });
       }
       return json({

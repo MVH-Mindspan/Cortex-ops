@@ -101,6 +101,31 @@ jobs:
             [ "$attempt" = 2 ] || sleep 90
           done
           echo "::warning::Could not create an indexing job; the next auto-sync will pick the objects up."
-      - name: Fail if the export reported failures
-        if: ${{ !cancelled() && steps.export.outcome == 'failure' }}
-        run: echo "The export reported failed pages or a suspicious drop; see the Export step." >&2; exit 1
+      - name: Export the Team Directory to R2
+        id: directory
+        # The person-level directory the answer prompt names contacts from
+        # (docs/personas.md). Its own step so neither export can break the
+        # other; a failed run uploads nothing and the last good directory stays
+        # live. Names and page bodies are never printed: rows are named by
+        # their Title. NOTION_PERSONA_ROOT is optional: unset, the step skips.
+        if: ${{ !cancelled() && steps.export.outcome != 'skipped' }}
+        continue-on-error: true
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_PERSONA_ROOT: ${{ secrets.NOTION_PERSONA_ROOT }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          if [ -z "$NOTION_PERSONA_ROOT" ]; then
+            echo "::warning::NOTION_PERSONA_ROOT is not set; the team directory was not refreshed (see docs/personas.md)."; exit 0; fi
+          npm run export-personas
+      - name: Fail if an export reported failures
+        if: ${{ !cancelled() && (steps.export.outcome == 'failure' || steps.directory.outcome == 'failure') }}
+        env:
+          SOP_OUTCOME: ${{ steps.export.outcome }}
+          DIRECTORY_OUTCOME: ${{ steps.directory.outcome }}
+        run: |
+          if [ "$SOP_OUTCOME" = failure ]; then echo "The SOP export reported failed pages or a suspicious drop; see the Export step." >&2; fi
+          if [ "$DIRECTORY_OUTCOME" = failure ]; then echo "The Team Directory export reported a problem; see its step and the run summary." >&2; fi
+          exit 1
