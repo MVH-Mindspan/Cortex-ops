@@ -38,11 +38,18 @@ How an answer is produced (`src/server.ts`, pure helpers in `src/lib/`):
 3. The system prompt carries a curated team structure (`src/lib/teams.ts`,
    derived from the Notion page "Operations Teams Structure Overview"; no
    people, no channels). The model may name teams and functions from it, as a
-   steer under "Who handles this"; it never supplies steps.
+   steer under "Who handles this"; it never supplies steps. The team
+   directory is added too: the people to contact, their backups and how to
+   reach them. It is synced nightly from the Notion database "Team Directory
+   (Cortex)" into a private R2 bucket and never committed
+   (`docs/personas.md`). Answers then name one person to contact after the
+   team.
 4. The request sent to the model is sized to its 24k-token window by
    characters: prompt, passages, prior turns and the latest message each have
    a budget in `src/lib/pipeline.ts` (oldest turns are trimmed first; error
-   and no-match lines are never replayed as history).
+   and no-match lines are never replayed as history). The passages get what
+   the rest leaves, up to 26,000 characters, so the team directory costs SOP
+   text only in long conversations.
 5. Generation runs behind a collapse guard: the fp8 model occasionally emits
    stopword soup, so the first 240 characters are held back and the answer
    is regenerated (up to three tries) if they read as garbled. An answer cut
@@ -84,6 +91,9 @@ npm run export                     # sync SOPs: Notion -> markdown -> R2 (needs 
 npm run export -- --dry-run        # convert and write export/ only; touches neither R2 nor the manifest
 npm run export -- --prune          # also delete the R2 objects the export lists as stale
 npm run export -- --prune --force  # prune even when the run looks suspicious (read the stale list first)
+npm run export-personas            # sync the team directory: Notion -> R2 (needs NOTION_TOKEN and NOTION_PERSONA_ROOT)
+npm run export-personas -- --dry-run  # read and check the directory; write export/ only
+npm run validate-routing           # re-check the dry run's files against the Department Routing Map
 npm run deploy                     # build and deploy the Worker
 npm run check                      # format check, lint, typecheck, unit tests
 npm test                           # unit tests only (node --test over src/lib and scripts)
@@ -143,6 +153,12 @@ printed, never page bodies. A manifest commit triggers a Workers Builds
 redeploy; exclude `scripts/sops-manifest.json` from the build watch paths
 if that redeploy isn't wanted.
 
+The same workflow then exports the team directory (`npm run export-personas`,
+`docs/personas.md`) to the private `cortex-directory` R2 bucket. Answers pick
+it up within five minutes, with no commit and no redeploy. It needs a fifth
+secret, `NOTION_PERSONA_ROOT` (the Team Directory database id). Without it
+the step warns and skips, and the SOP sync is unaffected.
+
 Manual `npm run export` followed by `npx wrangler ai-search jobs create
 cortex` remains the break-glass path — don't run it while a workflow run is
 in progress.
@@ -174,7 +190,9 @@ in progress.
   `src/lib/prompt.ts`; the team structure it embeds lives in
   `src/lib/teams.ts`. Edit the structure by hand when the Notion page changes
   (it is not synced), and never add people's names, Slack channels, or the
-  page's open questions. `SYSTEM_PROMPT` exports the default style for existing
+  page's open questions. People and channels belong in the team directory,
+  which is edited in Notion and never committed (this repo is public).
+  `SYSTEM_PROMPT` exports the default style for existing
   consumers. `npm test` pins every style to the model-window budget in
   `src/lib/pipeline.ts`. Every user-facing string, including the lines the
   Worker streams on errors, lives in `src/lib/copy.ts`.
@@ -189,7 +207,8 @@ Cortex repeats complete governing rules from retrieved passages before
 generating an answer. Conditions and exceptions stay attached; an
 oversized rule is omitted from the repeated block, while its original
 passage remains available. The prompt limits remain inside the model
-window: 21,000 prompt characters, 26,000 passage characters, 1,500
+window: 21,500 prompt characters (33,500 with the team directory at its
+cap), up to 26,000 passage characters (never fewer than 14,500), 1,500
 repeated-rule characters, and 9,000 history characters including
 coverage prefixes.
 

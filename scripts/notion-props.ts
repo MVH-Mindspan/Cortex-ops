@@ -77,6 +77,29 @@ export function useWhenOf(props: Props): string {
   return plainText(prop.rich_text);
 }
 
+// Generic readers for the Team Directory (Cortex) database
+// (scripts/export-personas.ts): a missing or differently typed property
+// reads as empty, never as an error, so a renamed column shows up as an empty
+// field that validate-routing reports.
+export function richTextOf(props: Props, name: string): string {
+  const prop = props[name];
+  if (prop?.type !== "rich_text") return "";
+  return plainText(prop.rich_text);
+}
+
+export function selectOf(props: Props, name: string): string {
+  const prop = props[name];
+  if (prop?.type === "select") return prop.select?.name ?? "";
+  if (prop?.type === "status") return prop.status?.name ?? "";
+  return "";
+}
+
+export function multiSelectOf(props: Props, name: string): string[] {
+  const prop = props[name];
+  if (prop?.type !== "multi_select") return [];
+  return prop.multi_select.map((s) => s.name);
+}
+
 // The SOP database has no Owner property today; kept for compatibility with
 // databases that do.
 export function ownerOf(props: Props): string {

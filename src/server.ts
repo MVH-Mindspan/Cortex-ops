@@ -14,7 +14,11 @@ import {
   type ChatTurn
 } from "./lib/generation";
 import type { Coverage } from "./lib/coverage";
-import { selectRules, renderRulesBlock } from "./lib/rules";
+import {
+  RULES_BLOCK_MAX_CHARS,
+  selectRules,
+  renderRulesBlock
+} from "./lib/rules";
 import { loadSopMeta, parseSopFile } from "./lib/frontmatter";
 import {
   buildPassages,
@@ -22,6 +26,7 @@ import {
   generationHistory,
   classifyPipelineError,
   MAX_MESSAGE_CHARS,
+  passageBudgetFor,
   rankSops,
   textOf,
   trimHistory,
@@ -52,6 +57,14 @@ import {
   PIPELINE_ERROR_LINES
 } from "./lib/copy";
 import { buildSystemPrompt } from "./lib/prompt";
+import {
+  DIRECTORY_KEY,
+  parseDirectory,
+  renderDirectory,
+  staffNames,
+  type Directory
+} from "./lib/personas";
+import { buildScreenPrompt } from "./lib/screen";
 import { expandSearchQuery } from "./lib/query";
 import {
   normalizeReadingPreferences,
@@ -83,27 +96,32 @@ function gatewayOptions(env: Env, step: "screen" | "generation") {
 }
 
 // Small fast model that screens messages for patient names the regexes miss.
-// Few-shot examples on purpose: llama-3.2-3b without them misclassified
-// "My patient, Michael Van Havill" as clean.
+// Its prompt, with the team directory's staff names exempted in context,
+// lives in lib/screen.ts.
 const SCREEN_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
-const SCREEN_PROMPT = `You screen internal healthcare ops messages for patient privacy. Answer with exactly one word: yes or no.
 
-Answer yes if the message contains a real personal human name (a first name, last name, or full name) of a patient, or of a patient's family member or caregiver — even when it appears alongside numbers, codes, facility names, or an MRN. A patient, chart, or record number by itself is not a name.
+// The team directory (lib/personas.ts), read from the private R2 bucket the
+// Sync SOPs workflow writes it to. Cached per isolate for five minutes, so a
+// Notion edit reaches answers within five minutes of the sync, with no
+// redeploy. Fail-open: a missing, unreadable, or malformed object means the
+// answer goes out with the team structure alone. Only a good read is cached,
+// so the first answer after the first sync picks the directory up.
+const DIRECTORY_TTL_MS = 5 * 60_000;
+let directoryCache: { directory: Directory; at: number } | null = null;
 
-Answer no for everything else, including: names of staff or clinicians (Dr Musto, Taiye), hospital, clinic, university, facility, or company names (UCSF, LabCorp, Valley Radiology, the company Perry Health), system names (Athena; Mindy when it means the Mindspan task system, though "her daughter Mindy" is still a person), product, drug, order, result, protocol, or trial codes (TB006, Kisunla, Leqembi, IQLIK, Cryos), patient, chart, or record numbers (#313, MRN 4471902), and any message with no personal human name.
-
-Examples:
-"My patient, John Smith, needs a refill" -> yes
-"her husband Robert De Luca called twice" -> yes
-"the patient Mary Alvarez is at the desk" -> yes
-"#307 Robert Chen wants a callback about his results" -> yes
-"her daughter Mindy missed the visit" -> yes
-"Dr. Musto faxed the order to LabCorp" -> no
-"#313 was on the schedule with Taiye yesterday" -> no
-"a caregiver called asking to reschedule an infusion" -> no
-"#301 wants their TB006 results sent to the UCSF consulting neurologist" -> no
-"check Mindy completion status at T-7" -> no
-"Mindy flagged #412 for an infusion check-in" -> no`;
+async function loadDirectory(env: Env): Promise<Directory | null> {
+  if (directoryCache && Date.now() - directoryCache.at < DIRECTORY_TTL_MS) {
+    return directoryCache.directory;
+  }
+  try {
+    const object = await env.DIRECTORY_BUCKET.get(DIRECTORY_KEY);
+    const directory = object ? parseDirectory(await object.json()) : null;
+    if (directory) directoryCache = { directory, at: Date.now() };
+    return directory;
+  } catch {
+    return null;
+  }
+}
 
 export type CortexMessage = UIMessage<
   {
@@ -186,13 +204,16 @@ export class ChatAgent extends AIChatAgent<Env> {
   @callable()
   async screenPII(text: string): Promise<{ flagged: boolean }> {
     try {
+      const prompt = buildScreenPrompt(
+        staffNames(await loadDirectory(this.env))
+      );
       const verdicts = await Promise.all(
         windows(text).map(async (window) => {
           const result = (await this.env.AI.run(
             SCREEN_MODEL,
             {
               messages: [
-                { role: "system", content: SCREEN_PROMPT },
+                { role: "system", content: prompt },
                 { role: "user", content: window }
               ],
               temperature: 0,
@@ -405,14 +426,27 @@ export class ChatAgent extends AIChatAgent<Env> {
           const ranked = rankSops(chunks, meta);
           writer.write({ type: "data-sops", id: "sops", data: ranked });
 
-          // 3. The labelled "SOP passages" block: top SOPs as full documents,
-          // then remaining chunks for breadth (see buildPassages). The
-          // entries carry the same labels as structure, so a "[3]" in the
-          // model's citation resolves back to the file it came from.
+          // 3. The system prompt, with the team directory when R2 has one,
+          // then the labelled "SOP passages" block: top SOPs as full
+          // documents, then remaining chunks for breadth (see buildPassages),
+          // sized to what the prompt, the prior turns and the message leave
+          // of the model window (passageBudgetFor). The entries carry the
+          // same labels as structure, so a "[3]" in the model's citation
+          // resolves back to the file it came from.
+          const directory = renderDirectory(await loadDirectory(this.env));
+          const systemPrompt = buildSystemPrompt(readingPreferences, directory);
+          const history = generationHistory(conversation.slice(0, -1));
+          const passageBudget = passageBudgetFor({
+            systemChars: systemPrompt.length,
+            history,
+            messageChars: latest?.content.length ?? 0,
+            rulesChars: RULES_BLOCK_MAX_CHARS
+          });
           const { passages, entries, used } = buildPassages(
             ranked,
             chunks,
-            meta
+            meta,
+            { charBudget: passageBudget }
           );
           const labels = entries.map((e) => ({ label: e.label, file: e.file }));
 
@@ -434,7 +468,10 @@ export class ChatAgent extends AIChatAgent<Env> {
             passage_chars: used,
             rules: rules.length,
             rules_chars: rulesBlock.length,
-            rules_tier_a: rules.filter((r) => r.tier === "A").length
+            rules_tier_a: rules.filter((r) => r.tier === "A").length,
+            passage_budget: passageBudget,
+            directory: directory ? "ok" : "missing",
+            directory_chars: directory.length
           };
           answer = new AnswerStream({
             ctx: { labels, sops: ranked, meta },
@@ -446,8 +483,8 @@ export class ChatAgent extends AIChatAgent<Env> {
               writer.write({ type: "data-sops", id: "sops", data })
           });
           const genMessages: ChatTurn[] = [
-            { role: "system", content: buildSystemPrompt(readingPreferences) },
-            ...generationHistory(conversation.slice(0, -1)),
+            { role: "system", content: systemPrompt },
+            ...history,
             { role: "user", content: userBlock }
           ];
           const outcome = await generateAnswer(

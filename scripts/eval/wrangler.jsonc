@@ -16,7 +16,12 @@
     { "binding": "AI_SEARCH", "namespace": "default", "remote": true }
   ],
   "r2_buckets": [
-    { "binding": "SOP_BUCKET", "bucket_name": "cortex-sops", "remote": true }
+    { "binding": "SOP_BUCKET", "bucket_name": "cortex-sops", "remote": true },
+    {
+      "binding": "DIRECTORY_BUCKET",
+      "bucket_name": "cortex-directory",
+      "remote": true
+    }
   ],
   "vars": { "AI_GATEWAY_ID": "cortex" }
 }

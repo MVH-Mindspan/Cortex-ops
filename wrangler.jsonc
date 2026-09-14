@@ -20,7 +20,15 @@
     { "binding": "AI_SEARCH", "namespace": "default", "remote": true }
   ],
   "r2_buckets": [
-    { "binding": "SOP_BUCKET", "bucket_name": "cortex-sops", "remote": true }
+    { "binding": "SOP_BUCKET", "bucket_name": "cortex-sops", "remote": true },
+    // The team directory (src/lib/personas.ts), written nightly by the Sync
+    // SOPs workflow. Its own bucket so AI Search never indexes it and the SOP
+    // library never lists it; it holds staff names, never patient data.
+    {
+      "binding": "DIRECTORY_BUCKET",
+      "bucket_name": "cortex-directory",
+      "remote": true
+    }
   ],
   "assets": {
     "directory": "./public",

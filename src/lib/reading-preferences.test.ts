@@ -47,7 +47,10 @@ test("missing and malformed preferences default independently and never inject p
 test("all four styles fit the window and retain identical governing and coverage rules", () => {
   const section = (prompt: string, start: string, end: string) =>
     prompt.slice(prompt.indexOf(start), prompt.indexOf(end));
-  const prompts = combinations.map(buildSystemPrompt);
+  // Wrapped, not passed bare: map's index would land in the directory slot.
+  const prompts = combinations.map((preferences) =>
+    buildSystemPrompt(preferences)
+  );
   assert.equal(new Set(prompts).size, 4);
   for (const prompt of prompts) {
     assert.ok(prompt.length <= SYSTEM_PROMPT_MAX_CHARS, String(prompt.length));
