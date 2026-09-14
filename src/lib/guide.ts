@@ -22,7 +22,7 @@ export type GuideExample = {
   turns: GuideTurn[];
 };
 
-// The prompt "Try this" drops into the composer: the first user turn.
+// The prompt an example drops into the composer: the first user turn.
 export function guidePrompt(example: GuideExample): string {
   const first = example.turns.find((turn) => turn.role === "user");
   return first ? first.text : "";
@@ -67,4 +67,51 @@ export function markGuideSeen(): void {
   } catch {
     // storage unavailable — the guide stays reachable from the sidebar
   }
+}
+
+// The headings an answer prints, in the incident and question formats
+// (src/lib/prompt.ts). "Situation:", "Urgency:", "Who handles this:" and
+// "Answer:" run inline with their text; the rest sit on their own line above
+// a block.
+export const ANSWER_HEADINGS = [
+  "Situation",
+  "Urgency",
+  "Who handles this",
+  "Answer",
+  "Before you start",
+  "Do now",
+  "Then",
+  "Tell the patient",
+  "Stop and escalate",
+  "Done when",
+  "What the SOPs say",
+  "Not covered by the SOPs",
+  "One question"
+] as const;
+
+export type AnswerSection = { heading: string; body: string };
+
+// Splits an answer into its sections so the onboarding can light them up
+// one at a time. Text before the first heading is dropped; a heading with
+// nothing under it is kept with an empty body.
+export function splitAnswerSections(text: string): AnswerSection[] {
+  const sections: AnswerSection[] = [];
+  let current: AnswerSection | null = null;
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    const heading = ANSWER_HEADINGS.find(
+      (h) => line === h || line.startsWith(`${h}:`)
+    );
+    if (heading) {
+      current = {
+        heading,
+        body: line.slice(heading.length).replace(/^:\s*/, "")
+      };
+      sections.push(current);
+      continue;
+    }
+    if (!current) continue;
+    current.body = current.body ? `${current.body}\n${raw}` : raw;
+  }
+  return sections.map((s) => ({ ...s, body: s.body.trim() }));
 }

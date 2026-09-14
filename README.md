@@ -61,16 +61,17 @@ trims explanations while retaining required procedural detail, and Experienced
 omits introductory definitions.
 SOP retrieval, coverage rules and citations apply to every style.
 
-"How to use Cortex" is a page in the app (sidebar row, and a link under the
-empty-state headline) that says who the tool is for, how to read an answer,
-how a follow-up works, and replays three example conversations through the
-same message components a real answer uses. Each example has a "Try this"
-that drops its prompt into the question box. The page opens by itself on a
-browser's first visit, unless a deep link brought a situation in; the
-`cortex-guide-seen` localStorage flag records that it has been shown. The
-example answers are real pipeline output, trimmed for length, with their SOP
-cards as emitted (`GUIDE_EXAMPLES` in `src/lib/copy.ts`); a test checks that
-every card names an SOP in the exported manifest.
+"How to use Cortex" is a five-screen onboarding flow in the app (a sidebar
+row, a link under the empty-state headline, and it opens by itself on a
+browser's first visit unless a deep link brought a situation in; the
+`cortex-guide-seen` localStorage flag records that it has been shown). One
+idea per screen, explained by a live visual built from the real components:
+the composer typing a scenario in and running its name check, a real answer
+with its sections lit one at a time, the SOP cards with their chips and a
+working pin, a two-turn exchange, and three situations to tap into the box.
+The answers are real pipeline output (`GUIDE_EXAMPLES` in `src/lib/copy.ts`);
+a test checks that every card points at a page in the exported manifest and
+every prompt passes the identifier screen.
 
 ## Commands
 
