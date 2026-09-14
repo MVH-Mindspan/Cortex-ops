@@ -41,6 +41,7 @@ function persona(overrides: Partial<Persona>): Persona {
     name: "Avery Quinn",
     title: "Navigation Lead",
     department: "Clinical",
+    routeWhen: "",
     routingDepartments: ["Coordination"],
     priority: "P0",
     owns: ["Care navigation huddles"],
@@ -49,7 +50,6 @@ function persona(overrides: Partial<Persona>): Persona {
     backup: "",
     escalatesTo: "",
     reach: { slack: "", dashboard: "" },
-    routeWhen: "",
     ...overrides
   };
 }

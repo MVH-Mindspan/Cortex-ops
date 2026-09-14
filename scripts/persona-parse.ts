@@ -4,12 +4,12 @@
 //
 // personaFrom: one Team Directory (Cortex) row, its properties already read
 // into a PersonaRow plus its page body as markdown (notion-to-md), into a
-// Persona. The pages share one template: "## Core Responsibilities",
-// "## Domain Expertise" (a "Systems:" line), "## Out of Scope (Do NOT route
-// here)", "## Escalation Path" ("Backup:", "Escalates to:") and "## How to
-// Reach" ("Slack:", "Dashboard:"). A section the page lacks leaves its field
-// empty; the Backup and Slack Channel properties fill in when the body has
-// no line for them.
+// Persona. The pages share one template: "## Route When" (free-text hint for
+// when to route here), "## Core Responsibilities", "## Domain Expertise" (a
+// "Systems:" line), "## Out of Scope (Do NOT route here)", "## Escalation Path"
+// ("Backup:", "Escalates to:") and "## How to Reach" ("Slack:", "Dashboard:").
+// A section the page lacks leaves its field empty; the Backup and Slack Channel
+// properties fill in when the body has no line for them.
 //
 // routingDepartmentsFrom: the Department Routing Map page. Its
 // "# Departments" part has one "## <Department>" section per department with
@@ -88,6 +88,29 @@ export function sectionsOf(markdown: string): Map<string, string[]> {
   return sections;
 }
 
+// The full text under a heading, prose and bullets alike, collapsed to one
+// line; "" when the heading is absent. Used for "## Route When", whose hint may
+// be a paragraph rather than bullets, so sectionsOf (bullets only) misses it.
+export function sectionText(markdown: string, key: string): string {
+  const out: string[] = [];
+  let capturing = false;
+  for (const line of markdown.split(/\r?\n/)) {
+    const heading = line.match(HEADING);
+    if (heading) {
+      capturing =
+        clean(heading[1])
+          .replace(/\s*\([^)]*\)$/, "")
+          .toLowerCase() === key;
+      continue;
+    }
+    if (!capturing) continue;
+    const bullet = line.match(BULLET);
+    const text = clean(bullet ? bullet[1] : line);
+    if (text) out.push(text);
+  }
+  return out.join(" ");
+}
+
 // The value of a "Label: value" bullet, or "" when the section has none.
 export function labelled(
   bullets: readonly string[] | undefined,
@@ -143,6 +166,9 @@ export function personaFrom(row: PersonaRow): Persona {
     name: clean(row.name),
     title: clean(row.title),
     department: clean(row.department),
+    // The Route When property fills in when the body has no section, as
+    // Backup and Slack Channel do; today the rows carry it as a property.
+    routeWhen: sectionText(row.markdown, "route when") || clean(row.routeWhen),
     routingDepartments: row.routingDepartments.map(clean).filter(Boolean),
     priority: priorityOf(row.priority),
     owns: sections.get("core responsibilities") ?? [],
@@ -155,8 +181,7 @@ export function personaFrom(row: PersonaRow): Persona {
       dashboard:
         labelled(reach, "dashboard") ||
         (propertyIsDashboard ? property.replace(/^dashboard\s*/i, "") : "")
-    },
-    routeWhen: clean(row.routeWhen)
+    }
   };
 }
 

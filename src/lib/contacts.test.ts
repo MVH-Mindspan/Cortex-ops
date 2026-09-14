@@ -132,6 +132,32 @@ test("the owner of the work wins over the team it sits near", () => {
   ]);
 });
 
+test("a Route When hint matches, and the block cites it as the reason", () => {
+  const dir: Directory = {
+    version: DIRECTORY_VERSION,
+    generated_at: "2026-09-14T00:00:00.000Z",
+    personas: [
+      persona({
+        name: "Robin Vale",
+        title: "Escalations Lead",
+        owns: ["General coordination"],
+        routeWhen:
+          "Any CRIOS readiness escalation, or a stuck onboarding cohort"
+      }),
+      persona({ name: "Sam Doe", title: "Coordinator", owns: ["Scheduling"] })
+    ]
+  };
+  const matches = matchContacts(dir, "We have a CRIOS readiness escalation");
+  assert.deepEqual(
+    matches.map((m) => m.persona.name),
+    ["Robin Vale"]
+  );
+  assert.equal(
+    renderContactBlock(dir, matches).split("\n")[1],
+    '1. Robin Vale, Escalations Lead (Operations). Route when "Any CRIOS readiness escalation, or a stuck onboarding cohort".'
+  );
+});
+
 test("a product name alone does not make someone the owner", () => {
   assert.deepEqual(names("LabCorp says they never received the order"), []);
   assert.equal(
@@ -230,7 +256,7 @@ test("the block carries the reach and backup, so the answer copies them", () => 
       }),
       score: 2,
       owns: "Copay-process questions",
-      route: null,
+      routeWhen: null,
       redirect: null
     }
   ]);
@@ -263,7 +289,10 @@ test("a Route When clause picks the row and is given as the reason", () => {
     ["Gray Hale"]
   );
   assert.equal(matches[0].owns, null);
-  assert.equal(matches[0].route, "Medication management protocol changes only");
+  assert.equal(
+    matches[0].routeWhen,
+    "Medication management protocol changes only"
+  );
   assert.equal(
     renderContactBlock(dir, matches).split("\n")[1],
     '1. Gray Hale, Provider (Clinical). Route when "Medication management protocol changes only".'

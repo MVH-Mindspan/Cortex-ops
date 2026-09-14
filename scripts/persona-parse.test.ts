@@ -6,11 +6,15 @@ import {
   personaFrom,
   routingDepartmentsFrom,
   sectionsOf,
+  sectionText,
   type PersonaRow
 } from "./persona-parse.ts";
 
 // Fictional people only: this repository is public.
-const BODY = `## Core Responsibilities
+const BODY = `## Route When
+Any intake or **new referral** question, or when a caller asks who takes new patients.
+
+## Core Responsibilities
 - Own **new referrals**
 - Route intake questions
 
@@ -63,6 +67,18 @@ test("sectionsOf keys headings without their parenthetical and strips emphasis",
   assert.equal(labelled(undefined, "systems"), "");
 });
 
+test("sectionText reads a section's prose, strips emphasis, and is '' when absent", () => {
+  assert.equal(
+    sectionText(BODY, "route when"),
+    "Any intake or new referral question, or when a caller asks who takes new patients."
+  );
+  assert.equal(
+    sectionText("## Route When\n- One line\n- Two line\n", "route when"),
+    "One line Two line"
+  );
+  assert.equal(sectionText(BODY, "no such heading"), "");
+});
+
 test("outOfScopeFrom reads both route forms, slashes, and drops commentary", () => {
   assert.deepEqual(
     outOfScopeFrom(
@@ -95,6 +111,8 @@ test("personaFrom reads the page template", () => {
     name: "Avery Quinn",
     title: "Intake Lead",
     department: "Operations",
+    routeWhen:
+      "Any intake or new referral question, or when a caller asks who takes new patients.",
     routingDepartments: ["Enrollment"],
     priority: "P0",
     owns: ["Own new referrals", "Route intake questions"],
@@ -116,8 +134,7 @@ test("personaFrom reads the page template", () => {
     reach: {
       slack: "#fictional-intake (unverified)",
       dashboard: "Escalate → Member Experience"
-    },
-    routeWhen: "Referral intake; new leads from the website"
+    }
   });
 });
 
@@ -132,6 +149,11 @@ test("personaFrom falls back to the properties when the body has no line", () =>
   );
   assert.equal(persona.priority, "P2");
   assert.equal(persona.backup, "Casey Lin");
+  // The Route When property, with its line break and double space collapsed.
+  assert.equal(
+    persona.routeWhen,
+    "Referral intake; new leads from the website"
+  );
   assert.deepEqual(persona.reach, {
     slack: "",
     dashboard: "Escalate → Clinical"

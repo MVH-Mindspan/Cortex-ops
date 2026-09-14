@@ -46,9 +46,10 @@ export type Persona = {
   readonly backup: string;
   readonly escalatesTo: string;
   readonly reach: { readonly slack: string; readonly dashboard: string };
-  /** The Notion Route When property: when to send someone to this person,
-   * as clauses separated by ";". Only the contact matcher reads it (it is
-   * not rendered into the prompt); "" when the row has none. */
+  /** When to send someone to this person, as clauses separated by ";": the
+   * page's "## Route When" section, else the Notion Route When property.
+   * Only the contact matcher reads it; it is not rendered into the prompt,
+   * which has no room for it under PERSONAS_MAX_CHARS. "" when absent. */
   readonly routeWhen: string;
 };
 

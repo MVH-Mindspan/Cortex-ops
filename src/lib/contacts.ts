@@ -211,7 +211,7 @@ export type ContactMatch = {
   readonly owns: string | null;
   /** The Route When clause that matched best, when it beat every Owns line;
    * null otherwise. */
-  readonly route: string | null;
+  readonly routeWhen: string | null;
   /** The Out of scope topic on another entry that points here, or null. */
   readonly redirect: string | null;
 };
@@ -288,7 +288,7 @@ export function matchContacts(
         persona: entry.persona,
         score,
         owns: best && !best.route ? best.line : null,
-        route: best?.route ? best.line : null,
+        routeWhen: best?.route ? best.line : null,
         redirect: redirect?.topic ?? null
       };
       return { index, match };
@@ -323,8 +323,8 @@ export function renderContactBlock(
   matches.forEach((match, i) => {
     const why = match.owns
       ? `Owns "${clip(match.owns)}".`
-      : match.route
-        ? `Route when "${clip(match.route)}".`
+      : match.routeWhen
+        ? `Route when "${clip(match.routeWhen)}".`
         : match.redirect
           ? `Another entry's Out of scope line sends "${clip(match.redirect)}" here.`
           : "Title matches.";

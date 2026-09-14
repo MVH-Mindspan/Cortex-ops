@@ -17,6 +17,7 @@ test("answer evaluation adds the team directory from R2 to the prompt, as the Wo
         name: "Avery Quinn",
         title: "Intake Lead",
         department: "Operations",
+        routeWhen: "",
         routingDepartments: [],
         priority: "P0",
         owns: ["New referrals"],

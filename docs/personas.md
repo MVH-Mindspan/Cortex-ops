@@ -44,7 +44,9 @@ on the team it had just named.
   than common ones. Product names (the capitalised words on Systems lines)
   count little, since naming a system does not make someone its owner. The
   directory's own names never count, so "should this go to <name>?" does not
-  pick a row whose Route When mentions that person.
+  pick a row whose Route When mentions that person. Nor do words about how
+  work moves ("escalation", "resolve", "unsure"), which Route When text uses
+  loosely.
 - **Out of Scope:** these lines count both ways. The person a line points to
   gains, and the person who holds the line loses.
 - **The match:** the top one or two rows above a threshold go into the request
@@ -61,20 +63,23 @@ and a test keeps one out of the prompt.
 
 ## What a row needs
 
-| Property           | Used for                                                                                                                    |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| Name               | The person, as answers name them. Two rows may share a name; answers tell them apart by title.                              |
-| Title              | Shown after the name; also how the checks refer to the row in public logs.                                                  |
-| Department         | Shown after the title.                                                                                                      |
-| Routing Department | The Department Routing Map departments this person works in. Only the checks use it.                                        |
-| Priority           | Order in the prompt (P0 first), and which rows go first if the directory ever runs over its cap.                            |
-| Status             | Only Live rows are exported. Draft and Archived rows are ignored.                                                           |
-| Backup             | Used when the page body has no Backup line. A first name that fits one person becomes their full name on export.            |
-| Slack Channel      | Used when the page body has no Slack or Dashboard line.                                                                     |
-| Route When         | When to send someone to this person, as clauses separated by `;`. Only the contact match reads it; it is not in the prompt. |
+| Property           | Used for                                                                                                                                                                            |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name               | The person, as answers name them. Two rows may share a name; answers tell them apart by title.                                                                                      |
+| Title              | Shown after the name; also how the checks refer to the row in public logs.                                                                                                          |
+| Department         | Shown after the title.                                                                                                                                                              |
+| Routing Department | The Department Routing Map departments this person works in. Only the checks use it.                                                                                                |
+| Priority           | Order in the prompt (P0 first), and which rows go first if the directory ever runs over its cap.                                                                                    |
+| Status             | Only Live rows are exported. Draft and Archived rows are ignored.                                                                                                                   |
+| Backup             | Used when the page body has no Backup line. A first name that fits one person becomes their full name on export.                                                                    |
+| Slack Channel      | Used when the page body has no Slack or Dashboard line.                                                                                                                             |
+| Route When         | When to send someone to this person, as clauses separated by `;`. Used when the page body has no `## Route When` section. Only the contact match reads it; it is not in the prompt. |
 
 The page body uses these headings. A missing heading leaves that field empty.
 
+- `## Route When`: free text (prose or bullets) saying when to route here. Its
+  words feed the code matcher exactly like Core Responsibilities, so phrase it
+  in the words people use for the work. Optional.
 - `## Core Responsibilities`: one bullet per responsibility. Required.
 - `## Domain Expertise`: the `Systems:` line is used.
 - `## Out of Scope (Do NOT route here)`: one bullet per topic, ending
