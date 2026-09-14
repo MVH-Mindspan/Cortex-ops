@@ -37,9 +37,6 @@ export type Persona = {
   readonly title: string;
   /** The Notion Department select: Clinical, Operations, Technology, ... */
   readonly department: string;
-  /** Free-text "route to me when ..." hint from the page's "## Route When"
-   * section; a first-class matching signal in contacts.ts. "" when absent. */
-  readonly routeWhen: string;
   /** Department Routing Map departments, for validate-routing only. */
   readonly routingDepartments: readonly string[];
   readonly priority: PersonaPriority;
@@ -49,6 +46,11 @@ export type Persona = {
   readonly backup: string;
   readonly escalatesTo: string;
   readonly reach: { readonly slack: string; readonly dashboard: string };
+  /** When to send someone to this person, as clauses separated by ";": the
+   * page's "## Route When" section, else the Notion Route When property.
+   * Only the contact matcher reads it; it is not rendered into the prompt,
+   * which has no room for it under PERSONAS_MAX_CHARS. "" when absent. */
+  readonly routeWhen: string;
 };
 
 export type Directory = {
@@ -80,9 +82,6 @@ function isPersona(value: unknown): value is Persona {
     p.name.trim().length > 0 &&
     isString(p.title) &&
     isString(p.department) &&
-    // Tolerated missing so a directory exported before this field existed still
-    // parses; parseDirectory fills the absent value with "".
-    (p.routeWhen === undefined || isString(p.routeWhen)) &&
     isStringArray(p.routingDepartments) &&
     PRIORITIES.includes(p.priority as PersonaPriority) &&
     isStringArray(p.owns) &&
@@ -94,7 +93,9 @@ function isPersona(value: unknown): value is Persona {
     Boolean(reach) &&
     typeof reach === "object" &&
     isString(reach?.slack) &&
-    isString(reach?.dashboard)
+    isString(reach?.dashboard) &&
+    // Absent from objects exported before the Route When property existed.
+    (p.routeWhen === undefined || isString(p.routeWhen))
   );
 }
 
@@ -115,9 +116,10 @@ export function parseDirectory(value: unknown): Directory | null {
   return {
     version: DIRECTORY_VERSION,
     generated_at: d.generated_at,
-    // Fill a routeWhen absent from an older exported object, so the rest of the
-    // code reads a string, never undefined.
-    personas: d.personas.map((p) => ({ ...p, routeWhen: p.routeWhen ?? "" }))
+    personas: d.personas.map((persona: Persona) => ({
+      ...persona,
+      routeWhen: persona.routeWhen ?? ""
+    }))
   };
 }
 
@@ -149,9 +151,6 @@ export function renderPersona(persona: Persona): string {
   const lines = [
     `${oneLine(persona.name)}: ${oneLine(persona.title)} (${oneLine(persona.department)})`
   ];
-  if (persona.routeWhen.trim()) {
-    lines.push(`- Route when: ${oneLine(persona.routeWhen)}`);
-  }
   if (persona.owns.length > 0) {
     lines.push(`- Owns: ${persona.owns.map(oneLine).join("; ")}`);
   }

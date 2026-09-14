@@ -17,7 +17,6 @@ function persona(overrides: Partial<Persona> = {}): Persona {
     name: "Avery Quinn",
     title: "Intake Lead",
     department: "Operations",
-    routeWhen: "",
     routingDepartments: ["Enrollment"],
     priority: "P1",
     owns: ["New referrals"],
@@ -29,6 +28,7 @@ function persona(overrides: Partial<Persona> = {}): Persona {
       slack: "#fictional-intake",
       dashboard: "Escalate → Member Experience"
     },
+    routeWhen: "Referral intake questions",
     ...overrides
   };
 }
@@ -46,23 +46,6 @@ test("renders one persona in the compact template", () => {
     renderPersona(persona()),
     [
       "Avery Quinn: Intake Lead (Operations)",
-      "- Owns: New referrals",
-      "- Systems: Salesforce",
-      "- Out of scope: Clinical questions → Blake Rowe",
-      "- Backup: Blake Rowe",
-      "- Reach: Slack #fictional-intake"
-    ].join("\n")
-  );
-});
-
-test("renders the Route when line after the header when present", () => {
-  assert.equal(
-    renderPersona(
-      persona({ routeWhen: "Any\nintake or new-patient question" })
-    ),
-    [
-      "Avery Quinn: Intake Lead (Operations)",
-      "- Route when: Any intake or new-patient question",
       "- Owns: New referrals",
       "- Systems: Salesforce",
       "- Out of scope: Clinical questions → Blake Rowe",
@@ -169,12 +152,21 @@ test("parseDirectory accepts the exported shape and rejects anything else", () =
   for (const value of bad) assert.equal(parseDirectory(value), null);
 });
 
-test("parseDirectory fills a routeWhen absent from an older exported object", () => {
-  const raw = JSON.parse(JSON.stringify(directory([persona()]))) as {
-    personas: Record<string, unknown>[];
-  };
-  delete raw.personas[0].routeWhen;
-  assert.equal(parseDirectory(raw)?.personas[0].routeWhen, "");
+test("parseDirectory reads an object exported before Route When existed", () => {
+  const old: Record<string, unknown> = { ...persona() };
+  delete old.routeWhen;
+  const parsed = parseDirectory({ ...directory([]), personas: [old] });
+  assert.equal(parsed?.personas[0].routeWhen, "");
+  assert.equal(
+    parseDirectory(
+      directory([{ ...persona(), routeWhen: 3 } as unknown as Persona])
+    ),
+    null
+  );
+});
+
+test("Route When is not rendered into the prompt", () => {
+  assert.doesNotMatch(renderPersona(persona()), /Referral intake questions/);
 });
 
 test("staffNames gives full names, plus first names except for doctors", () => {

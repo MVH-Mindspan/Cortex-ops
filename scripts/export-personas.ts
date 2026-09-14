@@ -42,7 +42,11 @@ import {
 import { personaFrom, routingDepartmentsFrom } from "./persona-parse.ts";
 import type { RoutingDepartment } from "./persona-parse.ts";
 import { redactIds } from "./redact.ts";
-import { checkDirectory, formatIssues } from "./routing-check.ts";
+import {
+  checkDirectory,
+  formatIssues,
+  withFullBackups
+} from "./routing-check.ts";
 
 const BUCKET = "cortex-directory";
 const EXPORT_DIR = path.resolve("export");
@@ -144,6 +148,7 @@ async function main(): Promise<void> {
           priority: selectOf(props, "Priority"),
           backup: richTextOf(props, "Backup"),
           slackChannel: richTextOf(props, "Slack Channel"),
+          routeWhen: richTextOf(props, "Route When"),
           markdown: await markdownOf(page.id)
         })
       );
@@ -169,7 +174,7 @@ async function main(): Promise<void> {
     );
   }
 
-  const result = checkDirectory(personas, departments);
+  const result = checkDirectory(withFullBackups(personas), departments);
   const report = formatIssues(result);
   console.log(
     `Read ${pages.length} row(s): ${personas.length} Live, ${skipped} not Live, ${failed} failed. Routing map: ${departments.length} department(s).`

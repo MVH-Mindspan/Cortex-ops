@@ -46,6 +46,7 @@ function row(overrides: Partial<PersonaRow> = {}): PersonaRow {
     priority: "P0 — Launch",
     backup: "Blake Rowe",
     slackChannel: "#fictional-intake",
+    routeWhen: "Referral intake;  new leads\nfrom the website",
     markdown: BODY,
     ...overrides
   };
@@ -148,6 +149,11 @@ test("personaFrom falls back to the properties when the body has no line", () =>
   );
   assert.equal(persona.priority, "P2");
   assert.equal(persona.backup, "Casey Lin");
+  // The Route When property, with its line break and double space collapsed.
+  assert.equal(
+    persona.routeWhen,
+    "Referral intake; new leads from the website"
+  );
   assert.deepEqual(persona.reach, {
     slack: "",
     dashboard: "Escalate → Clinical"

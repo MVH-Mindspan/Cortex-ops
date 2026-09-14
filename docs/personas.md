@@ -39,11 +39,14 @@ The person is picked in code before the model answers
 (`src/lib/contacts.ts`). Left to itself, the model tended to name whoever sat
 on the team it had just named.
 
-- **Scoring:** each Live row is scored by the words its Route When hint, Core
-  Responsibilities and Title share with the question. Rare words count more than
-  common ones.
-  Product names (the capitalised words on Systems lines) count little, since
-  naming a system does not make someone its owner.
+- **Scoring:** each Live row is scored by the words its Core Responsibilities,
+  Route When clauses and Title share with the question. Rare words count more
+  than common ones. Product names (the capitalised words on Systems lines)
+  count little, since naming a system does not make someone its owner. The
+  directory's own names never count, so "should this go to <name>?" does not
+  pick a row whose Route When mentions that person. Nor do words about how
+  work moves ("escalation", "resolve", "unsure"), which Route When text uses
+  loosely.
 - **Out of Scope:** these lines count both ways. The person a line points to
   gains, and the person who holds the line loses.
 - **The match:** the top one or two rows above a threshold go into the request
@@ -60,16 +63,17 @@ and a test keeps one out of the prompt.
 
 ## What a row needs
 
-| Property           | Used for                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------ |
-| Name               | The person, as answers name them. Two rows may share a name; answers tell them apart by title.   |
-| Title              | Shown after the name; also how the checks refer to the row in public logs.                       |
-| Department         | Shown after the title.                                                                           |
-| Routing Department | The Department Routing Map departments this person works in. Only the checks use it.             |
-| Priority           | Order in the prompt (P0 first), and which rows go first if the directory ever runs over its cap. |
-| Status             | Only Live rows are exported. Draft and Archived rows are ignored.                                |
-| Backup             | Used when the page body has no Backup line.                                                      |
-| Slack Channel      | Used when the page body has no Slack or Dashboard line.                                          |
+| Property           | Used for                                                                                                                                                                            |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name               | The person, as answers name them. Two rows may share a name; answers tell them apart by title.                                                                                      |
+| Title              | Shown after the name; also how the checks refer to the row in public logs.                                                                                                          |
+| Department         | Shown after the title.                                                                                                                                                              |
+| Routing Department | The Department Routing Map departments this person works in. Only the checks use it.                                                                                                |
+| Priority           | Order in the prompt (P0 first), and which rows go first if the directory ever runs over its cap.                                                                                    |
+| Status             | Only Live rows are exported. Draft and Archived rows are ignored.                                                                                                                   |
+| Backup             | Used when the page body has no Backup line. A first name that fits one person becomes their full name on export.                                                                    |
+| Slack Channel      | Used when the page body has no Slack or Dashboard line.                                                                                                                             |
+| Route When         | When to send someone to this person, as clauses separated by `;`. Used when the page body has no `## Route When` section. Only the contact match reads it; it is not in the prompt. |
 
 The page body uses these headings. A missing heading leaves that field empty.
 
@@ -118,7 +122,7 @@ npm run validate-routing               # re-check export/team-directory.json
 ## Size
 
 The rendered directory is capped at `PERSONAS_MAX_CHARS` (9,000 characters,
-`src/lib/personas.ts`); 20 rows came to about 7,950 in September 2026. The
+`src/lib/personas.ts`); 19 rows came to about 7,550 in September 2026. The
 model's window is fixed, so the directory is paid for with SOP text. Each
 answer's passages get what the prompt, the earlier turns and the message
 leave, up to their usual 26,000 characters (`passageBudgetFor` in

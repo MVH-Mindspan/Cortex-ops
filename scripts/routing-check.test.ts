@@ -8,7 +8,8 @@ import {
   formatIssues,
   redactNames,
   topicWords,
-  topicsOverlap
+  topicsOverlap,
+  withFullBackups
 } from "./routing-check.ts";
 
 // Fictional people and departments only: this repository is public.
@@ -310,6 +311,43 @@ test("without the routing map only the row and reference checks run", () => {
     result.issues.map((i) => i.level),
     ["reference"]
   );
+});
+
+test("a Backup naming one person by a shorter name becomes their full name", () => {
+  const people = [
+    persona({ name: "Avery Quinn", backup: "Blake" }),
+    persona({
+      name: "Blake Rowe",
+      title: "Revenue Lead",
+      backup: "Casey (weekdays only)"
+    }),
+    persona({ name: "Casey Lin", title: "Desk", backup: "Revenue lead" }),
+    persona({ name: "Dr. Drew", title: "Provider", backup: "Emery" }),
+    persona({
+      name: "Emery Cole",
+      title: "Front Desk",
+      backup: "Dr. Drew (medication only)"
+    }),
+    persona({ name: "Emery Park", title: "Nurse", backup: "Emery Park" })
+  ];
+  const expanded = withFullBackups(people);
+  assert.deepEqual(
+    expanded.map((p) => p.backup),
+    [
+      "Blake Rowe",
+      "Casey Lin (weekdays only)",
+      // Names no one: left as written, and still reported.
+      "Revenue lead",
+      // Two people are called Emery: ambiguous, so left as written.
+      "Emery",
+      // Already the full name.
+      "Dr. Drew (medication only)",
+      // The row itself.
+      "Emery Park"
+    ]
+  );
+  assert.equal(expanded[2], people[2]);
+  assert.equal(people[0].backup, "Blake");
 });
 
 test("formatIssues lists a counts line, then the most severe first", () => {

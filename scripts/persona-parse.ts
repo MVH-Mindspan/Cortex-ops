@@ -35,6 +35,7 @@ export type PersonaRow = {
   priority: string;
   backup: string;
   slackChannel: string;
+  routeWhen: string;
   /** The page body, rendered to markdown. */
   markdown: string;
 };
@@ -165,7 +166,9 @@ export function personaFrom(row: PersonaRow): Persona {
     name: clean(row.name),
     title: clean(row.title),
     department: clean(row.department),
-    routeWhen: sectionText(row.markdown, "route when"),
+    // The Route When property fills in when the body has no section, as
+    // Backup and Slack Channel do; today the rows carry it as a property.
+    routeWhen: sectionText(row.markdown, "route when") || clean(row.routeWhen),
     routingDepartments: row.routingDepartments.map(clean).filter(Boolean),
     priority: priorityOf(row.priority),
     owns: sections.get("core responsibilities") ?? [],
