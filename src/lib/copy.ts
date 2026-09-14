@@ -593,46 +593,52 @@ export const GUIDE_EXAMPLES: GuideExample[] = [
     ]
   },
   {
-    id: "not-covered",
-    label: "Nothing covers it",
+    id: "missing-order",
+    label: "An order that never arrived",
     turns: [
       {
         role: "user",
-        text: "A caregiver is asking whether we validate parking at the clinic. What do I tell them?"
+        text: "A LabCorp order we sent last week isn't showing on the patient's chart and the lab says they never received it. How do I track down and re-route the order?"
       },
       {
         role: "assistant",
-        text: COVERAGE_NONE_LINE,
+        text: 'Situation: A LabCorp order sent last week is missing from the patient\'s chart and LabCorp claims it was never received. The order needs to be tracked down and re-routed.\n\nUrgency: Today. The order is overdue and the patient\'s care may be delayed.\n\nWho handles this: Likely the Care Support team, Provider & Clinic Support function, because the team structure gives it the day-to-day needs of active clinics and clinic operations questions.\n\nDo now\n1. Open the order in Athena, in the Orders/Plan section. Expect to see the order details, including the "Send to" field and the fax-confirmation banner. If you do not see the order, go to Stop and escalate.\n2. Check the "Send to" field and the fax-confirmation banner to confirm where the order was sent. Expect to see the facility name and fax number. If the facility is not LabCorp, proceed to Then, step 3.\n\nThen\n3. Call LabCorp to confirm whether they have the order. If not, re-send the order (fax or portal) while on the phone and confirm receipt before hanging up. Expect to hear from LabCorp that they have received the order.\n\nTell the patient\n"We are re-sending the order to LabCorp and confirming they receive it. We will update your chart once we have confirmation."\n\nStop and escalate\n- If the order cannot be found in Athena: The SOPs name no one for this. Ask your team lead. This likely sits with the Care Support team, Provider & Clinic Support function.\n\nDone when\nThe order is confirmed received by LabCorp and the patient\'s chart is updated.\n\nWhat the SOPs say\n\n1. [Misrouted & Missing Orders — Cross-System Reconciliation (DRAFT — Needs Review)](https://app.notion.com/p/Misrouted-Missing-Orders-Cross-System-Reconciliation-DRAFT-Needs-Review-3cdb5943d52d81afadb3fc3c6448a68a), Step 2. Missing at the facility\n   "Open the order in Athena and check the \'Send to\' field and the fax-confirmation banner — this tells you where it actually went."\n2. [Misrouted & Missing Orders — Cross-System Reconciliation (DRAFT — Needs Review)](https://app.notion.com/p/Misrouted-Missing-Orders-Cross-System-Reconciliation-DRAFT-Needs-Review-3cdb5943d52d81afadb3fc3c6448a68a), Step 2. Missing at the facility\n   "Call the facility to confirm whether they have it. If not, re-send (fax or portal) while on the phone and confirm receipt before hanging up."\n\nNot covered by the SOPs\n- What to tell the patient about the cause of the delay. The SOPs do not say. Ask the Care Support team, Provider & Clinic Support function, or your team lead.\n\nOne question\nWhat is the patient\'s MRN, to look up the order in Athena?',
         sops: [
           {
-            title: "🎓 Dementia & Memory Loss Communication Training",
+            title:
+              "🧭 Misrouted & Missing Orders — Cross-System Reconciliation (DRAFT — Needs Review)",
             category: "SOP",
-            last_edited: "2026-08-31T22:59:00.000Z",
+            last_edited: "2026-08-31T23:16:00.000Z",
             source_url:
-              "https://app.notion.com/p/Dementia-Memory-Loss-Communication-Training-3adb5943d52d819e9065c620bf662eb3",
-            score: 0.09638752788305283,
-            file: "dementia-memory-loss-communication-training.md"
+              "https://app.notion.com/p/Misrouted-Missing-Orders-Cross-System-Reconciliation-DRAFT-Needs-Review-3cdb5943d52d81afadb3fc3c6448a68a",
+            score: 0.9717056751251221,
+            file: "misrouted-missing-orders-cross-system-reconciliation-draft-needs-review.md",
+            status: "draft",
+            cited: true,
+            quote:
+              "Open the order in Athena and check the 'Send to' field and the fax-confirmation banner — this tells you where it actually went."
           },
           {
-            title: "📝 New Clinic Setup (Embed)",
+            title:
+              "📠 Inbound Fax Referral & Document Handling (DRAFT — Needs Review)",
             category: "SOP",
-            last_edited: "2026-08-31T22:59:00.000Z",
+            last_edited: "2026-08-31T23:16:00.000Z",
             source_url:
-              "https://app.notion.com/p/New-Clinic-Setup-Embed-335b5943d52d80f2b61becb64c47d0f8",
-            score: 0.016270682215690613,
-            file: "new-clinic-setup-embed.md"
+              "https://app.notion.com/p/Inbound-Fax-Referral-Document-Handling-DRAFT-Needs-Review-3cdb5943d52d81d98d2be2a73d0abb47",
+            score: 0.9644429683685303,
+            file: "inbound-fax-referral-document-handling-draft-needs-review.md",
+            status: "draft"
           },
           {
-            title: "📝 Transition to Care Support",
+            title: "Follow-Up Pre-Visit Checklist SOP",
             category: "SOP",
-            last_edited: "2026-08-31T22:59:00.000Z",
+            last_edited: "2026-09-02T19:17:00.000Z",
             source_url:
-              "https://app.notion.com/p/Transition-to-Care-Support-335b5943d52d8045b7d3dc166f6f96fe",
-            score: 0.016270682215690613,
-            file: "transition-to-care-support.md"
+              "https://app.notion.com/p/Follow-Up-Pre-Visit-Checklist-SOP-3cfb5943d52d81078701d0408a5c4681",
+            score: 0.8803492784500122,
+            file: "follow-up-pre-visit-checklist-sop.md"
           }
-        ],
-        coverageBlocked: "none"
+        ]
       }
     ]
   }
