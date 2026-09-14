@@ -125,3 +125,59 @@ test("an answer with no citations is unexamined, not whole-quote clean", () => {
     null
   );
 });
+
+// Both shapes below were scored as failures in the 6 Sep 2026 pass while the
+// answers were correct. Pinned so the graders cannot drift back.
+test("waiting for, or acting after, the role that decides is not ops deciding", () => {
+  for (const step of [
+    "Wait for the prescriber to select the code.",
+    "Once the prescriber responds with the selected code, add it to the order.",
+    "Once the provider adds the diagnosis code, confirm it is covered."
+  ]) {
+    assert.equal(
+      gradeReserve(
+        `Do now: 1. ${step}\nWhat the SOPs say: provider selects the code`
+      ),
+      true,
+      step
+    );
+  }
+  // The role has to come first: this is still ops choosing.
+  assert.equal(
+    gradeReserve(
+      "Do now: 1. Select the correct diagnosis code, which the prescriber chooses.\nWhat the SOPs say: x"
+    ),
+    false
+  );
+});
+test("a step about something other than a code is not a reserved-code failure", () => {
+  assert.equal(
+    gradeReserve(
+      'Do now: 1. If the study name is incorrect, update it to "PET CT amyloid brain scan".\nWhat the SOPs say: Medicare-covered ICD-10 code'
+    ),
+    true
+  );
+  // But a step that does name a code still fails.
+  assert.equal(
+    gradeReserve(
+      "Do now: 1. If the code is listed, add it to the order.\nWhat the SOPs say: x"
+    ),
+    false
+  );
+});
+test("identity screening is scoped to the person, not any noun called a name", () => {
+  for (const q of [
+    "One question: What is the exact study name for the order, to ensure it matches VRI's requirements?",
+    "One question: Is the facility's phone number on file correct?",
+    "One question: Did the referral arrive by fax or email?"
+  ]) {
+    assert.equal(gradeOneQuestion(q), true, q);
+  }
+  for (const q of [
+    "One question: What is the patient's full name?",
+    "One question: What is the patient's date of birth?",
+    "One question: Can you confirm the caregiver's phone number?"
+  ]) {
+    assert.equal(gradeOneQuestion(q), false, q);
+  }
+});
