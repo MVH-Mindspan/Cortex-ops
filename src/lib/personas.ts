@@ -37,6 +37,9 @@ export type Persona = {
   readonly title: string;
   /** The Notion Department select: Clinical, Operations, Technology, ... */
   readonly department: string;
+  /** Free-text "route to me when ..." hint from the page's "## Route When"
+   * section; a first-class matching signal in contacts.ts. "" when absent. */
+  readonly routeWhen: string;
   /** Department Routing Map departments, for validate-routing only. */
   readonly routingDepartments: readonly string[];
   readonly priority: PersonaPriority;
@@ -77,6 +80,9 @@ function isPersona(value: unknown): value is Persona {
     p.name.trim().length > 0 &&
     isString(p.title) &&
     isString(p.department) &&
+    // Tolerated missing so a directory exported before this field existed still
+    // parses; parseDirectory fills the absent value with "".
+    (p.routeWhen === undefined || isString(p.routeWhen)) &&
     isStringArray(p.routingDepartments) &&
     PRIORITIES.includes(p.priority as PersonaPriority) &&
     isStringArray(p.owns) &&
@@ -109,7 +115,9 @@ export function parseDirectory(value: unknown): Directory | null {
   return {
     version: DIRECTORY_VERSION,
     generated_at: d.generated_at,
-    personas: d.personas
+    // Fill a routeWhen absent from an older exported object, so the rest of the
+    // code reads a string, never undefined.
+    personas: d.personas.map((p) => ({ ...p, routeWhen: p.routeWhen ?? "" }))
   };
 }
 
@@ -141,6 +149,9 @@ export function renderPersona(persona: Persona): string {
   const lines = [
     `${oneLine(persona.name)}: ${oneLine(persona.title)} (${oneLine(persona.department)})`
   ];
+  if (persona.routeWhen.trim()) {
+    lines.push(`- Route when: ${oneLine(persona.routeWhen)}`);
+  }
   if (persona.owns.length > 0) {
     lines.push(`- Owns: ${persona.owns.map(oneLine).join("; ")}`);
   }
