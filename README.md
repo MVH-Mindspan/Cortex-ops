@@ -1,6 +1,6 @@
 # Cortex
 
-**Live preview: https://cortex.mvh-9c9.workers.dev**
+**Live: https://cortex.mindspan.co**
 
 Cortex is Mindspan's internal operations assistant. Ops staff paste a situation
 (a caregiver call, an insurer email, a misrouted order) and Cortex answers in a

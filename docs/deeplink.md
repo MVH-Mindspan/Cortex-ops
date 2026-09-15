@@ -5,10 +5,10 @@ Other Mindspan apps can open Cortex with a situation already in the composer and
 ## A1. Contract
 
 ```
-https://cortex.mvh-9c9.workers.dev/?v=1&action=ask&q=<message>&src=om&ref=<caller-id>
+https://cortex.mindspan.co/?v=1&action=ask&q=<message>&src=om&ref=<caller-id>
 ```
 
-The only supported origin is `https://cortex.mvh-9c9.workers.dev`. Callers never link to Cortex preview hostnames. The contract lives on `/` with query parameters, not on a dedicated path: the Worker only runs for `/agents/*` (`wrangler.jsonc` `run_worker_first`), every page path is served by the assets layer with `not_found_handling: single-page-application`, so a `/ask` path would serve the same bundle and only add a second thing to keep in sync.
+The only supported origin is `https://cortex.mindspan.co`. Callers never link to Cortex preview hostnames. The contract lives on `/` with query parameters, not on a dedicated path: the Worker only runs for `/agents/*` (`wrangler.jsonc` `run_worker_first`), every page path is served by the assets layer with `not_found_handling: single-page-application`, so a `/ask` path would serve the same bundle and only add a second thing to keep in sync.
 
 ## A2. Parameters
 
@@ -75,7 +75,7 @@ What are the steps to complete this task, and who handles it?
 Encoded URL (703 characters; `new URLSearchParams(new URL(url).search).get("q")` returns the fixture exactly):
 
 ```
-https://cortex.mvh-9c9.workers.dev/?v=1&action=ask&q=Caregiver+Required%3A+confirm+caregiver+attendance+for+a+Cognitive+Assessment+%2899483%29+visit+in+7+days.%0AThis+task+is+unclaimed+and+I+am+deciding+whether+to+pick+it+up.+In+Orchestration+Manager+it+sits+with+the+Member+Experience+team+as+Caregiver+Liaison%2C+on+the+Cognitive+pathway%2C+core+protocol.+It+was+flagged+as+%27Protocol+step+missing%27+by+Cognitive+Visit+Protocol+%E2%80%94+Phase+2+Readiness+Checklist.+The+visit+is+a+Cognitive+Assessment+%2899483%29+in+7+days.+The+caregiver+contact+status+is+pending.+It+is+pending%2C+high+priority%2C+due+in+6+days.%0AWhat+are+the+steps+to+complete+this+task%2C+and+who+handles+it%3F&src=om&ref=M001
+https://cortex.mindspan.co/?v=1&action=ask&q=Caregiver+Required%3A+confirm+caregiver+attendance+for+a+Cognitive+Assessment+%2899483%29+visit+in+7+days.%0AThis+task+is+unclaimed+and+I+am+deciding+whether+to+pick+it+up.+In+Orchestration+Manager+it+sits+with+the+Member+Experience+team+as+Caregiver+Liaison%2C+on+the+Cognitive+pathway%2C+core+protocol.+It+was+flagged+as+%27Protocol+step+missing%27+by+Cognitive+Visit+Protocol+%E2%80%94+Phase+2+Readiness+Checklist.+The+visit+is+a+Cognitive+Assessment+%2899483%29+in+7+days.+The+caregiver+contact+status+is+pending.+It+is+pending%2C+high+priority%2C+due+in+6+days.%0AWhat+are+the+steps+to+complete+this+task%2C+and+who+handles+it%3F&src=om&ref=M001
 ```
 
 Recents label for this message: `Caregiver Required: confirm caregiver attendance`.
