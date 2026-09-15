@@ -334,15 +334,16 @@ test("work is handed over on Slack, never through a ticket queue", () => {
     buildSystemPrompt(undefined, DIRECTORY)
   ]) {
     assert.doesNotMatch(prompt, /Zendesk|<route>|Route work through/);
-    assert.match(
-      prompt,
-      /"If this is not your team, message the <Team> team on Slack\."/
-    );
     assert.match(prompt, /never name a ticket queue or ticketing system/);
+    // Operator decision (15 Sep 2026): no "If this is not your team" line.
+    assert.doesNotMatch(prompt, /"If this is not your team, message/);
+    assert.match(prompt, /Never write "If this is not your team"\./);
   }
+  assert.doesNotMatch(section("### Example"), /If this is not your team/);
+  // With a directory, Slack stays as the last resort after the person.
   assert.match(
-    section("### Example"),
-    /then message the Care Support team on Slack\./
+    buildSystemPrompt(undefined, DIRECTORY),
+    /"If you can't reach either, message the <Team> team on Slack;/
   );
 });
 
