@@ -5,9 +5,9 @@
 Cortex is Mindspan's internal operations assistant. Ops staff paste a situation
 (a caregiver call, an insurer email, a misrouted order) and Cortex answers in a
 structured incident format grounded only in the team's SOPs, with ranked SOP
-cards linking back to their canonical Notion pages. Each answer leads with the
-Operations team and function that likely handles the situation, a steer from a
-hand-maintained team structure, before the SOP steps.
+cards linking back to their canonical Notion pages. Each answer says who to
+contact, on which channel, and their backup, with the Operations team that
+likely handles the situation as the fallback, before the SOP steps.
 
 Built entirely on Cloudflare: Workers + Agents SDK for the chat backend
 (Durable Objects for per-conversation state), R2 for the exported SOP library,
@@ -42,8 +42,8 @@ How an answer is produced (`src/server.ts`, pure helpers in `src/lib/`):
    directory is added too: the people to contact, their backups and how to
    reach them. It is synced nightly from the Notion database "Team Directory
    (Cortex)" into a private R2 bucket and never committed
-   (`docs/personas.md`). Answers then name one person to contact after the
-   team.
+   (`docs/personas.md`). Answers lead with one person to contact, their
+   channel and their backup, and give the team last as the fallback.
 4. The request sent to the model is sized to its 24k-token window by
    characters: prompt, passages, prior turns and the latest message each have
    a budget in `src/lib/pipeline.ts` (oldest turns are trimmed first; error
