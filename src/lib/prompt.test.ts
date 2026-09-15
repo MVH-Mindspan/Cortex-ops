@@ -200,7 +200,7 @@ test("adds the team directory only when one is passed, after the team structure"
   ]);
   assert.match(
     prompt,
-    /Copy the name, title, department and reach exactly as the entry writes them, and always give the Backup: "If <Name> is unavailable, contact <Backup>\."/
+    /Copy the name, title, reach and backup exactly as the entry writes them, and always give the Backup: "If <first name> is unavailable, contact <Backup>\."/
   );
   assert.match(
     prompt,
@@ -229,14 +229,11 @@ test("with a directory the rules allow one named contact; without, they forbid a
   assert.match(SYSTEM_PROMPT, /Who handles this, at most 3 sentences/);
   assert.match(
     withDirectory,
-    /"Contact <Name>, <Title> \(<Department>\), through <Reach>; if <Name> is unavailable, contact <Backup>\."/
+    /"Contact <Name>, <Title>, on <Reach>\. If <first name> is unavailable, contact <Backup>\."/
   );
   // Live eval (14 Sep 2026): without this the model named whoever sat on the
   // team it had just named, and dropped the backup.
-  assert.match(
-    withDirectory,
-    /chosen by the work itself, not by the team you named/
-  );
+  assert.match(withDirectory, /choose by the work itself, not by the team/);
   assert.match(
     withDirectory,
     /any contact or channel that is not in a quoted passage or the team directory/
@@ -246,6 +243,29 @@ test("with a directory the rules allow one named contact; without, they forbid a
     withDirectory.slice(withDirectory.indexOf("### Example")),
     SYSTEM_PROMPT.slice(SYSTEM_PROMPT.indexOf("### Example"))
   );
+});
+
+test("with a directory, Who handles this leads with the person, then the backup, then the team", () => {
+  // Operator feedback (15 Sep 2026): the team-first line buried the one thing
+  // the reader acts on, a name and a channel.
+  const prompt = buildSystemPrompt(undefined, DIRECTORY);
+  const start = prompt.indexOf("Who handles this: ");
+  const spec = prompt.slice(start, prompt.indexOf("\n", start));
+  ordered(spec, [
+    '"Contact <Name>, <Title>, on <Reach>.',
+    "If <first name> is unavailable, contact <Backup>.",
+    "If you can't reach either, message the <Team> team on Slack; this likely sits with its <Function> function.",
+    'Team form, in one to three sentences: Start with "Likely the"'
+  ]);
+  // Without a directory the line leads with the team and names no person.
+  assert.match(
+    SYSTEM_PROMPT.slice(SYSTEM_PROMPT.indexOf("Who handles this: ")),
+    /^Who handles this: One to three sentences\. Start with "Likely the"/
+  );
+  assert.doesNotMatch(SYSTEM_PROMPT, /Contact <Name>|If you can't reach/);
+  // Neither asks for a "because the team structure gives it" clause.
+  assert.doesNotMatch(prompt, /from that function's line/);
+  assert.doesNotMatch(SYSTEM_PROMPT, /from that function's line/);
 });
 
 test("every style with a directory at its ceiling stays under the directory ceiling", () => {
