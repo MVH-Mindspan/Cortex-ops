@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-09-18T08:15:04.866Z",
+  "exported_at": "2026-10-17T07:46:18.512Z",
   "files": [
     {
       "key": "active-numbers-in-regal-as-of-6-25-26.md",
@@ -17,7 +17,7 @@
       "key": "appointment-scheduling.md",
       "title": "Appointment Scheduling",
       "notion_id": "344b5943-d52d-80f4-833f-c5dd3d4fd7bf",
-      "last_edited": "2026-09-08T23:59:00.000Z"
+      "last_edited": "2026-10-07T10:42:00.000Z"
     },
     {
       "key": "athena-patient-registration-checklist.md",
@@ -29,7 +29,7 @@
       "key": "before-visit-checklist.md",
       "title": "📝 Before Visit Checklist",
       "notion_id": "335b5943-d52d-8008-9ae4-fca1c9705b78",
-      "last_edited": "2026-08-31T22:58:00.000Z"
+      "last_edited": "2026-10-13T12:08:00.000Z"
     },
     {
       "key": "blocked-escalate-subtask-sop.md",
@@ -47,7 +47,7 @@
       "key": "care-navigation-tools.md",
       "title": "Care Navigation Tools",
       "notion_id": "390b5943-d52d-81c5-9f97-c4dbbce9bcba",
-      "last_edited": "2026-09-07T20:52:00.000Z"
+      "last_edited": "2026-10-10T22:48:00.000Z"
     },
     {
       "key": "caremore-call-guide.md",
@@ -107,7 +107,7 @@
       "key": "danvers-front-desk-sop-follow-up-scheduling-athena.md",
       "title": "Danvers Front Desk SOP: Follow-Up Scheduling (Athena)",
       "notion_id": "3dbb5943-d52d-80e8-8e51-cd377685c47e",
-      "last_edited": "2026-09-14T22:10:00.000Z"
+      "last_edited": "2026-10-05T16:09:00.000Z"
     },
     {
       "key": "dementia-memory-loss-communication-training.md",
@@ -149,7 +149,7 @@
       "key": "follow-up-pre-visit-checklist-sop.md",
       "title": "Follow-Up Pre-Visit Checklist SOP",
       "notion_id": "3cfb5943-d52d-8107-8701-d0408a5c4681",
-      "last_edited": "2026-09-02T19:17:00.000Z"
+      "last_edited": "2026-10-07T10:07:00.000Z"
     },
     {
       "key": "follow-up-scheduling-rules-draft-needs-review.md",
@@ -275,7 +275,7 @@
       "key": "new-pt-pre-visit-checklist-sop.md",
       "title": "New PT Pre-Visit Checklist SOP",
       "notion_id": "3c0b5943-d52d-8033-9c06-f2dd8f953c32",
-      "last_edited": "2026-09-03T14:09:00.000Z"
+      "last_edited": "2026-10-16T12:52:00.000Z"
     },
     {
       "key": "order-prescription-corrections-and-rx-requests-draft-needs-review.md",
@@ -290,16 +290,22 @@
       "last_edited": "2026-08-31T22:58:00.000Z"
     },
     {
+      "key": "patient-cases-in-athena-new-care-navigator-overview.md",
+      "title": "Patient Cases in Athena — New Care Navigator Overview",
+      "notion_id": "7aa6bca8-fcc9-4e06-9f8f-0b40adeaf952",
+      "last_edited": "2026-10-16T15:06:00.000Z"
+    },
+    {
       "key": "patient-check-in-athena.md",
       "title": "Patient Check-In, Athena",
       "notion_id": "3c7b5943-d52d-8039-85c0-c92576d3a0e1",
-      "last_edited": "2026-08-31T22:59:00.000Z"
+      "last_edited": "2026-09-22T16:01:00.000Z"
     },
     {
       "key": "patient-check-out-athena.md",
       "title": "Patient Check-Out, Athena",
       "notion_id": "3c7b5943-d52d-800d-a70e-d8e4e664237a",
-      "last_edited": "2026-09-14T22:04:00.000Z"
+      "last_edited": "2026-09-22T16:02:00.000Z"
     },
     {
       "key": "patient-facing-tech-failures-screening-codes-blank-pages-portal-access-draft-nee.md",
@@ -389,7 +395,7 @@
       "key": "team-directory-cortex.md",
       "title": "Team Directory (Cortex)",
       "notion_id": "3d8b5943-d52d-8180-8ab9-cdbc0fd086cf",
-      "last_edited": "2026-09-15T15:20:00.000Z"
+      "last_edited": "2026-10-07T10:06:00.000Z"
     },
     {
       "key": "telehealth-visits-setup-access-no-shows-draft-needs-review.md",
