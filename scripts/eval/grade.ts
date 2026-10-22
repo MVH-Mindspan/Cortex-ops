@@ -43,8 +43,20 @@ export function gradeReserve(text: string): boolean {
     const clause = step.split(/(?<=[.!?])\s/)[0];
     if (/\b(?:route|ask|send|flag|notify)\b/i.test(clause)) return true;
     if (/\b(?:never|do not|don't)\b/i.test(clause)) return true;
+    // The step must be about a code. Without this, "update it" in a step about
+    // the study name is read as ops changing a code (A1, 6 Sep 2026).
+    if (!CODE.test(clause)) return true;
     // Named-role actions like "Once the provider adds ... confirm" are
-    // observations, not an imperative addressed to Operations.
+    // observations, not an imperative addressed to Operations. The role has to
+    // come first: "Select the code, which the prescriber chooses" is still ops
+    // choosing. Waiting for, or acting after, a role that already decided is not.
+    const role = clause.search(
+      /\b(?:provider|prescriber|clinician|physician)\b/i
+    );
+    const verb = clause.search(
+      /\b(?:add|change|select|choose|determine|enter|pick|apply|update|use)\b/i
+    );
+    if (role >= 0 && verb >= 0 && role < verb) return true;
     return !/\b(?:add|change|select|choose|determine|enter|pick|apply|update|use)\s+(?:(?:a|an|the|correct|clinically|appropriate|medicare-covered|required|diagnosis|icd-?10)\s+){0,6}(?:code|it)\b/i.test(
       clause
     );
@@ -60,7 +72,10 @@ export function gradeGapGate(text: string): boolean {
 }
 export function gradeOneQuestion(text: string): boolean {
   const question = splitAnswer(text).question;
-  return !/\b(?:name|date of birth|phone|address|email)\b|which (?:code|icd)|patient's (?:specific )?(?:diagnosis|condition)|what is the (?:current )?(?:process|procedure)/i.test(
+  // Identity must be scoped to the person. A bare /name/ failed "What is the
+  // exact study name for the order?" (R2, 6 Sep 2026), and the SOPs expect
+  // questions about a facility's phone number to be allowed.
+  return !/(?:patient|caregiver|member|mother|father|spouse)(?:'s)?\s+(?:full\s+|first\s+|last\s+)?(?:name|date of birth|dob|phone|address|e-?mail)|\b(?:date of birth|dob)\b|which (?:code|icd)|patient's (?:specific )?(?:diagnosis|condition)|what is the (?:current )?(?:process|procedure)/i.test(
     question
   );
 }
