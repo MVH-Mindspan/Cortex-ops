@@ -1,5 +1,5 @@
 {
-  "exported_at": "2026-10-17T07:46:18.512Z",
+  "exported_at": "2026-10-30T09:57:29.642Z",
   "files": [
     {
       "key": "active-numbers-in-regal-as-of-6-25-26.md",
@@ -156,6 +156,12 @@
       "title": "🗓️ Follow-Up Scheduling Rules (DRAFT — Needs Review)",
       "notion_id": "3cdb5943-d52d-8148-b5ad-c801d4a699f2",
       "last_edited": "2026-08-31T23:17:00.000Z"
+    },
+    {
+      "key": "how-to-place-close-out-a-manual-outbound-call-in-regal.md",
+      "title": "☎️ How to Place & Close Out a Manual Outbound Call in Regal",
+      "notion_id": "408b5943-d52d-81eb-b371-cabe46a329e7",
+      "last_edited": "2026-10-29T15:04:00.000Z"
     },
     {
       "key": "imaging-order-requirements-amyloid-pet-mri-checklist-draft-needs-review.md",
